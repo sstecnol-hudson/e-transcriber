@@ -105,7 +105,52 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 40px;
+    margin-bottom: 16px;
+}
+
+.mode-selector {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+body[data-theme="light"] .mode-selector {
+    background-color: rgba(0, 0, 0, 0.04);
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 8px 6px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+.mode-btn:hover {
+    color: var(--text-primary);
+}
+
+.mode-btn.active {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+body[data-theme="light"] .mode-btn.active {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
 }
 
 .logo-icon {
@@ -1688,4 +1733,35 @@ body[data-theme="light"] .autocomplete-dropdown {
         padding: 16px;
     }
 }
+
+/* Badges */
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 4px;
+    background-color: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+}
+
+.badge-light {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+}
+
+body[data-theme="light"] .badge {
+    background-color: rgba(99, 102, 241, 0.08);
+    color: var(--primary);
+}
+
+body[data-theme="light"] .badge-light {
+    background-color: rgba(0, 0, 0, 0.04);
+    color: var(--text-secondary);
+}
+
 

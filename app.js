@@ -70,6 +70,8 @@ const PATIENT_INSTRUCTIONS_PROMPT = `Você é um médico atencioso e empático. 
 const AppState = {
     apiKey: '',
     activeTab: 'tab-consulta',
+    activeMode: 'consultas',
+    meetingCompanyInfo: { name: '', address: '' },
     audioMode: 'record',
     history: [],
     patients: [],
@@ -239,7 +241,10 @@ function init() {
     // Carregar dados do localStorage
     AppState.apiKey = localStorage.getItem('etranscriber_groq_key') || '';
     DOM.groqApiKeyInput.value = AppState.apiKey;
-    DOM.aiModel.value = localStorage.getItem('etranscriber_ai_model') || 'llama-3.3-70b-versatile';
+    AppState.activeMode = localStorage.getItem('etranscriber_active_mode') || 'consultas';
+    // Carregar informações da empresa para reuniões
+    try { AppState.meetingCompanyInfo = JSON.parse(localStorage.getItem('etranscriber_meeting_company')) || { name: '', address: '' }; } catch { AppState.meetingCompanyInfo = { name: '', address: '' }; }
+    AppState.aiModel = localStorage.getItem('etranscriber_ai_model') || 'llama-3.3-70b-versatile';
 
     try { AppState.customPrompts = JSON.parse(localStorage.getItem('etranscriber_custom_prompts')) || {}; } catch { AppState.customPrompts = {}; }
     try { AppState.history = JSON.parse(localStorage.getItem('etranscriber_history')) || []; } catch { AppState.history = []; }
@@ -251,6 +256,9 @@ function init() {
     DOM.doctorName.value = AppState.clinicInfo.doctor || '';
     DOM.doctorCRM.value = AppState.clinicInfo.crm || '';
     DOM.clinicPhone.value = AppState.clinicInfo.phone || '';
+    // Preencher campos de empresa para reuniões
+    DOM.meetingCompanyName && (DOM.meetingCompanyName.value = AppState.meetingCompanyInfo.name || '');
+    DOM.meetingCompanyAddress && (DOM.meetingCompanyAddress.value = AppState.meetingCompanyInfo.address || '');
 
     // Inicializar UI
     updateApiStatusUI();
@@ -260,13 +268,24 @@ function init() {
     renderPatientsTable();
     updatePatientsBadge();
     setupNavigation();
+    switchMode('consultas'); // Aplica filtro inicial: mostrar só itens de Consultas
     setupEventListeners();
     setupPatientAutocomplete();
     drawStaticWaveform();
 
     if (!AppState.apiKey) DOM.apiKeyAlert.classList.remove('hidden');
 
-    // Registro do Service Worker para suporte PWA/Offline
+    // Listener para salvar dados da empresa de reuniões
+    const btnSaveMeetingCompany = document.getElementById('btn-save-meeting-company');
+    if (btnSaveMeetingCompany) {
+        btnSaveMeetingCompany.addEventListener('click', () => {
+            const name = DOM.meetingCompanyName?.value.trim() || '';
+            const address = DOM.meetingCompanyAddress?.value.trim() || '';
+            AppState.meetingCompanyInfo = { name, address };
+            localStorage.setItem('etranscriber_meeting_company', JSON.stringify(AppState.meetingCompanyInfo));
+            showToast('Dados da empresa salvos!');
+        });
+    }
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
@@ -338,6 +357,51 @@ function setupNavigation() {
             switchTab(targetTab, item);
         });
     });
+
+    // Botões de modo: CONSULTAS / REUNIÕES
+    const btnModeConsultas = document.getElementById('btn-mode-consultas');
+    const btnModeReunioes = document.getElementById('btn-mode-reunioes');
+
+    if (btnModeConsultas && btnModeReunioes) {
+        btnModeConsultas.addEventListener('click', () => switchMode('consultas'));
+        btnModeReunioes.addEventListener('click', () => switchMode('reunioes'));
+    }
+}
+
+function switchMode(mode) {
+    AppState.activeMode = mode;
+    localStorage.setItem('etranscriber_active_mode', mode);
+
+    // Atualizar botões de modo
+    document.getElementById('btn-mode-consultas')?.classList.toggle('active', mode === 'consultas');
+    document.getElementById('btn-mode-reunioes')?.classList.toggle('active', mode === 'reunioes');
+
+    // Atualizar visibilidade dos itens de menu
+    DOM.menuItems.forEach(item => {
+        const itemMode = item.getAttribute('data-mode');
+        if (itemMode === 'both' || itemMode === mode) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    // Atualizar visibilidade de outros elementos (ex.: cards de configuração)
+    document.querySelectorAll('[data-mode]').forEach(el => {
+        const elMode = el.getAttribute('data-mode');
+        if (elMode === 'both' || elMode === mode) {
+            el.style.display = '';
+        } else {
+            el.style.display = 'none';
+        }
+    });
+
+    // Navegar para a aba padrão do modo selecionado
+    if (mode === 'consultas') {
+        switchTab('tab-consulta');
+    } else {
+        switchTab('tab-reunioes');
+    }
 }
 
 function switchTab(tabId, menuItemElement = null) {
@@ -355,6 +419,7 @@ function switchTab(tabId, menuItemElement = null) {
     updateHeader(tabId);
     if (tabId === 'tab-historico') renderHistoryTable();
     if (tabId === 'tab-pacientes') renderPatientsTable();
+    if (tabId === 'tab-historico-reunioes' && typeof renderMeetingHistory === 'function') renderMeetingHistory();
 }
 
 function updateHeader(tabId) {
@@ -362,7 +427,9 @@ function updateHeader(tabId) {
         'tab-consulta':   ['Nova Consulta', 'Grave e processe a consulta com Inteligência Artificial'],
         'tab-pacientes':  ['Cadastro de Pacientes', 'Gerencie seus pacientes e inicie novas consultas com um clique'],
         'tab-historico':  ['Histórico de Consultas', 'Acesse e exporte prontuários gerados anteriormente'],
+        'tab-historico-reunioes': ['Histórico de Reuniões', 'Acesse e exporte atas geradas anteriormente'],
         'tab-modelos':    ['Modelos de Prompt', 'Ajuste as diretrizes da IA para cada tipo de prontuário'],
+        'tab-reunioes':   ['Reuniões', 'Grave e gere atas de reuniões corporativas automaticamente'],
         'tab-config':     ['Configurações', 'Gerencie sua chave do Groq e dados do consultório']
     };
     const [title, subtitle] = map[tabId] || ['E-Transcriber', ''];
@@ -634,11 +701,12 @@ function generatePDF() {
     doc.rect(0, 0, pageWidth, 28, 'F');
 
     // Nome do consultório
-    const clinicNameText = AppState.clinicInfo.name || 'Consultório Médico';
+    const companyName = AppState.meetingCompanyInfo.name || 'Empresa';
+    doc.text('ATA DE REUNIÃO CORPORATIVA - ' + companyName, marginX, 17);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.setTextColor(255, 255, 255);
-    doc.text(clinicNameText, marginX, 13);
+    doc.text(companyName, marginX, 13);
 
     // Médico e CRM
     const doctorText = [AppState.clinicInfo.doctor, AppState.clinicInfo.crm].filter(Boolean).join(' | ');
