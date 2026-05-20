@@ -1600,3 +1600,92 @@ body[data-theme="light"] .autocomplete-dropdown {
     flex-direction: column;
     gap: 12px;
 }
+
+/* ---- RESPONSIVIDADE PARA DISPOSITIVOS MÓVEIS (PWA) ---- */
+@media (max-width: 768px) {
+    .app-container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        padding: 12px 16px;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background-color: var(--bg-sidebar);
+        backdrop-filter: blur(10px);
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .sidebar-logo {
+        margin-bottom: 0;
+    }
+
+    .sidebar-logo h2 {
+        font-size: 1.1rem;
+    }
+
+    .sidebar-menu {
+        flex-direction: row;
+        gap: 6px;
+        flex-grow: 0;
+    }
+
+    .menu-item {
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        gap: 6px;
+    }
+
+    .menu-item span:not(.count-badge) {
+        display: none; /* Esconde o texto do menu no mobile, mantendo apenas os ícones e badges */
+    }
+
+    .sidebar-footer {
+        display: none; /* Oculta rodapé da sidebar no mobile */
+    }
+
+    .main-content {
+        padding: 16px;
+        height: auto;
+        overflow-y: visible;
+    }
+
+    .top-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .top-header h1 {
+        font-size: 1.5rem;
+    }
+
+    /* Adaptação de tabelas para telas pequenas */
+    .table-container {
+        overflow-x: auto;
+    }
+
+    table th, table td {
+        padding: 10px;
+        font-size: 0.85rem;
+    }
+
+    .actions-col {
+        width: auto;
+    }
+
+    /* Modal no mobile */
+    .modal-content {
+        width: 95%;
+        margin: 10px;
+        padding: 16px;
+    }
+}
+

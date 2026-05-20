@@ -32,14 +32,27 @@ Esta aplicação foi desenvolvida seguindo o conceito de **Zero Servidor (Client
 
 ---
 
-## 🛠️ Como Iniciar a Aplicação
+## 🛠️ Como Iniciar a Aplicação (PWA & Offline)
 
-O E-Transcriber não exige nenhuma instalação de servidores, bancos de dados ou dependências no terminal (como Node.js ou Python).
+Como o **E-Transcriber** foi estruturado como um **Progressive Web App (PWA)**, você pode usá-lo tanto localmente quanto publicá-lo na nuvem de forma 100% gratuita.
 
-### Método Simples (Recomendado)
-1. Vá até a pasta `c:\Projects\e-transciber` no seu computador.
-2. Dê um **duplo clique no arquivo `index.html`** para abri-lo diretamente no Google Chrome, Microsoft Edge ou outro navegador de sua preferência.
-3. Pronto! O painel será carregado instantaneamente.
+### Método 1: Uso Local Rápido
+1. Dê um **duplo clique no arquivo `index.html`** para abrir no seu navegador.
+2. Para **Instalar como Aplicativo**, clique no ícone de "Instalar E-Transcriber" que aparecerá no canto superior direito da barra de endereços do Chrome ou Edge. Ele criará um atalho na sua área de trabalho e abrirá como um programa nativo.
+
+### Método 2: Hospedagem Gratuita na Nuvem (Para usar em qualquer lugar)
+Como o projeto é composto apenas por arquivos estáticos e usa o banco de dados do próprio navegador do usuário, você pode publicá-lo na internet de graça e com segurança em menos de 2 minutos:
+
+#### Opção A: Vercel (Recomendado)
+1. Crie uma conta gratuita na [Vercel](https://vercel.com).
+2. Instale o Vercel CLI ou conecte sua conta do GitHub.
+3. Arraste a pasta do projeto para o painel da Vercel ou use o comando `vercel` no terminal dentro da pasta.
+4. O site receberá um endereço seguro (ex: `etranscriber.vercel.app`) com certificado SSL (HTTPS), necessário para habilitar as permissões de gravação de áudio e telemedicina em celulares e outros computadores.
+
+#### Opção B: Netlify
+1. Crie uma conta gratuita na [Netlify](https://netlify.com).
+2. Vá na aba "Sites" e arraste a pasta inteira `c:\Projects\e-transciber` para a área de upload indicada como "Drag and drop your site folder".
+3. Em segundos, seu Web App estará online e seguro.
 
 ---
 

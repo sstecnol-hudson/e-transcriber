@@ -239,6 +239,7 @@ function init() {
     // Carregar dados do localStorage
     AppState.apiKey = localStorage.getItem('etranscriber_groq_key') || '';
     DOM.groqApiKeyInput.value = AppState.apiKey;
+    DOM.aiModel.value = localStorage.getItem('etranscriber_ai_model') || 'llama-3.3-70b-versatile';
 
     try { AppState.customPrompts = JSON.parse(localStorage.getItem('etranscriber_custom_prompts')) || {}; } catch { AppState.customPrompts = {}; }
     try { AppState.history = JSON.parse(localStorage.getItem('etranscriber_history')) || []; } catch { AppState.history = []; }
@@ -264,6 +265,15 @@ function init() {
     drawStaticWaveform();
 
     if (!AppState.apiKey) DOM.apiKeyAlert.classList.remove('hidden');
+
+    // Registro do Service Worker para suporte PWA/Offline
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('Service Worker registrado com sucesso:', reg.scope))
+                .catch(err => console.error('Erro ao registrar Service Worker:', err));
+        });
+    }
 }
 
 // ==========================================================================
@@ -1050,25 +1060,38 @@ async function generateClinicalDocuments() {
     const model = DOM.aiModel.value;
     const userContent = `DADOS DO ATENDIMENTO:\nPaciente: ${pName}\nIdade: ${pAge}\nEspecialidade: ${spec}\n\nTRANSCRIÇÃO DA CONSULTA:\n${rawText}`;
 
-    const callGroq = (systemPrompt, temperature = 0.1) => fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const callGroq = (systemPrompt, temperature = 0.1, overrideModel = null) => fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${AppState.apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }], temperature })
-    }).then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json(); });
+        body: JSON.stringify({ model: overrideModel || model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }], temperature })
+    }).then(async r => { 
+        if (!r.ok) {
+            const errText = await r.text();
+            try {
+                const errJson = JSON.parse(errText);
+                throw new Error(errJson.error?.message || errText);
+            } catch (e) {
+                throw new Error(errText);
+            }
+        }
+        return r.json(); 
+    });
 
     try {
-        const [prontuario, orientacoes] = await Promise.all([
-            callGroq(getSystemPrompt(DOM.clinicalTemplate.value), 0.1),
-            callGroq(PATIENT_INSTRUCTIONS_PROMPT, 0.3)
-        ]);
+        // Passo 1: Gera o Prontuário Clínico (Usa o modelo principal escolhido pelo usuário)
+        const prontuario = await callGroq(getSystemPrompt(DOM.clinicalTemplate.value), 0.1);
         DOM.outputRecord.value = prontuario.choices[0].message.content || '';
-        DOM.outputPatientMsg.value = orientacoes.choices[0].message.content || '';
         AppState.currentRecordOutput = DOM.outputRecord.value;
+
+        // Passo 2: Gera as Orientações (Força o modelo 8B para economizar limites de tokens por minuto)
+        const orientacoes = await callGroq(PATIENT_INSTRUCTIONS_PROMPT, 0.3, 'llama-3.1-8b-instant');
+        DOM.outputPatientMsg.value = orientacoes.choices[0].message.content || '';
         AppState.currentPatientMsgOutput = DOM.outputPatientMsg.value;
+
         DOM.actionsSaveRow.classList.remove('hidden');
         showToast('Documentos estruturados com sucesso!');
     } catch (err) {
-        showToast(`Erro: ${err.message}`);
+        showToast(`Erro API Groq: ${err.message}`);
         console.error(err);
     } finally {
         DOM.prontuarioLoader.classList.add('hidden');
@@ -1291,6 +1314,10 @@ function setupEventListeners() {
     DOM.btnTestKey.addEventListener('click', testGroqConnection);
     DOM.btnResetAll.addEventListener('click', resetApplicationData);
     DOM.btnSaveClinicInfo.addEventListener('click', saveClinicInfo);
+    DOM.aiModel.addEventListener('change', () => {
+        localStorage.setItem('etranscriber_ai_model', DOM.aiModel.value);
+        console.log('Modelo alterado para:', DOM.aiModel.value);
+    });
 
     // Captura de Áudio
     DOM.btnModeRecord.addEventListener('click', () => setAudioMode('record'));
