@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Transcriber | Inteligência Artificial Médica</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- jsPDF para exportação de PDF profissional sem dependências de servidor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div id="toast" class="toast hidden"></div>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                </div>
+                <h2>E-Transcriber</h2>
+            </div>
+            <nav class="sidebar-menu">
+                <button id="btn-menu-consulta" class="menu-item active" data-tab="tab-consulta">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span>Nova Consulta</span>
+                </button>
+                <button id="btn-menu-pacientes" class="menu-item" data-tab="tab-pacientes">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Pacientes</span>
+                    <span id="patients-count-badge" class="count-badge hidden">0</span>
+                </button>
+                <button id="btn-menu-historico" class="menu-item" data-tab="tab-historico">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+                    <span>Histórico</span>
+                </button>
+                <button id="btn-menu-modelos" class="menu-item" data-tab="tab-modelos">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>Modelos de IA</span>
+                </button>
+                <button id="btn-menu-config" class="menu-item" data-tab="tab-config">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Configurações</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="api-status-indicator">
+                    <span id="api-status-dot" class="status-dot red"></span>
+                    <span id="api-status-text">Groq Desconectado</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-info">
+                    <h1 id="header-title">Nova Consulta</h1>
+                    <p id="header-subtitle">Grave e processe a consulta com Inteligência Artificial</p>
+                </div>
+                <div class="header-actions">
+                    <div class="alert-banner hidden" id="apiKeyAlert">
+                        <svg class="warning-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                        <span>Configure sua chave Groq em Configurações!</span>
+                    </div>
+                    <!-- Botão de Alternância de Tema Claro/Escuro -->
+                    <button id="btn-theme-toggle" class="btn-theme-toggle" title="Alternar tema claro/escuro">
+                        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                        <svg id="icon-sun" class="hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" x2="12" y1="1" y2="3"/><line x1="12" x2="12" y1="21" y2="23"/><line x1="4.22" x2="5.64" y1="4.22" y2="5.64"/><line x1="18.36" x2="19.78" y1="18.36" y2="19.78"/><line x1="1" x2="3" y1="12" y2="12"/><line x1="21" x2="23" y1="12" y2="12"/><line x1="4.22" x2="5.64" y1="19.78" y2="18.36"/><line x1="18.36" x2="19.78" y1="5.64" y2="4.22"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- ======================== TAB: NOVA CONSULTA ======================== -->
+            <div id="tab-consulta" class="tab-pane active">
+                <div class="card patient-form-card">
+                    <div class="card-header">
+                        <div class="header-main-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <h3>Dados da Consulta e Paciente</h3>
+                        </div>
+                    </div>
+                    <div class="patient-grid">
+                        <!-- Campo Nome com Autocomplete de Pacientes Cadastrados -->
+                        <div class="form-group">
+                            <label for="patientName">Nome do Paciente</label>
+                            <div class="autocomplete-wrapper">
+                                <input type="text" id="patientName" placeholder="Digite para buscar ou criar paciente..." autocomplete="off">
+                                <div id="patientAutocomplete" class="autocomplete-dropdown hidden"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="patientAge">Idade / Data de Nascimento</label>
+                            <input type="text" id="patientAge" placeholder="Ex: 45 anos ou 12/04/1981">
+                        </div>
+                        <div class="form-group">
+                            <label for="doctorSpecialty">Especialidade / Tipo de Atendimento</label>
+                            <input type="text" id="doctorSpecialty" placeholder="Ex: Clínica Médica, Cardiologia, etc.">
+                        </div>
+                        <div class="form-group">
+                            <label for="transcriptionLang">Idioma do Áudio</label>
+                            <select id="transcriptionLang">
+                                <option value="pt" selected>Português (Brasil)</option>
+                                <option value="en">Inglês</option>
+                                <option value="es">Espanhol</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="console-grid">
+                    <div class="card audio-capture-card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                                <h3>Captação da Consulta</h3>
+                            </div>
+                        </div>
+                        <div class="capture-tabs">
+                            <button id="btn-mode-record" class="capture-tab-btn active">Gravar Áudio</button>
+                            <button id="btn-mode-upload" class="capture-tab-btn">Enviar Arquivo</button>
+                        </div>
+                        <div id="capture-panel-record" class="capture-panel-content active">
+                            <div class="recording-visualizer">
+                                <canvas id="waveformCanvas" width="300" height="80"></canvas>
+                                <div class="timer" id="recordingTimer">00:00</div>
+                            </div>
+                            <div class="controls-row">
+                                <button id="btn-record-start" class="btn btn-record shadow-pulse" title="Gravar apenas o microfone">
+                                    <span class="pulse-ring"></span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+                                    <span>Presencial</span>
+                                </button>
+                                <button id="btn-record-telemed" class="btn btn-secondary shadow-pulse" style="border-color: var(--primary); color: var(--primary);" title="Gravar microfone e áudio do paciente (Telemedicina)">
+                                    <span class="pulse-ring" style="border-color: var(--primary);"></span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                    <span>Telemedicina</span>
+                                </button>
+                                <button id="btn-record-stop" class="btn btn-stop" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><rect x="9" y="9" width="6" height="6" fill="currentColor"/></svg>
+                                    <span>Parar / Processar</span>
+                                </button>
+                            </div>
+                            <p class="helper-text">Pressione iniciar para gravar a conversa entre médico e paciente.</p>
+                        </div>
+                        <div id="capture-panel-upload" class="capture-panel-content">
+                            <div class="drop-zone" id="audioDropZone">
+                                <input type="file" id="audioFileInput" accept="audio/*,video/*" style="display:none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                                <p class="drop-zone-text">Arraste um arquivo de áudio ou clique para selecionar</p>
+                                <span class="drop-zone-sub">Suporta MP3, WAV, M4A, WEBM, MP4 (máx 25MB)</span>
+                            </div>
+                            <div id="file-info-container" class="file-info-card hidden">
+                                <div class="file-details">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    <div>
+                                        <p id="uploaded-file-name" class="file-name">arquivo.wav</p>
+                                        <p id="uploaded-file-size" class="file-size">1.2 MB</p>
+                                    </div>
+                                </div>
+                                <button id="btn-clear-file" class="btn-icon" title="Remover arquivo">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                                </button>
+                            </div>
+                            <button id="btn-process-upload" class="btn btn-primary w-full" disabled>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                <span>Transcrever Arquivo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card transcription-card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+                                <h3>Transcrição Original Bruta</h3>
+                            </div>
+                            <span class="legal-badge">Validação Médica Obrigatória</span>
+                        </div>
+                        <div class="card-content flex-grow">
+                            <div id="transcription-loader" class="loader-overlay hidden">
+                                <div class="spinner"></div>
+                                <p id="transcription-loader-text">Convertendo voz em texto...</p>
+                            </div>
+                            <textarea id="rawTranscript" placeholder="A transcrição aparecerá aqui. Edite o texto antes de estruturar o prontuário para corrigir terminologias médicas ou ruídos." class="transcript-textarea"></textarea>
+                        </div>
+                        <div class="transcription-actions">
+                            <div class="actions-group">
+                                <div class="select-group">
+                                    <label for="clinicalTemplate">Modelo Clínico</label>
+                                    <select id="clinicalTemplate">
+                                        <option value="soap" selected>SOAP (Subj, Obj, Aval, Plano)</option>
+                                        <option value="anamnese">Anamnese Completa</option>
+                                        <option value="evolucao">Evolução Clínica Diária</option>
+                                        <option value="orientacao">Orientação Rápida ao Paciente</option>
+                                        <option value="custom">Modelo Personalizado (Configurado)</option>
+                                    </select>
+                                </div>
+                                <div class="select-group">
+                                    <label for="aiModel">Modelo LLM</label>
+                                    <select id="aiModel">
+                                        <option value="llama-3.3-70b-versatile" selected>Llama 3.3 70B (Recomendado)</option>
+                                        <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                                        <option value="llama-3.1-8b-instant">Llama 3.1 8B (Mais rápido)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button id="btn-generate-documents" class="btn btn-primary" disabled>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                                <span>Estruturar com IA</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resultados Gerados -->
+                <div id="results-section" class="results-layout hidden">
+                    <div class="card result-card">
+                        <div class="card-header">
+                            <div class="header-main-title" style="color: var(--primary);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                <h3>Prontuário (Aguardando Validação)</h3>
+                            </div>
+                            <div class="header-actions">
+                                <button id="btn-copy-record" class="btn-action-small">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <span>Copiar</span>
+                                </button>
+                                <button id="btn-download-pdf" class="btn-action-small btn-pdf-action">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
+                                    <span>Exportar PDF</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content flex-grow relative">
+                            <div id="prontuario-loader" class="loader-overlay hidden">
+                                <div class="spinner"></div>
+                                <p>Estruturando prontuário com IA...</p>
+                            </div>
+                            <textarea id="outputRecord" class="result-textarea" placeholder="O prontuário gerado aparecerá aqui..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="card result-card patient-msg-card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                <h3>Mensagem para o Paciente</h3>
+                            </div>
+                            <div class="header-actions">
+                                <button id="btn-copy-patient" class="btn-action-small">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <span>Copiar</span>
+                                </button>
+                                <button id="btn-share-whatsapp" class="btn-action-small whatsapp-btn">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                                    <span>WhatsApp</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content flex-grow relative">
+                            <div id="paciente-loader" class="loader-overlay hidden">
+                                <div class="spinner"></div>
+                                <p>Escrevendo orientações para o paciente...</p>
+                            </div>
+                            <textarea id="outputPatientMsg" class="result-textarea" placeholder="As orientações simplificadas para o paciente aparecerão aqui..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="actions-save-row" class="save-actions-footer hidden">
+                    <p class="footer-alert-msg">⚠️ Revise todas as informações antes de salvar no prontuário.</p>
+                    <button id="btn-save-consult" class="btn btn-success">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        <span>Salvar no Histórico Local</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ======================== TAB: PACIENTES ======================== -->
+            <div id="tab-pacientes" class="tab-pane">
+                <div class="card table-card">
+                    <div class="card-header table-header">
+                        <div class="search-bar">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                            <input type="text" id="searchPatients" placeholder="Pesquisar por nome, CPF ou convênio...">
+                        </div>
+                        <button id="btn-new-patient" class="btn btn-primary" style="padding:10px 20px; font-size:0.85rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                            <span>Novo Paciente</span>
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome Completo</th>
+                                    <th>Nascimento</th>
+                                    <th>CPF</th>
+                                    <th>Telefone</th>
+                                    <th>Convênio</th>
+                                    <th>Consultas</th>
+                                    <th class="actions-col">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patientsTableBody">
+                                <tr class="empty-row">
+                                    <td colspan="7">
+                                        <div class="empty-state">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                            <p>Nenhum paciente cadastrado. Clique em "Novo Paciente" para começar.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================== TAB: HISTÓRICO ======================== -->
+            <div id="tab-historico" class="tab-pane">
+                <div class="card table-card">
+                    <div class="card-header table-header">
+                        <div class="search-bar">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                            <input type="text" id="searchHistory" placeholder="Pesquisar por paciente, especialidade ou data...">
+                        </div>
+                        <button id="btn-clear-history" class="btn btn-danger-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            <span>Limpar Histórico</span>
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Data / Hora</th>
+                                    <th>Paciente</th>
+                                    <th>Idade</th>
+                                    <th>Especialidade</th>
+                                    <th>Modelo Clínico</th>
+                                    <th class="actions-col">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                                <tr class="empty-row">
+                                    <td colspan="6">
+                                        <div class="empty-state">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                                            <p>Nenhuma consulta registrada até o momento.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================== TAB: MODELOS ======================== -->
+            <div id="tab-modelos" class="tab-pane">
+                <div class="models-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                <h3>Customização de Prompts de IA</h3>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <p class="description-text">Aqui você pode alterar a forma como a IA estrutura o prontuário. Selecione um modelo e configure as diretrizes que a IA deve respeitar para a sua especialidade.</p>
+                            <div class="models-selector-tabs">
+                                <button class="model-select-btn active" data-model-id="soap">SOAP</button>
+                                <button class="model-select-btn" data-model-id="anamnese">Anamnese</button>
+                                <button class="model-select-btn" data-model-id="evolucao">Evolução</button>
+                                <button class="model-select-btn" data-model-id="orientacao">Orientação</button>
+                                <button class="model-select-btn" data-model-id="custom">Personalizado</button>
+                            </div>
+                            <div class="prompt-editor-container">
+                                <div class="form-group">
+                                    <label for="promptSystemTitle">Nome do Modelo</label>
+                                    <input type="text" id="promptSystemTitle" readonly value="Modelo SOAP (Padrão)">
+                                </div>
+                                <div class="form-group">
+                                    <label for="promptSystemContent">Prompt de Sistema (Instruções para o LLM)</label>
+                                    <textarea id="promptSystemContent" class="prompt-textarea"></textarea>
+                                </div>
+                                <div class="controls-row flex-end">
+                                    <button id="btn-restore-default-prompt" class="btn btn-secondary-small">Restaurar Padrão</button>
+                                    <button id="btn-save-custom-prompt" class="btn btn-primary-small">Salvar Modelo</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================== TAB: CONFIGURAÇÕES ======================== -->
+            <div id="tab-config" class="tab-pane">
+                <div class="config-container">
+                    <!-- Dados do Consultório para Cabeçalho do PDF -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                <h3>Dados do Consultório (Cabeçalho dos PDFs)</h3>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <p class="description-text">Estas informações aparecerão automaticamente no cabeçalho de todos os prontuários exportados em PDF.</p>
+                            <div class="patient-grid">
+                                <div class="form-group">
+                                    <label for="clinicName">Nome do Consultório / Clínica</label>
+                                    <input type="text" id="clinicName" placeholder="Ex: Consultório Dr. Silva">
+                                </div>
+                                <div class="form-group">
+                                    <label for="doctorName">Nome do Médico(a)</label>
+                                    <input type="text" id="doctorName" placeholder="Ex: Dr. João Silva">
+                                </div>
+                                <div class="form-group">
+                                    <label for="doctorCRM">CRM</label>
+                                    <input type="text" id="doctorCRM" placeholder="Ex: CRM/SP 123456">
+                                </div>
+                                <div class="form-group">
+                                    <label for="clinicPhone">Telefone do Consultório</label>
+                                    <input type="text" id="clinicPhone" placeholder="Ex: (11) 99999-9999">
+                                </div>
+                            </div>
+                            <div class="controls-row flex-end" style="margin-top: 8px;">
+                                <button id="btn-save-clinic-info" class="btn btn-primary">Salvar Dados do Consultório</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configuração da API -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <h3>Configuração da API do Groq</h3>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <p class="description-text">Sua chave de API é salva exclusivamente no navegador deste computador (localStorage) e nunca é enviada para servidores externos.</p>
+                            <div class="form-group">
+                                <label for="groqApiKey">Chave de API do Groq (gsk_...)</label>
+                                <div class="input-password-wrapper">
+                                    <input type="password" id="groqApiKey" placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                                    <button id="btn-toggle-key-visibility" class="btn-icon-input" type="button">
+                                        <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="controls-row flex-space">
+                                <a href="https://console.groq.com/keys" target="_blank" class="text-link">Obter Chave Groq Grátis →</a>
+                                <div class="buttons-row">
+                                    <button id="btn-test-key" class="btn btn-secondary">Testar Conexão</button>
+                                    <button id="btn-save-key" class="btn btn-primary">Salvar Chave</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LGPD -->
+                    <div class="card privacy-card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                <h3>LGPD e Privacidade de Dados Médicos</h3>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="privacy-bullet">
+                                <div class="bullet-icon success">✓</div>
+                                <p><strong>Sem Armazenamento em Nuvem Própria:</strong> Prontuários e cadastros de pacientes são armazenados exclusivamente neste computador (localStorage do navegador).</p>
+                            </div>
+                            <div class="privacy-bullet">
+                                <div class="bullet-icon success">✓</div>
+                                <p><strong>Comunicação Criptografada:</strong> O áudio é enviado diretamente para os servidores do Groq via HTTPS. Nenhum intermediário armazena seus dados.</p>
+                            </div>
+                            <div class="privacy-bullet">
+                                <div class="bullet-icon warning">!</div>
+                                <p><strong>Consentimento (LGPD):</strong> Informe verbalmente ao paciente que a consulta será gravada para fins de geração automática de prontuário e obtenha seu consentimento antes de iniciar.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reset Total -->
+                    <div class="card danger-card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                                <h3>Ações Destrutivas</h3>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <p class="description-text">Esta ação apagará permanentemente todo o histórico de consultas, cadastro de pacientes, chave de API e configurações salvas localmente.</p>
+                            <button id="btn-reset-all" class="btn btn-danger">Apagar Todos os Dados do Sistema</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ===== MODAL: Visualizar Consulta do Histórico ===== -->
+    <div id="viewConsultModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modalPatientName">Paciente</h3>
+                <button id="btn-modal-close" class="btn-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-metadata">
+                    <p><strong>Data:</strong> <span id="modalDate">-</span></p>
+                    <p><strong>Idade:</strong> <span id="modalAge">-</span></p>
+                    <p><strong>Especialidade:</strong> <span id="modalSpecialty">-</span></p>
+                </div>
+                <div class="modal-tabs">
+                    <button class="modal-tab-btn active" data-modal-tab="modal-tab-prontuario">Prontuário</button>
+                    <button class="modal-tab-btn" data-modal-tab="modal-tab-paciente">Mensagem Paciente</button>
+                    <button class="modal-tab-btn" data-modal-tab="modal-tab-transcricao">Transcrição Bruta</button>
+                </div>
+                <div class="modal-tab-content">
+                    <div id="modal-tab-prontuario" class="modal-pane active">
+                        <textarea id="modalProntuarioText" readonly class="modal-textarea"></textarea>
+                    </div>
+                    <div id="modal-tab-paciente" class="modal-pane">
+                        <textarea id="modalPacienteText" readonly class="modal-textarea"></textarea>
+                    </div>
+                    <div id="modal-tab-transcricao" class="modal-pane">
+                        <textarea id="modalTranscricaoText" readonly class="modal-textarea"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-modal-copy-prontuario" class="btn btn-secondary">Copiar Prontuário</button>
+                <button id="btn-modal-copy-paciente" class="btn btn-primary">Copiar Mensagem Paciente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: Cadastro / Edição de Paciente ===== -->
+    <div id="patientModal" class="modal-overlay hidden">
+        <div class="modal-card modal-card-md">
+            <div class="modal-header">
+                <h3 id="patientModalTitle">Novo Paciente</h3>
+                <button id="btn-patient-modal-close" class="btn-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="patientModalId">
+                <div class="patient-grid">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="pmName">Nome Completo *</label>
+                        <input type="text" id="pmName" placeholder="Nome completo do paciente">
+                    </div>
+                    <div class="form-group">
+                        <label for="pmBirthdate">Data de Nascimento / Idade</label>
+                        <input type="text" id="pmBirthdate" placeholder="DD/MM/AAAA ou 45 anos">
+                    </div>
+                    <div class="form-group">
+                        <label for="pmGender">Sexo</label>
+                        <select id="pmGender">
+                            <option value="">Não informado</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="pmCPF">CPF</label>
+                        <input type="text" id="pmCPF" placeholder="000.000.000-00">
+                    </div>
+                    <div class="form-group">
+                        <label for="pmPhone">Telefone / WhatsApp</label>
+                        <input type="text" id="pmPhone" placeholder="(00) 00000-0000">
+                    </div>
+                    <div class="form-group">
+                        <label for="pmInsurance">Convênio</label>
+                        <input type="text" id="pmInsurance" placeholder="Ex: Unimed, Amil ou Particular">
+                    </div>
+                    <div class="form-group">
+                        <label for="pmEmail">E-mail (opcional)</label>
+                        <input type="text" id="pmEmail" placeholder="email@exemplo.com">
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="pmNotes">Observações Gerais (Alergias, Comorbidades)</label>
+                        <textarea id="pmNotes" placeholder="Ex: Alérgico à Penicilina, Hipertenso, Diabético Tipo 2..." style="min-height: 80px; resize: vertical;"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-patient-modal-cancel" class="btn btn-secondary">Cancelar</button>
+                <button id="btn-patient-modal-save" class="btn btn-primary">Salvar Paciente</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
