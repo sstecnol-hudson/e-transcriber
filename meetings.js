@@ -725,6 +725,12 @@ const AttendanceState = {
 // QR CODE GENERATION
 // ==========================================================================
 function generateAttendanceQR() {
+    // Verificar se a biblioteca QRCode está carregada
+    if (typeof QRCode === 'undefined') {
+        showToast('Biblioteca QRCode não carregada. Recarregue a página.');
+        return;
+    }
+
     const endTimeEl = document.getElementById('meetingEndTime');
     const dateEl    = document.getElementById('meetingDate');
     const titleEl   = document.getElementById('meetingTitle');
@@ -760,11 +766,26 @@ function generateAttendanceQR() {
     // Render QR
     const container = document.getElementById('qrCodeContainer');
     const canvas    = document.getElementById('qrCodeCanvas');
+    
+    if (!container || !canvas) {
+        showToast('Elementos do QR Code não encontrados.');
+        return;
+    }
+    
     canvas.innerHTML = '';
 
-    QRCode.toCanvas
-        ? renderQRCanvas(checkinUrl, canvas)
-        : renderQRImg(checkinUrl, canvas);
+    try {
+        // Tentar usar QRCode.toCanvas primeiro (método preferido)
+        if (QRCode.toCanvas) {
+            renderQRCanvas(checkinUrl, canvas);
+        } else {
+            renderQRImg(checkinUrl, canvas);
+        }
+    } catch (err) {
+        console.error('Erro ao gerar QR Code:', err);
+        showToast('Erro ao gerar QR Code. Tente novamente.');
+        return;
+    }
 
     // Expire info + countdown
     updateQRExpireDisplay(expiresAt);
@@ -774,40 +795,126 @@ function generateAttendanceQR() {
     container.classList.remove('hidden');
 
     // Wire download & copy
-    document.getElementById('btn-download-qr').onclick = () => downloadQRCode(canvas, meetingTitle);
-    document.getElementById('btn-copy-qr-link').onclick = () => {
-        navigator.clipboard.writeText(checkinUrl).then(() => showToast('Link do QR copiado!')).catch(() => showToast('Erro ao copiar.'));
-    };
+    const downloadBtn = document.getElementById('btn-download-qr');
+    const copyBtn = document.getElementById('btn-copy-qr-link');
+    
+    if (downloadBtn) {
+        downloadBtn.onclick = () => downloadQRCode(canvas, meetingTitle);
+    }
+    
+    if (copyBtn) {
+        copyBtn.onclick = () => {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(checkinUrl)
+                    .then(() => showToast('Link do QR copiado!'))
+                    .catch(() => showToast('Erro ao copiar.'));
+            } else {
+                // Fallback para navegadores mais antigos
+                const textArea = document.createElement('textarea');
+                textArea.value = checkinUrl;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast('Link do QR copiado!');
+                } catch (err) {
+                    showToast('Erro ao copiar.');
+                }
+                document.body.removeChild(textArea);
+            }
+        };
+    }
 
     showToast('QR Code gerado! Expira em ' + formatExpiry(expiresAt));
 }
 
 function renderQRCanvas(url, container) {
-    const cvs = document.createElement('canvas');
-    container.appendChild(cvs);
-    QRCode.toCanvas(cvs, url, { width: 200, margin: 1 }, err => {
-        if (err) { container.textContent = url; }
-    });
+    try {
+        const cvs = document.createElement('canvas');
+        container.appendChild(cvs);
+        QRCode.toCanvas(cvs, url, { 
+            width: 200, 
+            margin: 1,
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
+        }, (err) => {
+            if (err) {
+                console.error('Erro QRCode.toCanvas:', err);
+                container.innerHTML = `<div style="padding:20px;text-align:center;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;">
+                    <p style="margin:0;color:#6c757d;">Erro ao gerar QR Code</p>
+                    <small style="color:#6c757d;">${url}</small>
+                </div>`;
+            }
+        });
+    } catch (err) {
+        console.error('Erro renderQRCanvas:', err);
+        renderQRImg(url, container);
+    }
 }
 
 function renderQRImg(url, container) {
-    const img = document.createElement('img');
-    const qr  = new QRCode(container, { text: url, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.H });
-    // QRCode lib appends img internally; nothing more needed
+    try {
+        // Limpar container
+        container.innerHTML = '';
+        
+        // Criar QR Code usando a biblioteca alternativa
+        const qr = new QRCode(container, { 
+            text: url, 
+            width: 200, 
+            height: 200, 
+            correctLevel: QRCode.CorrectLevel.H,
+            colorDark: '#000000',
+            colorLight: '#FFFFFF'
+        });
+    } catch (err) {
+        console.error('Erro renderQRImg:', err);
+        container.innerHTML = `<div style="padding:20px;text-align:center;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;">
+            <p style="margin:0;color:#6c757d;">Erro ao gerar QR Code</p>
+            <small style="color:#6c757d;">${url}</small>
+        </div>`;
+    }
 }
 
 function downloadQRCode(canvasContainer, title) {
-    const cvs = canvasContainer.querySelector('canvas') || canvasContainer.querySelector('img');
-    if (!cvs) { showToast('QR Code não disponível para download.'); return; }
-    const link = document.createElement('a');
-    if (cvs.tagName === 'CANVAS') {
-        link.href = cvs.toDataURL('image/png');
-    } else {
-        link.href = cvs.src;
+    try {
+        const cvs = canvasContainer.querySelector('canvas');
+        const img = canvasContainer.querySelector('img');
+        
+        if (!cvs && !img) { 
+            showToast('QR Code não disponível para download.'); 
+            return; 
+        }
+        
+        const link = document.createElement('a');
+        
+        if (cvs) {
+            // Canvas method
+            link.href = cvs.toDataURL('image/png');
+        } else if (img) {
+            // Image method - convert to canvas first
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width || 200;
+            canvas.height = img.height || 200;
+            ctx.drawImage(img, 0, 0);
+            link.href = canvas.toDataURL('image/png');
+        }
+        
+        const safeName = (title || 'reuniao').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+        link.download = `qr_presenca_${safeName}_${new Date().toISOString().slice(0, 10)}.png`;
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showToast('QR Code baixado!');
+    } catch (err) {
+        console.error('Erro ao baixar QR Code:', err);
+        showToast('Erro ao baixar QR Code.');
     }
-    link.download = `qr_presenca_${(title || 'reuniao').toLowerCase().replace(/\s+/g,'_')}.png`;
-    link.click();
-    showToast('QR Code baixado!');
 }
 
 function updateQRExpireDisplay(expiresAt) {
