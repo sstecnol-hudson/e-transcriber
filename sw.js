@@ -65,8 +65,10 @@ self.addEventListener('activate', e => {
 
 // Estratégia Network-First falling back to Cache para os assets locais
 self.addEventListener('fetch', e => {
-  // Ignora requisições de APIs externas (como Groq API) para não quebrar ou tentar cachear chamadas POST
-  if (e.request.url.includes('api.groq.com') || e.request.method !== 'GET') {
+  // Ignora requisições de APIs externas, chrome-extensions e métodos não-GET
+  if (e.request.url.includes('api.groq.com') || 
+      e.request.url.startsWith('chrome-extension://') ||
+      e.request.method !== 'GET') {
     return;
   }
 

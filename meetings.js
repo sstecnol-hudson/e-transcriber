@@ -1372,7 +1372,6 @@ function exportAttendancePDF() {
         showToast('Erro ao exportar PDF. Verifique se a biblioteca está carregada.');
     }
 }
-}
 
 // ==========================================================================
 // ATTENDANCE MODAL
