@@ -317,7 +317,8 @@ function init() {
         });
     }
 
-    if ('serviceWorker' in navigator) {
+    // Registrar Service Worker apenas em produção (HTTPS ou localhost)
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
                 .then(reg => console.log('Service Worker registrado com sucesso:', reg.scope))
