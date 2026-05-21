@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E-Transcriber | Inteligência Artificial Médica</title>
+    <link rel="icon" type="image/png" href="icon-192.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -11,6 +12,7 @@
     <!-- PWA Config -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#6366f1">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -703,8 +705,8 @@
     <input type="text" id="meetingLocation" placeholder="Ex: Sala 3B" />
 </div>
 <div class="form-group">
-    <label>QR Code de Presença</label>
-    <p class="description-text" style="margin-bottom:8px;">Gere um QR Code para os participantes registrarem presença. Expira automaticamente no horário de término da reunião.</p>
+    <label>QR Code de Presença <span style="color:var(--success);font-size:0.7rem;font-weight:600;">✅ Funciona sem chave Groq</span></label>
+    <p class="description-text" style="margin-bottom:8px;">Gere um QR Code para os participantes registrarem presença. Expira automaticamente no horário de término da reunião. <strong>Não precisa de chave da API Groq!</strong></p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button id="btn-generate-qr" class="btn btn-primary">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h3v-3h-3"/></svg>

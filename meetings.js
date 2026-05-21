@@ -726,6 +726,7 @@ const AttendanceState = {
 // ==========================================================================
 function generateAttendanceQR() {
     console.log('🔍 Iniciando geração do QR Code...');
+    console.log('ℹ️ NOTA: QR Code funciona SEM chave Groq - é funcionalidade local!');
     
     // Verificar se a biblioteca QRCode está carregada
     if (typeof QRCode === 'undefined') {
@@ -1248,7 +1249,6 @@ function exportAttendanceExcel() {
         showToast('Erro ao exportar Excel. Verifique se a biblioteca está carregada.');
     }
 }
-}
 
 // ==========================================================================
 // EXPORT: PDF
@@ -1378,6 +1378,9 @@ function exportAttendancePDF() {
 // ATTENDANCE MODAL
 // ==========================================================================
 function openAttendanceModal() {
+    console.log('👥 Abrindo modal de participantes...');
+    console.log('ℹ️ NOTA: Gerenciamento de participantes funciona SEM chave Groq - é funcionalidade local!');
+    
     loadAttendanceState();
     renderParticipantsTable();
     document.getElementById('attendanceModal').classList.remove('hidden');
