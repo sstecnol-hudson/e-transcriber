@@ -332,16 +332,20 @@ function stopMeetingRecording() {
 // ==========================================================================
 function handleMeetingFileSelection(file) {
     if (!file) return;
-    if (file.size > 25 * 1024 * 1024) {
-        showToast('Arquivo maior do que 25MB (limite da API do Groq).');
+    
+    const MAX_SIZE = 25 * 1024 * 1024; // 25MB
+    if (file.size > MAX_SIZE) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        showToast(`❌ Arquivo muito grande! Máximo: 25MB. Seu arquivo: ${sizeMB}MB`);
         return;
     }
+    
     MeetingState.uploadedFile = file;
     MeetingDOM.uploadedFileName.textContent = file.name;
     MeetingDOM.uploadedFileSize.textContent = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
     MeetingDOM.fileInfoContainer.classList.remove('hidden');
     MeetingDOM.btnProcessUpload.disabled = false;
-    showToast('Arquivo da reunião carregado.');
+    showToast('✅ Arquivo da reunião carregado.');
 }
 
 function clearMeetingUploadedFile() {
@@ -362,6 +366,14 @@ async function processMeetingRecordedAudio() {
 
 async function sendMeetingAudioToWhisper(file) {
     if (!AppState.apiKey) { showToast('Chave de API do Groq ausente!'); return; }
+    
+    // Validar tamanho do arquivo (máximo 25MB para Groq)
+    const MAX_SIZE = 25 * 1024 * 1024; // 25MB
+    if (file.size > MAX_SIZE) {
+        showToast(`❌ Arquivo muito grande! Máximo: 25MB. Seu arquivo: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+        return;
+    }
+    
     MeetingDOM.transcriptionLoader.classList.remove('hidden');
     MeetingDOM.transcriptionLoaderText.textContent = 'Transcrevendo áudio via Groq Whisper...';
     MeetingDOM.rawTranscript.value = '';
@@ -378,15 +390,33 @@ async function sendMeetingAudioToWhisper(file) {
             headers: { 'Authorization': `Bearer ${AppState.apiKey}` },
             body: formData
         });
-        if (!res.ok) throw new Error(`Erro ${res.status}: ${await res.text()}`);
+        
+        if (!res.ok) {
+            const errorText = await res.text();
+            let errorMsg = `Erro ${res.status}`;
+            
+            // Tratamento específico para erro 413
+            if (res.status === 413) {
+                errorMsg = '❌ Arquivo muito grande! A API Groq aceita máximo 25MB. Tente comprimir o áudio ou dividir em partes menores.';
+            } else if (res.status === 400) {
+                errorMsg = '❌ Erro na requisição. Verifique o formato do áudio (MP3, WAV, M4A, WEBM, MP4).';
+            } else if (res.status === 401) {
+                errorMsg = '❌ Chave Groq inválida ou expirada. Verifique em Configurações.';
+            } else if (res.status === 429) {
+                errorMsg = '❌ Limite de requisições atingido. Aguarde alguns minutos e tente novamente.';
+            }
+            
+            throw new Error(errorMsg);
+        }
+        
         const data = await res.json();
         MeetingDOM.rawTranscript.value = data.text || '';
         MeetingState.currentTranscription = data.text || '';
         MeetingDOM.btnGenerateDocs.disabled = !data.text?.trim();
-        showToast(data.text?.trim() ? 'Transcrição da reunião concluída!' : 'Aviso: nenhum áudio detectado.');
+        showToast(data.text?.trim() ? '✅ Transcrição da reunião concluída!' : 'Aviso: nenhum áudio detectado.');
     } catch (err) {
         MeetingDOM.rawTranscript.value = `Erro: ${err.message}`;
-        showToast('Erro ao transcrever áudio.');
+        showToast(err.message || 'Erro ao transcrever áudio.');
         console.error(err);
     } finally {
         MeetingDOM.transcriptionLoader.classList.add('hidden');
