@@ -143,6 +143,14 @@ const DOM = {
     iconMoon: document.getElementById('icon-moon'),
     iconSun: document.getElementById('icon-sun'),
 
+    // Modal de Ajuda
+    btnHelp: document.getElementById('btn-help'),
+    helpModal: document.getElementById('helpModal'),
+    btnHelpModalClose: document.getElementById('btn-help-modal-close'),
+    helpContent: document.getElementById('helpContent'),
+    helpSearch: document.getElementById('helpSearch'),
+    helpNavItems: document.querySelectorAll('.help-nav-item'),
+
     // Configurações
     groqApiKeyInput: document.getElementById('groqApiKey'),
     btnToggleKey: document.getElementById('btn-toggle-key-visibility'),
@@ -1463,11 +1471,429 @@ function shareOnWhatsApp(text) {
 }
 
 // ==========================================================================
-// 16. CONFIGURAÇÃO DE TODOS OS EVENT LISTENERS
+// 16. MODAL DE AJUDA
+// ==========================================================================
+const HELP_CONTENT = {
+    'intro': `
+        <h1>📘 Introdução ao E-Transcriber</h1>
+        <p>O <strong>E-Transcriber</strong> é um sistema inteligente de transcrição e documentação que utiliza Inteligência Artificial para:</p>
+        <ul>
+            <li>🏥 <strong>Consultas Médicas</strong>: Transcrever consultas e gerar prontuários estruturados</li>
+            <li>🏢 <strong>Reuniões Corporativas</strong>: Gravar reuniões e gerar atas profissionais</li>
+            <li>👥 <strong>Gestão de Participantes</strong>: Controlar presença com QR Code</li>
+            <li>📊 <strong>Relatórios</strong>: Exportar documentos em PDF e Excel</li>
+        </ul>
+        <h2>Tecnologias Utilizadas</h2>
+        <ul>
+            <li><strong>Groq API</strong>: Transcrição (Whisper) e geração de texto (Llama)</li>
+            <li><strong>PWA</strong>: Funciona offline e pode ser instalado como app</li>
+            <li><strong>Armazenamento Local</strong>: Todos os dados ficam no seu navegador</li>
+        </ul>
+        <h2>Requisitos</h2>
+        <ul>
+            <li>✅ Navegador moderno: Chrome, Edge, Firefox, Safari</li>
+            <li>✅ Conexão com internet: Para usar IA (Groq API)</li>
+            <li>✅ Microfone: Para gravação de áudio</li>
+            <li>✅ Chave Groq API: Gratuita em <a href="https://console.groq.com" target="_blank">console.groq.com</a></li>
+        </ul>
+    `,
+    'primeiros-passos': `
+        <h1>🚀 Primeiros Passos</h1>
+        <h2>Acessando o Sistema</h2>
+        <p><strong>Online (Vercel):</strong></p>
+        <p><code>https://e-transcriber.vercel.app</code></p>
+        <p><strong>Local (Desenvolvimento):</strong></p>
+        <pre><code># Navegue até a pasta do projeto
+cd c:\\Projects\\e-transciber
+
+# Inicie um servidor HTTP
+python -m http.server 8000
+
+# Acesse no navegador
+http://localhost:8000</code></pre>
+        <h2>Instalando como PWA</h2>
+        <ol>
+            <li>Acesse o site no navegador</li>
+            <li>Clique no ícone de <strong>instalação</strong> na barra de endereços</li>
+            <li>Confirme "Instalar"</li>
+            <li>O app será adicionado ao menu iniciar/área de trabalho</li>
+        </ol>
+    `,
+    'configuracao': `
+        <h1>⚙️ Configuração Inicial</h1>
+        <h2>Obtendo a Chave Groq API</h2>
+        <h3>Passo 1: Criar Conta</h3>
+        <ol>
+            <li>Acesse: <a href="https://console.groq.com" target="_blank">https://console.groq.com</a></li>
+            <li>Clique em <strong>Sign Up</strong> (ou faça login)</li>
+            <li>Confirme seu email</li>
+        </ol>
+        <h3>Passo 2: Gerar Chave API</h3>
+        <ol>
+            <li>No console Groq, vá em <strong>API Keys</strong></li>
+            <li>Clique em <strong>Create API Key</strong></li>
+            <li>Dê um nome (ex: "E-Transcriber")</li>
+            <li>Copie a chave (começa com <code>gsk_...</code>)</li>
+            <li>⚠️ <strong>IMPORTANTE</strong>: Guarde em local seguro, não será mostrada novamente</li>
+        </ol>
+        <h3>Passo 3: Configurar no E-Transcriber</h3>
+        <ol>
+            <li>Abra o E-Transcriber</li>
+            <li>Clique em <strong>Configurações</strong> na sidebar</li>
+            <li>Cole a chave no campo <strong>Chave API do Groq</strong></li>
+            <li>Clique em <strong>💾 Salvar Chave</strong></li>
+            <li>Clique em <strong>🧪 Testar Conexão</strong> para validar</li>
+        </ol>
+        <div class="help-success">
+            <strong>✅ Status deve mudar para:</strong> "Groq Configurado" (bolinha verde)
+        </div>
+    `,
+    'consultas': `
+        <h1>🏥 Modo Consultas Médicas</h1>
+        <h2>Iniciando uma Nova Consulta</h2>
+        <ol>
+            <li>Clique no botão <strong>CONSULTAS</strong> no topo da sidebar</li>
+            <li>Clique em <strong>Nova Consulta</strong> no menu</li>
+            <li>Preencha os dados do paciente</li>
+        </ol>
+        <h2>Gravando a Consulta</h2>
+        <h3>Opção A: Gravação Presencial</h3>
+        <ol>
+            <li>Clique na aba <strong>Gravar Áudio</strong></li>
+            <li>Clique no botão <strong>🔴 Presencial</strong></li>
+            <li>Permita acesso ao microfone</li>
+            <li>Fale normalmente durante a consulta</li>
+            <li>Clique em <strong>⏹️ Parar / Processar</strong> quando terminar</li>
+        </ol>
+        <h3>Opção B: Gravação Telemedicina</h3>
+        <ol>
+            <li>Clique no botão <strong>📹 Telemedicina</strong></li>
+            <li>Permita acesso ao microfone</li>
+            <li>Selecione a guia/janela da videochamada</li>
+            <li>⚠️ <strong>IMPORTANTE</strong>: Marque "Compartilhar áudio da guia"</li>
+            <li>Clique em <strong>⏹️ Parar / Processar</strong> quando terminar</li>
+        </ol>
+        <h3>Opção C: Enviar Arquivo</h3>
+        <ol>
+            <li>Clique na aba <strong>Enviar Arquivo</strong></li>
+            <li>Arraste um arquivo ou clique para selecionar</li>
+            <li>Formatos aceitos: MP3, WAV, M4A, WEBM, MP4</li>
+            <li>Tamanho máximo: 25MB</li>
+            <li>Clique em <strong>Transcrever Arquivo</strong></li>
+        </ol>
+        <h2>Editando e Estruturando</h2>
+        <ol>
+            <li>Edite a transcrição para corrigir erros</li>
+            <li>Escolha o <strong>Modelo Clínico</strong> (SOAP, Anamnese, etc.)</li>
+            <li>Escolha o <strong>Modelo LLM</strong></li>
+            <li>Clique em <strong>✨ Estruturar com IA</strong></li>
+            <li>Revise os documentos gerados</li>
+            <li>Clique em <strong>💾 Salvar no Histórico</strong></li>
+        </ol>
+    `,
+    'reunioes': `
+        <h1>🏢 Modo Reuniões Corporativas</h1>
+        <h2>Criando uma Nova Reunião</h2>
+        <ol>
+            <li>Clique no botão <strong>REUNIÕES</strong> no topo da sidebar</li>
+            <li>Clique em <strong>Reuniões</strong> no menu</li>
+            <li>Preencha os dados da reunião</li>
+        </ol>
+        <h2>Gerenciamento de Participantes</h2>
+        <div class="help-tip">
+            <strong>💡 Funciona SEM chave Groq!</strong> Esta é uma funcionalidade local.
+        </div>
+        <h3>Configurar Reunião</h3>
+        <ol>
+            <li>Role até <strong>Gerenciar Participantes e Presença</strong></li>
+            <li>Preencha Data, Horário de Início e Término</li>
+            <li>Clique em <strong>💾 Salvar Configurações</strong></li>
+        </ol>
+        <h3>Gerar QR Code</h3>
+        <ol>
+            <li>Clique em <strong>📱 Gerar QR Code de Check-in</strong></li>
+            <li>QR Code aparece na tela</li>
+            <li>Participantes escaneiam para fazer check-in</li>
+        </ol>
+        <h3>Adicionar Participantes Manualmente</h3>
+        <ol>
+            <li>Clique em <strong>👥 Gerenciar Lista de Participantes</strong></li>
+            <li>Clique em <strong>➕ Adicionar Participante</strong></li>
+            <li>Preencha Nome, Cargo e Email</li>
+            <li>Clique em <strong>💾 Adicionar</strong></li>
+        </ol>
+        <h3>Exportar Lista de Presença</h3>
+        <ul>
+            <li><strong>📊 Exportar Excel</strong>: Planilha com todos os dados</li>
+            <li><strong>📄 Exportar PDF</strong>: Lista formatada para impressão</li>
+        </ul>
+    `,
+    'pacientes': `
+        <h1>👥 Gerenciamento de Pacientes</h1>
+        <h2>Cadastrando Novo Paciente</h2>
+        <ol>
+            <li>Clique em <strong>CONSULTAS</strong> (modo)</li>
+            <li>Clique em <strong>Pacientes</strong> no menu</li>
+            <li>Clique em <strong>➕ Novo Paciente</strong></li>
+            <li>Preencha os dados</li>
+            <li>Clique em <strong>💾 Salvar Paciente</strong></li>
+        </ol>
+        <h2>Campos Disponíveis</h2>
+        <ul>
+            <li><strong>Nome Completo</strong> (obrigatório)</li>
+            <li>Data de Nascimento</li>
+            <li>Gênero</li>
+            <li>CPF</li>
+            <li>Telefone</li>
+            <li>Convênio</li>
+            <li>Email</li>
+            <li>Observações (alergias, comorbidades, etc.)</li>
+        </ul>
+        <h2>Iniciando Consulta para Paciente</h2>
+        <ol>
+            <li>Na lista de pacientes, clique no ícone <strong>💬 Iniciar Consulta</strong></li>
+            <li>Sistema abre aba "Nova Consulta" com dados preenchidos</li>
+            <li>Continue o processo normal de consulta</li>
+        </ol>
+        <h2>Buscando Pacientes</h2>
+        <p>Use a barra de busca no topo da tabela para filtrar por:</p>
+        <ul>
+            <li>Nome do paciente</li>
+            <li>CPF</li>
+            <li>Convênio</li>
+        </ul>
+    `,
+    'historico': `
+        <h1>📊 Histórico e Relatórios</h1>
+        <h2>Histórico de Consultas</h2>
+        <ol>
+            <li>Modo <strong>CONSULTAS</strong></li>
+            <li>Clique em <strong>Histórico</strong></li>
+            <li>Clique em <strong>👁️ Visualizar</strong> para ver uma consulta</li>
+        </ol>
+        <h3>Modal de Visualização</h3>
+        <p>O modal tem 3 abas:</p>
+        <ul>
+            <li><strong>Prontuário</strong>: Documento estruturado</li>
+            <li><strong>Mensagem Paciente</strong>: Orientações</li>
+            <li><strong>Transcrição</strong>: Texto original</li>
+        </ul>
+        <h2>Histórico de Reuniões</h2>
+        <ol>
+            <li>Modo <strong>REUNIÕES</strong></li>
+            <li>Clique em <strong>Hist. Reuniões</strong></li>
+            <li>Clique em <strong>👁️ Carregar Ata</strong></li>
+        </ol>
+        <h2>Exportando Relatórios</h2>
+        <h3>PDF de Prontuário</h3>
+        <ol>
+            <li>Abra uma consulta ou gere uma nova</li>
+            <li>Clique em <strong>📄 Exportar PDF</strong></li>
+            <li>PDF é baixado com cabeçalho, dados e rodapé</li>
+        </ol>
+        <h3>Excel de Presença</h3>
+        <ol>
+            <li>Na aba Reuniões, seção Participantes</li>
+            <li>Clique em <strong>📊 Exportar Excel</strong></li>
+            <li>Planilha contém: Nome, Cargo, Email, Status, Horário</li>
+        </ol>
+    `,
+    'modelos': `
+        <h1>🤖 Modelos de IA</h1>
+        <h2>Modelos Disponíveis</h2>
+        <h3>SOAP (Padrão)</h3>
+        <p>Estrutura:</p>
+        <ul>
+            <li><strong>SUBJETIVO</strong>: Queixa, HDA, histórico</li>
+            <li><strong>OBJETIVO</strong>: Exame físico, sinais vitais</li>
+            <li><strong>AVALIAÇÃO</strong>: Diagnósticos, CID-10</li>
+            <li><strong>PLANO</strong>: Medicamentos, exames, retorno</li>
+        </ul>
+        <h3>Anamnese Completa</h3>
+        <p>Formato tradicional com histórico detalhado</p>
+        <h3>Evolução Clínica</h3>
+        <p>Formato de acompanhamento para consultas de retorno</p>
+        <h3>Orientação Rápida</h3>
+        <p>Resumo simplificado para o paciente com linguagem acessível</p>
+        <h2>Personalizando Modelos</h2>
+        <ol>
+            <li>Vá em <strong>Modelos de IA</strong></li>
+            <li>Clique em um dos botões (SOAP, Anamnese, etc.)</li>
+            <li>Edite o texto do prompt</li>
+            <li>Adicione instruções específicas</li>
+            <li>Clique em <strong>💾 Salvar Prompt Personalizado</strong></li>
+        </ol>
+        <div class="help-tip">
+            <strong>💡 Dica:</strong> Você pode criar modelos específicos para sua especialidade (Pediatria, Cardiologia, etc.)
+        </div>
+    `,
+    'avancado': `
+        <h1>⚡ Funcionalidades Avançadas</h1>
+        <h2>Atalhos de Teclado</h2>
+        <ul>
+            <li><code>Ctrl + S</code> = Salvar consulta/reunião</li>
+            <li><code>Ctrl + C</code> = Copiar texto selecionado</li>
+            <li><code>Ctrl + V</code> = Colar</li>
+            <li><code>Ctrl + Z</code> = Desfazer</li>
+            <li><code>F12</code> = Abrir DevTools (debug)</li>
+        </ul>
+        <h2>Trabalhando Offline</h2>
+        <h3>O que funciona SEM internet:</h3>
+        <ul>
+            <li>✅ Cadastro de pacientes</li>
+            <li>✅ Edição de textos</li>
+            <li>✅ Visualização de histórico</li>
+            <li>✅ Geração de QR Code</li>
+            <li>✅ Gerenciamento de participantes</li>
+        </ul>
+        <h3>O que NÃO funciona SEM internet:</h3>
+        <ul>
+            <li>❌ Transcrição de áudio (Whisper)</li>
+            <li>❌ Geração de prontuários/atas (Llama)</li>
+        </ul>
+        <h2>Compartilhamento via WhatsApp</h2>
+        <ol>
+            <li>Gere a mensagem para o paciente</li>
+            <li>Clique em <strong>📱 WhatsApp</strong></li>
+            <li>WhatsApp Web abre com mensagem pronta</li>
+            <li>Selecione o contato do paciente</li>
+            <li>Envie</li>
+        </ol>
+    `,
+    'problemas': `
+        <h1>🔧 Solução de Problemas</h1>
+        <h2>❌ "Groq Desconectado"</h2>
+        <p><strong>Causa:</strong> Chave API não configurada ou inválida</p>
+        <p><strong>Solução:</strong></p>
+        <ol>
+            <li>Vá em <strong>Configurações</strong></li>
+            <li>Verifique se a chave está correta</li>
+            <li>Clique em <strong>🧪 Testar Conexão</strong></li>
+            <li>Se falhar, gere nova chave em console.groq.com</li>
+        </ol>
+        <h2>❌ "Biblioteca QRCode não encontrada"</h2>
+        <p><strong>Causa:</strong> Biblioteca não carregou da CDN</p>
+        <p><strong>Solução:</strong></p>
+        <ol>
+            <li>Limpe o cache do navegador (Ctrl+Shift+Del)</li>
+            <li>Recarregue com Ctrl+Shift+R</li>
+            <li>Verifique conexão com internet</li>
+            <li>Teste em aba anônima</li>
+        </ol>
+        <h2>❌ "Erro ao transcrever áudio"</h2>
+        <p><strong>Causas possíveis:</strong></p>
+        <ul>
+            <li>Arquivo maior que 25MB</li>
+            <li>Formato não suportado</li>
+            <li>Sem conexão com internet</li>
+            <li>Chave Groq inválida</li>
+        </ul>
+        <p><strong>Solução:</strong></p>
+        <ol>
+            <li>Verifique tamanho do arquivo</li>
+            <li>Converta para MP3/WAV se necessário</li>
+            <li>Teste conexão com internet</li>
+            <li>Valide chave Groq</li>
+        </ol>
+        <h2>❌ "Microfone não funciona"</h2>
+        <p><strong>Causa:</strong> Permissão negada</p>
+        <p><strong>Solução:</strong></p>
+        <ol>
+            <li>Clique no ícone de cadeado na barra de endereços</li>
+            <li>Permita acesso ao microfone</li>
+            <li>Recarregue a página</li>
+            <li>Tente gravar novamente</li>
+        </ol>
+        <h2>🔄 Reset Completo</h2>
+        <ol>
+            <li>Vá em <strong>Configurações</strong></li>
+            <li>Role até o final</li>
+            <li>Clique em <strong>🔄 Resetar Tudo</strong></li>
+            <li>⚠️ <strong>ATENÇÃO</strong>: Apaga TODOS os dados!</li>
+        </ol>
+    `
+};
+
+function openHelpModal() {
+    if (!DOM.helpModal) return;
+    DOM.helpModal.classList.remove('hidden');
+    loadHelpSection('intro');
+}
+
+function closeHelpModal() {
+    if (!DOM.helpModal) return;
+    DOM.helpModal.classList.add('hidden');
+}
+
+function loadHelpSection(sectionId) {
+    if (!DOM.helpContent) return;
+    
+    // Atualizar navegação
+    document.querySelectorAll('.help-nav-item').forEach(item => {
+        item.classList.toggle('active', item.getAttribute('data-section') === sectionId);
+    });
+    
+    // Carregar conteúdo
+    const content = HELP_CONTENT[sectionId] || '<p>Seção não encontrada.</p>';
+    DOM.helpContent.innerHTML = content;
+    DOM.helpContent.scrollTop = 0;
+}
+// Expor globalmente para uso em onclick dinâmico
+window.loadHelpSection = loadHelpSection;
+
+function searchHelp(query) {
+    if (!query.trim()) {
+        loadHelpSection('intro');
+        return;
+    }
+    
+    const lowerQuery = query.toLowerCase();
+    let results = '<h1>🔍 Resultados da Busca</h1>';
+    let found = false;
+    
+    Object.keys(HELP_CONTENT).forEach(sectionId => {
+        const content = HELP_CONTENT[sectionId];
+        if (content.toLowerCase().includes(lowerQuery)) {
+            found = true;
+            const sectionName = document.querySelector(`[data-section="${sectionId}"]`)?.textContent || sectionId;
+            results += `<h2><a href="#" onclick="loadHelpSection('${sectionId}'); return false;">${sectionName}</a></h2>`;
+            
+            // Extrair trecho relevante
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            const text = tempDiv.textContent;
+            const index = text.toLowerCase().indexOf(lowerQuery);
+            if (index !== -1) {
+                const start = Math.max(0, index - 100);
+                const end = Math.min(text.length, index + 200);
+                const snippet = '...' + text.substring(start, end) + '...';
+                results += `<p>${snippet}</p>`;
+            }
+        }
+    });
+    
+    if (!found) {
+        results += '<p>Nenhum resultado encontrado. Tente outros termos.</p>';
+    }
+    
+    DOM.helpContent.innerHTML = results;
+}
+
+// ==========================================================================
+// 17. CONFIGURAÇÃO DE TODOS OS EVENT LISTENERS
 // ==========================================================================
 function setupEventListeners() {
     // Tema
     DOM.btnThemeToggle.addEventListener('click', toggleTheme);
+
+    // Modal de Ajuda
+    if (DOM.btnHelp) DOM.btnHelp.addEventListener('click', openHelpModal);
+    if (DOM.btnHelpModalClose) DOM.btnHelpModalClose.addEventListener('click', closeHelpModal);
+    if (DOM.helpModal) DOM.helpModal.addEventListener('click', e => { if (e.target === DOM.helpModal) closeHelpModal(); });
+    if (DOM.helpSearch) DOM.helpSearch.addEventListener('input', debounce(e => searchHelp(e.target.value), 300));
+    document.querySelectorAll('.help-nav-item').forEach(item => {
+        item.addEventListener('click', () => loadHelpSection(item.getAttribute('data-section')));
+    });
 
     // Configurações API
     DOM.btnSaveKey.addEventListener('click', saveGroqKey);
@@ -1551,6 +1977,7 @@ function setupEventListeners() {
         if (e.key === 'Escape') {
             closeConsultModal();
             closePatientModal();
+            closeHelpModal();
         }
     });
 
