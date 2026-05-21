@@ -1,4 +1,4 @@
-const CACHE_NAME = 'etranscriber-cache-v3';
+const CACHE_NAME = 'etranscriber-cache-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -14,7 +14,7 @@ const ASSETS = [
 const CDN_ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js'
+  'https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js'
 ];
 
 // Instalação do Service Worker e caching inicial
