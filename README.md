@@ -2,6 +2,11 @@
 
 Sistema avançado de transcrição médica e estruturação de prontuários com IA, desenvolvido para profissionais de saúde.
 
+## 📚 DOCUMENTAÇÃO
+
+- **[📘 MANUAL COMPLETO DE OPERAÇÃO](MANUAL-COMPLETO.md)** - Guia detalhado passo a passo com exemplos de uso
+- **[🔍 Guia de Teste do QR Code](TESTE-QRCODE.md)** - Solução de problemas do QR Code
+
 ## 🚀 Como Executar o Projeto
 
 ### ⚠️ IMPORTANTE: Não abra diretamente pelo arquivo!
