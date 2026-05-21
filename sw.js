@@ -1,4 +1,4 @@
-const CACHE_NAME = 'etranscriber-cache-v2';
+const CACHE_NAME = 'etranscriber-cache-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -10,15 +10,35 @@ const ASSETS = [
   './icon-512.png'
 ];
 
+// CDN libraries to cache
+const CDN_ASSETS = [
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js'
+];
+
 // Instalação do Service Worker e caching inicial
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       console.log('[Service Worker] Caching app shell');
-      return cache.addAll(ASSETS);
+      // Cache local assets first
+      return cache.addAll(ASSETS).then(() => {
+        // Then try to cache CDN assets (non-blocking)
+        return Promise.allSettled(
+          CDN_ASSETS.map(url => 
+            fetch(url).then(response => {
+              if (response.ok) {
+                return cache.put(url, response);
+              }
+            }).catch(err => {
+              console.log('[Service Worker] Failed to cache CDN asset:', url, err);
+            })
+          )
+        );
+      });
     })
   );
-  self.skipWaiting();
 });
 
 // Ativação e limpeza de caches antigos
@@ -33,9 +53,14 @@ self.addEventListener('activate', e => {
           }
         })
       );
+    }).then(() => {
+      // Take control of all clients immediately
+      return self.clients.claim();
     })
   );
-  self.clients.claim();
+  
+  // Skip waiting to activate immediately
+  self.skipWaiting();
 });
 
 // Estratégia Network-First falling back to Cache para os assets locais
@@ -49,15 +74,32 @@ self.addEventListener('fetch', e => {
     fetch(e.request)
       .then(response => {
         // Se a requisição foi bem sucedida, clona ela e atualiza o cache
-        const resClone = response.clone();
-        caches.open(CACHE_NAME).then(cache => {
-          cache.put(e.request, resClone);
-        });
+        if (response.ok) {
+          const resClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(e.request, resClone);
+          });
+        }
         return response;
       })
       .catch(() => {
         // Se falhar a rede (offline), tenta buscar do cache
-        return caches.match(e.request);
+        return caches.match(e.request).then(cachedResponse => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          
+          // Fallback para página offline se for uma navegação
+          if (e.request.mode === 'navigate') {
+            return caches.match('./index.html');
+          }
+          
+          // Para outros recursos, retorna uma resposta vazia
+          return new Response('Recurso não disponível offline', {
+            status: 503,
+            statusText: 'Service Unavailable'
+          });
+        });
       })
   );
 });

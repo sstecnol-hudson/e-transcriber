@@ -1,6 +1,30 @@
 // ==========================================================================
-// E-TRANSCRIBER v1.1 - LÓGICA COMPLETA (GROQ API + PACIENTES + TEMA + PDF)
+// E-TRANSCRIBER v1.2 - LÓGICA COMPLETA (GROQ API + PACIENTES + TEMA + PDF)
 // ==========================================================================
+
+// ==========================================================================
+// 0. UTILITÁRIOS GLOBAIS
+// ==========================================================================
+
+/** Escapa HTML para prevenir XSS ao inserir dados do usuário via innerHTML */
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+/** Debounce: evita chamadas excessivas em eventos de input */
+function debounce(fn, delay = 250) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+    };
+}
 
 // ---- PROMPTS DE SISTEMA PADRÃO ----
 const DEFAULT_PROMPTS = {
@@ -230,6 +254,10 @@ const DOM = {
     btnRestoreDefaultPrompt: document.getElementById('btn-restore-default-prompt'),
     btnSaveCustomPrompt: document.getElementById('btn-save-custom-prompt'),
 
+    // Empresa (Reuniões) — campos na aba Configurações
+    meetingCompanyName: document.getElementById('meetingCompanyName'),
+    meetingCompanyAddress: document.getElementById('meetingCompanyAddress'),
+
     // Toast
     toast: document.getElementById('toast')
 };
@@ -257,8 +285,10 @@ function init() {
     DOM.doctorCRM.value = AppState.clinicInfo.crm || '';
     DOM.clinicPhone.value = AppState.clinicInfo.phone || '';
     // Preencher campos de empresa para reuniões
-    DOM.meetingCompanyName && (DOM.meetingCompanyName.value = AppState.meetingCompanyInfo.name || '');
-    DOM.meetingCompanyAddress && (DOM.meetingCompanyAddress.value = AppState.meetingCompanyInfo.address || '');
+    if (DOM.meetingCompanyName) DOM.meetingCompanyName.value = AppState.meetingCompanyInfo.name || '';
+    if (DOM.meetingCompanyAddress) DOM.meetingCompanyAddress.value = AppState.meetingCompanyInfo.address || '';
+    // Restaurar modelo de IA selecionado
+    if (DOM.aiModel && AppState.aiModel) DOM.aiModel.value = AppState.aiModel;
 
     // Inicializar UI
     updateApiStatusUI();
@@ -286,6 +316,7 @@ function init() {
             showToast('Dados da empresa salvos!');
         });
     }
+
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js')
@@ -471,21 +502,21 @@ function renderPatientsTable() {
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong>${p.name}</strong></td>
-            <td>${p.birthdate || '-'}</td>
-            <td>${p.cpf || '-'}</td>
-            <td>${p.phone || '-'}</td>
-            <td>${p.insurance || '-'}</td>
+            <td><strong>${escapeHtml(p.name)}</strong></td>
+            <td>${escapeHtml(p.birthdate) || '-'}</td>
+            <td>${escapeHtml(p.cpf) || '-'}</td>
+            <td>${escapeHtml(p.phone) || '-'}</td>
+            <td>${escapeHtml(p.insurance) || '-'}</td>
             <td style="text-align:center"><span class="count-badge" style="display:inline-block;background:var(--primary)">${consultCount}</span></td>
             <td class="actions-col">
                 <div class="table-actions">
-                    <button class="btn-icon btn-start-consult-for-patient" data-id="${p.id}" title="Iniciar Nova Consulta">
+                    <button class="btn-icon btn-start-consult-for-patient" data-id="${escapeHtml(p.id)}" title="Iniciar Nova Consulta" aria-label="Iniciar consulta para ${escapeHtml(p.name)}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary)"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                     </button>
-                    <button class="btn-icon btn-edit-patient" data-id="${p.id}" title="Editar Paciente">
+                    <button class="btn-icon btn-edit-patient" data-id="${escapeHtml(p.id)}" title="Editar Paciente" aria-label="Editar ${escapeHtml(p.name)}">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
-                    <button class="btn-icon btn-delete-patient" data-id="${p.id}" title="Excluir Paciente" style="color:var(--danger)">
+                    <button class="btn-icon btn-delete-patient" data-id="${escapeHtml(p.id)}" title="Excluir Paciente" aria-label="Excluir ${escapeHtml(p.name)}" style="color:var(--danger)">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     </button>
                 </div>
@@ -594,8 +625,21 @@ function deletePatient(id) {
 function startConsultForPatient(patientId) {
     const p = AppState.patients.find(x => x.id === patientId);
     if (!p) return;
+    // Preencher dados do paciente
     DOM.patientName.value = p.name;
     DOM.patientAge.value = p.birthdate || '';
+    // Limpar sessão anterior
+    DOM.rawTranscript.value = '';
+    DOM.outputRecord.value = '';
+    DOM.outputPatientMsg.value = '';
+    DOM.btnGenerateDocs.disabled = true;
+    DOM.btnSaveConsult.disabled = false;
+    DOM.btnSaveConsult.textContent = 'Salvar no Histórico Local';
+    DOM.resultsSection.classList.add('hidden');
+    DOM.actionsSaveRow.classList.add('hidden');
+    AppState.currentTranscription = '';
+    AppState.currentRecordOutput = '';
+    AppState.currentPatientMsgOutput = '';
     switchTab('tab-consulta');
     showToast(`Consulta iniciada para ${p.name}`);
 }
@@ -632,7 +676,7 @@ function handleAutocompleteInput() {
         DOM.patientAutocomplete.innerHTML = `
             <div class="autocomplete-item-new" id="autocomplete-create-new">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
-                Cadastrar "${DOM.patientName.value}" como novo paciente
+                Cadastrar "${escapeHtml(DOM.patientName.value)}" como novo paciente
             </div>`;
         DOM.patientAutocomplete.classList.remove('hidden');
         document.getElementById('autocomplete-create-new').addEventListener('click', () => {
@@ -651,11 +695,11 @@ function handleAutocompleteInput() {
     DOM.patientAutocomplete.innerHTML = matches.map(p => {
         const initials = p.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
         const sub = [p.birthdate, p.insurance].filter(Boolean).join(' · ') || 'Paciente cadastrado';
-        return `<div class="autocomplete-item" data-patient-id="${p.id}">
-            <div class="autocomplete-avatar">${initials}</div>
+        return `<div class="autocomplete-item" data-patient-id="${escapeHtml(p.id)}">
+            <div class="autocomplete-avatar">${escapeHtml(initials)}</div>
             <div class="autocomplete-info">
-                <span class="autocomplete-name">${p.name}</span>
-                <span class="autocomplete-sub">${sub}</span>
+                <span class="autocomplete-name">${escapeHtml(p.name)}</span>
+                <span class="autocomplete-sub">${escapeHtml(sub)}</span>
             </div>
         </div>`;
     }).join('');
@@ -685,7 +729,11 @@ function generatePDF() {
         showToast('Nenhum prontuário gerado para exportar!');
         return;
     }
-
+    if (!window.jspdf) {
+        showToast('Biblioteca PDF não carregada. Verifique sua conexão.');
+        return;
+    }
+    try {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
@@ -701,12 +749,11 @@ function generatePDF() {
     doc.rect(0, 0, pageWidth, 28, 'F');
 
     // Nome do consultório
-    const companyName = AppState.meetingCompanyInfo.name || 'Empresa';
-    doc.text('ATA DE REUNIÃO CORPORATIVA - ' + companyName, marginX, 17);
+    const clinicName = AppState.clinicInfo.name || 'Consultório';
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.setTextColor(255, 255, 255);
-    doc.text(companyName, marginX, 13);
+    doc.text(clinicName, marginX, 13);
 
     // Médico e CRM
     const doctorText = [AppState.clinicInfo.doctor, AppState.clinicInfo.crm].filter(Boolean).join(' | ');
@@ -848,6 +895,10 @@ function generatePDF() {
     const dateStr = new Date().toISOString().slice(0, 10);
     doc.save(`prontuario_${safePatientName}_${dateStr}.pdf`);
     showToast('PDF exportado com sucesso!');
+    } catch (err) {
+        showToast('Erro ao gerar PDF. Tente novamente.');
+        console.error('generatePDF error:', err);
+    }
 }
 
 // ==========================================================================
@@ -958,7 +1009,11 @@ async function startRecording(isTelemed = false) {
 }
 
 function setupAudioVisualizer(stream) {
-    AppState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    // Em modo telemedicina o AudioContext já foi criado para mixar os streams.
+    // Reutilizá-lo evita leak de recursos; só cria um novo se ainda não existir.
+    if (!AppState.audioContext || AppState.audioContext.state === 'closed') {
+        AppState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
     AppState.analyser = AppState.audioContext.createAnalyser();
     AppState.source = AppState.audioContext.createMediaStreamSource(stream);
     AppState.source.connect(AppState.analyser);
@@ -976,15 +1031,17 @@ function animateWaveform() {
     AppState.analyser.getByteFrequencyData(AppState.dataArray);
     ctx.clearRect(0, 0, width, height);
 
+    // Gradiente criado uma vez por frame (não por barra) — evita 3840 objetos/s
+    const grad = ctx.createLinearGradient(0, 0, 0, height);
+    grad.addColorStop(0, '#6366f1');
+    grad.addColorStop(0.5, '#8b5cf6');
+    grad.addColorStop(1, '#14b8a6');
+    ctx.fillStyle = grad;
+
     const barWidth = (width / AppState.dataArray.length) * 1.5;
     let x = 0;
     for (let i = 0; i < AppState.dataArray.length; i++) {
         const barHeight = Math.max(4, (AppState.dataArray[i] / 255) * height * 0.9);
-        const grad = ctx.createLinearGradient(0, (height - barHeight) / 2, 0, (height + barHeight) / 2);
-        grad.addColorStop(0, '#6366f1');
-        grad.addColorStop(0.5, '#8b5cf6');
-        grad.addColorStop(1, '#14b8a6');
-        ctx.fillStyle = grad;
         const y = (height - barHeight) / 2;
         drawRoundRect(ctx, x, y, barWidth - 3, barHeight, 4);
         x += barWidth;
@@ -1009,8 +1066,17 @@ function drawRoundRect(ctx, x, y, w, h, r) {
 
 function drawStaticWaveform() {
     const canvas = DOM.waveformCanvas;
+    // Corrigir resolução em telas HiDPI (retina)
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.offsetWidth || 300;
+    const cssHeight = 80;
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    canvas.style.width = cssWidth + 'px';
+    canvas.style.height = cssHeight + 'px';
     const ctx = canvas.getContext('2d');
-    const { width, height } = canvas;
+    ctx.scale(dpr, dpr);
+    const { width, height } = { width: cssWidth, height: cssHeight };
     ctx.clearRect(0, 0, width, height);
     ctx.beginPath();
     ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
@@ -1114,6 +1180,9 @@ async function generateClinicalDocuments() {
     if (!rawText) { showToast('Transcreva ou escreva um texto antes!'); return; }
     if (!AppState.apiKey) { showToast('Configure sua chave Groq nas Configurações!'); return; }
 
+    // Guard against double-click / race condition
+    DOM.btnGenerateDocs.disabled = true;
+
     DOM.resultsSection.classList.remove('hidden');
     DOM.prontuarioLoader.classList.remove('hidden');
     DOM.pacienteLoader.classList.remove('hidden');
@@ -1132,7 +1201,7 @@ async function generateClinicalDocuments() {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${AppState.apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: overrideModel || model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }], temperature })
-    }).then(async r => { 
+    }).then(async r => {
         if (!r.ok) {
             const errText = await r.text();
             try {
@@ -1142,29 +1211,42 @@ async function generateClinicalDocuments() {
                 throw new Error(errText);
             }
         }
-        return r.json(); 
+        return r.json();
     });
 
+    let prontuarioOk = false;
     try {
-        // Passo 1: Gera o Prontuário Clínico (Usa o modelo principal escolhido pelo usuário)
+        // Passo 1: Gera o Prontuário Clínico
         const prontuario = await callGroq(getSystemPrompt(DOM.clinicalTemplate.value), 0.1);
         DOM.outputRecord.value = prontuario.choices[0].message.content || '';
         AppState.currentRecordOutput = DOM.outputRecord.value;
+        prontuarioOk = true;
+    } catch (err) {
+        DOM.outputRecord.value = `⚠️ Erro ao gerar prontuário: ${err.message}`;
+        showToast(`Erro no prontuário: ${err.message}`);
+    } finally {
+        DOM.prontuarioLoader.classList.add('hidden');
+    }
 
-        // Passo 2: Gera as Orientações (Força o modelo 8B para economizar limites de tokens por minuto)
+    try {
+        // Passo 2: Gera as Orientações (modelo 8B para economizar tokens/min)
         const orientacoes = await callGroq(PATIENT_INSTRUCTIONS_PROMPT, 0.3, 'llama-3.1-8b-instant');
         DOM.outputPatientMsg.value = orientacoes.choices[0].message.content || '';
         AppState.currentPatientMsgOutput = DOM.outputPatientMsg.value;
-
-        DOM.actionsSaveRow.classList.remove('hidden');
-        showToast('Documentos estruturados com sucesso!');
     } catch (err) {
-        showToast(`Erro API Groq: ${err.message}`);
-        console.error(err);
+        DOM.outputPatientMsg.value = `⚠️ Erro ao gerar orientações: ${err.message}`;
+        if (prontuarioOk) showToast(`Erro nas orientações: ${err.message}`);
     } finally {
-        DOM.prontuarioLoader.classList.add('hidden');
         DOM.pacienteLoader.classList.add('hidden');
     }
+
+    if (prontuarioOk) {
+        DOM.actionsSaveRow.classList.remove('hidden');
+        showToast('Documentos estruturados com sucesso!');
+    }
+
+    // Re-enable button only after processing
+    DOM.btnGenerateDocs.disabled = false;
 }
 
 async function testGroqConnection() {
@@ -1212,16 +1294,16 @@ function renderHistoryTable() {
     filtered.slice().reverse().forEach(item => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${item.dateString}</td>
-            <td><strong>${item.patientName}</strong></td>
-            <td>${item.patientAge || '-'}</td>
-            <td>${item.specialty || '-'}</td>
-            <td><span class="btn-action-small" style="pointer-events:none;cursor:default">${labels[item.template] || item.template}</span></td>
+            <td>${escapeHtml(item.dateString)}</td>
+            <td><strong>${escapeHtml(item.patientName)}</strong></td>
+            <td>${escapeHtml(item.patientAge) || '-'}</td>
+            <td>${escapeHtml(item.specialty) || '-'}</td>
+            <td><span class="btn-action-small" style="pointer-events:none;cursor:default">${escapeHtml(labels[item.template] || item.template)}</span></td>
             <td class="actions-col"><div class="table-actions">
-                <button class="btn-icon btn-view-consult" data-id="${item.id}" title="Ver Detalhes">
+                <button class="btn-icon btn-view-consult" data-id="${escapeHtml(item.id)}" title="Ver Detalhes" aria-label="Ver detalhes de ${escapeHtml(item.patientName)}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
-                <button class="btn-icon btn-delete-consult" data-id="${item.id}" style="color:var(--danger)" title="Excluir">
+                <button class="btn-icon btn-delete-consult" data-id="${escapeHtml(item.id)}" style="color:var(--danger)" title="Excluir" aria-label="Excluir consulta de ${escapeHtml(item.patientName)}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 </button>
             </div></td>`;
@@ -1233,6 +1315,10 @@ function renderHistoryTable() {
 }
 
 function saveCurrentConsult() {
+    // Guard against duplicate saves
+    DOM.btnSaveConsult.disabled = true;
+    DOM.btnSaveConsult.textContent = 'Salvo!';
+
     const record = {
         id: 'c_' + Date.now(),
         dateString: new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
@@ -1335,10 +1421,14 @@ function saveClinicInfo() {
 
 function saveGroqKey() {
     const key = DOM.groqApiKeyInput.value.trim();
+    if (key && !key.startsWith('gsk_')) {
+        showToast('⚠️ Chave inválida. Chaves Groq começam com "gsk_".');
+        return;
+    }
     localStorage.setItem('etranscriber_groq_key', key);
     AppState.apiKey = key;
     updateApiStatusUI();
-    showToast('Chave de API salva localmente.');
+    showToast(key ? 'Chave de API salva localmente.' : 'Chave removida.');
 }
 
 function toggleKeyVisibility() {
@@ -1366,7 +1456,9 @@ function copyToClipboard(text, msg = 'Copiado!') {
 }
 
 function shareOnWhatsApp(text) {
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+    if (!text.trim()) { showToast('Nenhum conteúdo para compartilhar.'); return; }
+    const win = window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+    if (!win) showToast('Popup bloqueado. Permita popups para este site e tente novamente.');
 }
 
 // ==========================================================================
@@ -1383,8 +1475,8 @@ function setupEventListeners() {
     DOM.btnResetAll.addEventListener('click', resetApplicationData);
     DOM.btnSaveClinicInfo.addEventListener('click', saveClinicInfo);
     DOM.aiModel.addEventListener('change', () => {
+        AppState.aiModel = DOM.aiModel.value;
         localStorage.setItem('etranscriber_ai_model', DOM.aiModel.value);
-        console.log('Modelo alterado para:', DOM.aiModel.value);
     });
 
     // Captura de Áudio
@@ -1421,11 +1513,11 @@ function setupEventListeners() {
     DOM.btnSaveConsult.addEventListener('click', saveCurrentConsult);
 
     // Histórico
-    DOM.searchHistory.addEventListener('input', renderHistoryTable);
+    DOM.searchHistory.addEventListener('input', debounce(renderHistoryTable, 200));
     DOM.btnClearHistory.addEventListener('click', clearAllHistory);
 
     // Pacientes
-    DOM.searchPatients.addEventListener('input', renderPatientsTable);
+    DOM.searchPatients.addEventListener('input', debounce(renderPatientsTable, 200));
     DOM.btnNewPatient.addEventListener('click', () => openPatientModal());
     DOM.btnPatientModalClose.addEventListener('click', closePatientModal);
     DOM.btnPatientModalCancel.addEventListener('click', closePatientModal);

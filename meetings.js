@@ -223,7 +223,10 @@ async function startMeetingRecording(isOnline = false) {
 }
 
 function setupMeetingAudioVisualizer(stream) {
-    MeetingState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    // Reutilizar AudioContext existente para evitar leak
+    if (!MeetingState.audioContext || MeetingState.audioContext.state === 'closed') {
+        MeetingState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
     MeetingState.analyser = MeetingState.audioContext.createAnalyser();
     MeetingState.source = MeetingState.audioContext.createMediaStreamSource(stream);
     MeetingState.source.connect(MeetingState.analyser);
@@ -231,6 +234,9 @@ function setupMeetingAudioVisualizer(stream) {
     MeetingState.dataArray = new Uint8Array(MeetingState.analyser.frequencyBinCount);
     animateMeetingWaveform();
 }
+
+// Gradiente criado uma vez para otimização
+let meetingGradientCache = null;
 
 function animateMeetingWaveform() {
     if (!MeetingState.isRecording) return;
@@ -241,15 +247,19 @@ function animateMeetingWaveform() {
     MeetingState.analyser.getByteFrequencyData(MeetingState.dataArray);
     ctx.clearRect(0, 0, width, height);
 
+    // Criar gradiente apenas uma vez
+    if (!meetingGradientCache) {
+        meetingGradientCache = ctx.createLinearGradient(0, 0, 0, height);
+        meetingGradientCache.addColorStop(0, '#6366f1');
+        meetingGradientCache.addColorStop(0.5, '#8b5cf6');
+        meetingGradientCache.addColorStop(1, '#14b8a6');
+    }
+    ctx.fillStyle = meetingGradientCache;
+
     const barWidth = (width / MeetingState.dataArray.length) * 1.5;
     let x = 0;
     for (let i = 0; i < MeetingState.dataArray.length; i++) {
         const barHeight = Math.max(4, (MeetingState.dataArray[i] / 255) * height * 0.9);
-        const grad = ctx.createLinearGradient(0, (height - barHeight) / 2, 0, (height + barHeight) / 2);
-        grad.addColorStop(0, '#6366f1');
-        grad.addColorStop(0.5, '#8b5cf6');
-        grad.addColorStop(1, '#14b8a6');
-        ctx.fillStyle = grad;
         const y = (height - barHeight) / 2;
         drawMeetingRoundRect(ctx, x, y, barWidth - 3, barHeight, 4);
         x += barWidth;
@@ -274,8 +284,17 @@ function drawMeetingRoundRect(ctx, x, y, w, h, r) {
 
 function drawMeetingStaticWaveform() {
     const canvas = MeetingDOM.waveformCanvas;
+    // Corrigir resolução em telas HiDPI (retina)
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = canvas.offsetWidth || 300;
+    const cssHeight = 80;
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    canvas.style.width = cssWidth + 'px';
+    canvas.style.height = cssHeight + 'px';
     const ctx = canvas.getContext('2d');
-    const { width, height } = canvas;
+    ctx.scale(dpr, dpr);
+    const { width, height } = { width: cssWidth, height: cssHeight };
     ctx.clearRect(0, 0, width, height);
     ctx.beginPath();
     ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
@@ -435,8 +454,14 @@ function generateMeetingPDF() {
         return;
     }
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    try {
+        if (typeof window.jspdf === 'undefined') {
+            showToast('Biblioteca jsPDF não carregada. Recarregue a página.');
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -448,7 +473,7 @@ function generateMeetingPDF() {
     doc.setFillColor(15, 23, 42); // Darker blue for corporate feel
     doc.rect(0, 0, pageWidth, 28, 'F');
 
-    const companyName = AppState.clinicInfo.name || 'Empresa';
+    const companyName = AppState.meetingCompanyInfo?.name || AppState.clinicInfo?.name || 'Empresa';
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.setTextColor(255, 255, 255);
@@ -551,10 +576,14 @@ function generateMeetingPDF() {
     doc.setTextColor(148, 163, 184);
     doc.text('Ata de reunião gerada automaticamente.', marginX, footerY, { maxWidth: contentWidth * 0.75 });
 
-    const safeName = (mTitle || 'reuniao').toLowerCase().replace(/\s+/g, '_');
-    const dateStr = new Date().toISOString().slice(0, 10);
-    doc.save(`ata_${safeName}_${dateStr}.pdf`);
-    showToast('Ata em PDF exportada com sucesso!');
+        const safeName = (mTitle || 'reuniao').toLowerCase().replace(/\s+/g, '_');
+        const dateStr = new Date().toISOString().slice(0, 10);
+        doc.save(`ata_${safeName}_${dateStr}.pdf`);
+        showToast('Ata em PDF exportada com sucesso!');
+    } catch (err) {
+        console.error('Erro ao gerar PDF:', err);
+        showToast('Erro ao gerar PDF. Verifique se a biblioteca está carregada.');
+    }
 }
 
 function saveMeetingHistory() {
@@ -584,7 +613,7 @@ function renderMeetingHistory(filter = '') {
     );
 
     if (filtered.length === 0) {
-        MeetingDOM.historyTableBody.innerHTML = \`
+        MeetingDOM.historyTableBody.innerHTML = `
             <tr class="empty-row">
                 <td colspan="5">
                     <div class="empty-state">
@@ -592,26 +621,59 @@ function renderMeetingHistory(filter = '') {
                         <p>Nenhuma reunião encontrada.</p>
                     </div>
                 </td>
-            </tr>\`;
+            </tr>`;
         return;
     }
 
     filtered.forEach(m => {
         const tr = document.createElement('tr');
-        tr.innerHTML = \`
-            <td><span class="font-medium">\${m.dateString}</span></td>
-            <td>\${m.title}</td>
-            <td><span class="badge">\${m.type}</span></td>
-            <td><span class="badge badge-light">\${m.modality}</span></td>
-            <td class="actions-col">
-                <button class="btn-action-small" onclick="loadMeetingHistory('\${m.id}')" title="Carregar Ata">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                </button>
-                <button class="btn-action-small btn-danger" onclick="deleteMeetingHistory('\${m.id}')" title="Excluir">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                </button>
-            </td>
-        \`;
+        
+        // Criar células de forma segura
+        const dateCell = document.createElement('td');
+        const dateSpan = document.createElement('span');
+        dateSpan.className = 'font-medium';
+        dateSpan.textContent = m.dateString;
+        dateCell.appendChild(dateSpan);
+        
+        const titleCell = document.createElement('td');
+        titleCell.textContent = m.title;
+        
+        const typeCell = document.createElement('td');
+        const typeBadge = document.createElement('span');
+        typeBadge.className = 'badge';
+        typeBadge.textContent = m.type;
+        typeCell.appendChild(typeBadge);
+        
+        const modalityCell = document.createElement('td');
+        const modalityBadge = document.createElement('span');
+        modalityBadge.className = 'badge badge-light';
+        modalityBadge.textContent = m.modality;
+        modalityCell.appendChild(modalityBadge);
+        
+        const actionsCell = document.createElement('td');
+        actionsCell.className = 'actions-col';
+        
+        const loadBtn = document.createElement('button');
+        loadBtn.className = 'btn-action-small';
+        loadBtn.title = 'Carregar Ata';
+        loadBtn.onclick = () => loadMeetingHistory(m.id);
+        loadBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-action-small btn-danger';
+        deleteBtn.title = 'Excluir';
+        deleteBtn.onclick = () => deleteMeetingHistory(m.id);
+        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+        
+        actionsCell.appendChild(loadBtn);
+        actionsCell.appendChild(deleteBtn);
+        
+        tr.appendChild(dateCell);
+        tr.appendChild(titleCell);
+        tr.appendChild(typeCell);
+        tr.appendChild(modalityCell);
+        tr.appendChild(actionsCell);
+        
         MeetingDOM.historyTableBody.appendChild(tr);
     });
 }
@@ -651,6 +713,512 @@ window.deleteMeetingHistory = function(id) {
 };
 
 // ==========================================================================
+// ATTENDANCE STATE
+// ==========================================================================
+const AttendanceState = {
+    participants: [],        // { id, name, role, email, confirmed, confirmedAt }
+    currentQRToken: null,    // { token, expiresAt (ms timestamp), meetingTitle }
+    qrExpiryInterval: null
+};
+
+// ==========================================================================
+// QR CODE GENERATION
+// ==========================================================================
+function generateAttendanceQR() {
+    const endTimeEl = document.getElementById('meetingEndTime');
+    const dateEl    = document.getElementById('meetingDate');
+    const titleEl   = document.getElementById('meetingTitle');
+
+    const meetingDate  = dateEl?.value  || new Date().toISOString().slice(0, 10);
+    const meetingEnd   = endTimeEl?.value || '';
+    const meetingTitle = titleEl?.value?.trim() || 'Reunião';
+
+    // Build expiry timestamp
+    let expiresAt;
+    if (meetingDate && meetingEnd) {
+        expiresAt = new Date(`${meetingDate}T${meetingEnd}:00`).getTime();
+        if (isNaN(expiresAt) || expiresAt <= Date.now()) {
+            // fallback: +4h from now
+            expiresAt = Date.now() + 4 * 60 * 60 * 1000;
+            showToast('Horário de término inválido — QR expira em 4h.', 4000);
+        }
+    } else {
+        expiresAt = Date.now() + 4 * 60 * 60 * 1000;
+        showToast('Horário de término não definido — QR expira em 4h.', 4000);
+    }
+
+    const token = 'qr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    AttendanceState.currentQRToken = { token, expiresAt, meetingTitle };
+
+    // Persist token so checkin page can validate
+    localStorage.setItem('etranscriber_qr_token', JSON.stringify(AttendanceState.currentQRToken));
+
+    // Build check-in URL (same page with hash param)
+    const baseUrl = window.location.href.split('#')[0].split('?')[0];
+    const checkinUrl = `${baseUrl}?checkin=${token}`;
+
+    // Render QR
+    const container = document.getElementById('qrCodeContainer');
+    const canvas    = document.getElementById('qrCodeCanvas');
+    canvas.innerHTML = '';
+
+    QRCode.toCanvas
+        ? renderQRCanvas(checkinUrl, canvas)
+        : renderQRImg(checkinUrl, canvas);
+
+    // Expire info + countdown
+    updateQRExpireDisplay(expiresAt);
+    if (AttendanceState.qrExpiryInterval) clearInterval(AttendanceState.qrExpiryInterval);
+    AttendanceState.qrExpiryInterval = setInterval(() => updateQRExpireDisplay(expiresAt), 30000);
+
+    container.classList.remove('hidden');
+
+    // Wire download & copy
+    document.getElementById('btn-download-qr').onclick = () => downloadQRCode(canvas, meetingTitle);
+    document.getElementById('btn-copy-qr-link').onclick = () => {
+        navigator.clipboard.writeText(checkinUrl).then(() => showToast('Link do QR copiado!')).catch(() => showToast('Erro ao copiar.'));
+    };
+
+    showToast('QR Code gerado! Expira em ' + formatExpiry(expiresAt));
+}
+
+function renderQRCanvas(url, container) {
+    const cvs = document.createElement('canvas');
+    container.appendChild(cvs);
+    QRCode.toCanvas(cvs, url, { width: 200, margin: 1 }, err => {
+        if (err) { container.textContent = url; }
+    });
+}
+
+function renderQRImg(url, container) {
+    const img = document.createElement('img');
+    const qr  = new QRCode(container, { text: url, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.H });
+    // QRCode lib appends img internally; nothing more needed
+}
+
+function downloadQRCode(canvasContainer, title) {
+    const cvs = canvasContainer.querySelector('canvas') || canvasContainer.querySelector('img');
+    if (!cvs) { showToast('QR Code não disponível para download.'); return; }
+    const link = document.createElement('a');
+    if (cvs.tagName === 'CANVAS') {
+        link.href = cvs.toDataURL('image/png');
+    } else {
+        link.href = cvs.src;
+    }
+    link.download = `qr_presenca_${(title || 'reuniao').toLowerCase().replace(/\s+/g,'_')}.png`;
+    link.click();
+    showToast('QR Code baixado!');
+}
+
+function updateQRExpireDisplay(expiresAt) {
+    const el = document.getElementById('qrExpireInfo');
+    if (!el) return;
+    const now = Date.now();
+    if (now >= expiresAt) {
+        el.innerHTML = '<span style="color:#ef4444;">⏰ QR Code expirado</span>';
+        clearInterval(AttendanceState.qrExpiryInterval);
+    } else {
+        el.innerHTML = `⏱ Válido até: <strong>${formatExpiry(expiresAt)}</strong>`;
+    }
+}
+
+function formatExpiry(ts) {
+    return new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+// ==========================================================================
+// QR CHECK-IN (runs on page load when ?checkin=TOKEN)
+// ==========================================================================
+function handleQRCheckinParam() {
+    const params = new URLSearchParams(window.location.search);
+    const token  = params.get('checkin');
+    if (!token) return;
+
+    const modal = document.getElementById('qrCheckinModal');
+    const content = document.getElementById('qr-checkin-content');
+    const expired = document.getElementById('qr-checkin-expired');
+    const successDiv = document.getElementById('qr-checkin-success');
+
+    modal.classList.remove('hidden');
+
+    // Validate token
+    let stored;
+    try { stored = JSON.parse(localStorage.getItem('etranscriber_qr_token')); } catch { stored = null; }
+
+    if (!stored || stored.token !== token || Date.now() > stored.expiresAt) {
+        content.classList.add('hidden');
+        expired.classList.remove('hidden');
+        return;
+    }
+
+    // Wire confirm button
+    document.getElementById('btn-confirm-checkin').addEventListener('click', () => {
+        const name = document.getElementById('checkin-name').value.trim();
+        if (!name) { showToast('Por favor, informe seu nome!'); return; }
+        const role  = document.getElementById('checkin-role').value.trim();
+        const email = document.getElementById('checkin-email').value.trim();
+
+        addOrConfirmParticipant({ name, role, email, confirmed: true });
+
+        content.classList.add('hidden');
+        successDiv.classList.remove('hidden');
+        document.getElementById('qr-checkin-success-name').textContent = `Bem-vindo(a), ${name}! 🎉`;
+        showToast('Presença registrada com sucesso!');
+
+        // Clean URL without reload
+        window.history.replaceState({}, '', window.location.pathname);
+    });
+
+    document.getElementById('btn-qr-checkin-close').addEventListener('click', () => {
+        modal.classList.add('hidden');
+        window.history.replaceState({}, '', window.location.pathname);
+    });
+}
+
+// ==========================================================================
+// PARTICIPANTS MANAGEMENT
+// ==========================================================================
+function loadAttendanceState() {
+    try {
+        AttendanceState.participants = JSON.parse(localStorage.getItem('etranscriber_participants_meeting')) || [];
+    } catch {
+        AttendanceState.participants = [];
+    }
+    try {
+        AttendanceState.currentQRToken = JSON.parse(localStorage.getItem('etranscriber_qr_token')) || null;
+    } catch {
+        AttendanceState.currentQRToken = null;
+    }
+}
+
+function saveAttendanceState() {
+    localStorage.setItem('etranscriber_participants_meeting', JSON.stringify(AttendanceState.participants));
+}
+
+function addOrConfirmParticipant({ name, role = '', email = '', confirmed = false }) {
+    // Check if participant already exists (by name, case-insensitive)
+    const existing = AttendanceState.participants.find(p => p.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+        if (confirmed && !existing.confirmed) {
+            existing.confirmed  = true;
+            existing.confirmedAt = new Date().toISOString();
+        }
+    } else {
+        AttendanceState.participants.push({
+            id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            name, role, email,
+            confirmed,
+            confirmedAt: confirmed ? new Date().toISOString() : null,
+            addedAt: new Date().toISOString()
+        });
+    }
+    saveAttendanceState();
+    renderParticipantsTable();
+}
+
+function removeParticipant(id) {
+    AttendanceState.participants = AttendanceState.participants.filter(p => p.id !== id);
+    saveAttendanceState();
+    renderParticipantsTable();
+    showToast('Participante removido.');
+}
+
+function toggleParticipantPresence(id) {
+    const p = AttendanceState.participants.find(x => x.id === id);
+    if (!p) return;
+    p.confirmed    = !p.confirmed;
+    p.confirmedAt  = p.confirmed ? new Date().toISOString() : null;
+    saveAttendanceState();
+    renderParticipantsTable();
+}
+
+function renderParticipantsTable() {
+    const tbody = document.getElementById('participantsTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const list = AttendanceState.participants;
+    const total     = list.length;
+    const confirmed = list.filter(p => p.confirmed).length;
+    const pending   = total - confirmed;
+
+    document.getElementById('stat-total').textContent     = total;
+    document.getElementById('stat-confirmed').textContent = confirmed;
+    document.getElementById('stat-pending').textContent   = pending;
+
+    if (total === 0) {
+        tbody.innerHTML = `<tr class="empty-row"><td colspan="5"><div class="empty-state">Nenhum participante cadastrado.</div></td></tr>`;
+        return;
+    }
+
+    list.forEach(p => {
+        const tr = document.createElement('tr');
+        
+        // Nome
+        const nameCell = document.createElement('td');
+        const nameStrong = document.createElement('strong');
+        nameStrong.textContent = p.name;
+        nameCell.appendChild(nameStrong);
+        
+        // Cargo
+        const roleCell = document.createElement('td');
+        roleCell.textContent = p.role || '-';
+        
+        // Email
+        const emailCell = document.createElement('td');
+        emailCell.textContent = p.email || '-';
+        
+        // Presença
+        const presenceCell = document.createElement('td');
+        presenceCell.style.textAlign = 'center';
+        
+        const presenceBtn = document.createElement('button');
+        presenceBtn.onclick = () => toggleParticipantPresence(p.id);
+        presenceBtn.style.border = 'none';
+        presenceBtn.style.background = 'transparent';
+        presenceBtn.style.cursor = 'pointer';
+        presenceBtn.style.fontSize = '1.3rem';
+        presenceBtn.title = 'Alternar presença';
+        presenceBtn.textContent = p.confirmed ? '✅' : '⬜';
+        
+        presenceCell.appendChild(presenceBtn);
+        
+        if (p.confirmed && p.confirmedAt) {
+            const timeDiv = document.createElement('div');
+            timeDiv.style.fontSize = '0.7rem';
+            timeDiv.style.color = 'var(--text-muted)';
+            timeDiv.textContent = new Date(p.confirmedAt).toLocaleString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+            presenceCell.appendChild(timeDiv);
+        }
+        
+        // Ações
+        const actionsCell = document.createElement('td');
+        actionsCell.className = 'actions-col';
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-icon btn-danger';
+        removeBtn.title = 'Remover';
+        removeBtn.onclick = () => removeParticipant(p.id);
+        removeBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+        
+        actionsCell.appendChild(removeBtn);
+        
+        tr.appendChild(nameCell);
+        tr.appendChild(roleCell);
+        tr.appendChild(emailCell);
+        tr.appendChild(presenceCell);
+        tr.appendChild(actionsCell);
+        
+        tbody.appendChild(tr);
+    });
+}
+
+// Expose to inline onclick
+window.toggleParticipantPresence = toggleParticipantPresence;
+window.removeParticipant         = removeParticipant;
+
+// ==========================================================================
+// EXPORT: EXCEL
+// ==========================================================================
+function exportAttendanceExcel() {
+    if (!AttendanceState.participants.length) {
+        showToast('Nenhum participante para exportar!');
+        return;
+    }
+    
+    try {
+        if (typeof XLSX === 'undefined') {
+            showToast('Biblioteca XLSX não carregada. Recarregue a página.');
+            return;
+        }
+        
+        const meetingTitle = document.getElementById('meetingTitle')?.value?.trim() || 'Reunião';
+        const meetingDate  = document.getElementById('meetingDate')?.value  || new Date().toISOString().slice(0, 10);
+
+    const rows = [
+        ['Lista de Presença'],
+        [`Reunião: ${meetingTitle}`],
+        [`Data: ${meetingDate}`],
+        [`Gerado em: ${new Date().toLocaleString('pt-BR')}`],
+        [],
+        ['#', 'Nome', 'Cargo / Função', 'E-mail', 'Presença Confirmada', 'Horário da Confirmação']
+    ];
+
+    AttendanceState.participants.forEach((p, i) => {
+        rows.push([
+            i + 1,
+            p.name,
+            p.role  || '',
+            p.email || '',
+            p.confirmed ? 'Sim' : 'Não',
+            p.confirmedAt ? new Date(p.confirmedAt).toLocaleString('pt-BR') : '-'
+        ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+
+    // Column widths
+    ws['!cols'] = [{ wch: 5 }, { wch: 30 }, { wch: 22 }, { wch: 28 }, { wch: 20 }, { wch: 20 }];
+
+    // Bold header row (row index 5)
+    const headerRow = 5;
+    ['A','B','C','D','E','F'].forEach(col => {
+        const cell = ws[`${col}${headerRow + 1}`];
+        if (cell) { if (!cell.s) cell.s = {}; cell.s.font = { bold: true }; }
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Presenças');
+
+    const safeName = meetingTitle.toLowerCase().replace(/\s+/g, '_');
+    XLSX.writeFile(wb, `presencas_${safeName}_${meetingDate}.xlsx`);
+    showToast('Lista exportada em Excel!');
+    } catch (err) {
+        console.error('Erro ao exportar Excel:', err);
+        showToast('Erro ao exportar Excel. Verifique se a biblioteca está carregada.');
+    }
+}
+}
+
+// ==========================================================================
+// EXPORT: PDF
+// ==========================================================================
+function exportAttendancePDF() {
+    if (!AttendanceState.participants.length) {
+        showToast('Nenhum participante para exportar!');
+        return;
+    }
+
+    try {
+        if (typeof window.jspdf === 'undefined') {
+            showToast('Biblioteca jsPDF não carregada. Recarregue a página.');
+            return;
+        }
+
+        const meetingTitle = document.getElementById('meetingTitle')?.value?.trim() || 'Reunião';
+        const meetingDate  = document.getElementById('meetingDate')?.value  || new Date().toISOString().slice(0, 10);
+        const companyName  = (typeof AppState !== 'undefined' && AppState.meetingCompanyInfo?.name) || 'Empresa';
+
+        const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const pw = doc.internal.pageSize.getWidth();
+    const ph = doc.internal.pageSize.getHeight();
+    const mx = 18;
+    const cw = pw - mx * 2;
+    let y = 0;
+
+    // Header band
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, pw, 28, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(255, 255, 255);
+    doc.text('LISTA DE PRESENÇA', mx, 13);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(companyName, mx, 21);
+    y = 36;
+
+    // Meeting info box
+    doc.setFillColor(243, 244, 246);
+    doc.roundedRect(mx, y, cw, 22, 2, 2, 'F');
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('DADOS DA REUNIÃO', mx + 5, y + 8);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Título/Pauta: ${meetingTitle}`, mx + 5, y + 15);
+    doc.text(`Data: ${meetingDate}   |   Gerado em: ${new Date().toLocaleString('pt-BR')}`, mx + 5, y + 21);
+    y += 30;
+
+    // Stats
+    const total     = AttendanceState.participants.length;
+    const confirmed = AttendanceState.participants.filter(p => p.confirmed).length;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(51, 65, 85);
+    doc.text(`Total de participantes: ${total}   |   Confirmados: ${confirmed}   |   Pendentes: ${total - confirmed}`, mx, y);
+    y += 8;
+
+    // Table header
+    doc.setFillColor(30, 41, 59);
+    doc.rect(mx, y, cw, 8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text('#',        mx + 3,       y + 5.5);
+    doc.text('Nome',     mx + 10,      y + 5.5);
+    doc.text('Cargo',    mx + 70,      y + 5.5);
+    doc.text('E-mail',   mx + 110,     y + 5.5);
+    doc.text('Presença', pw - mx - 20, y + 5.5);
+    y += 10;
+
+    // Table rows
+    AttendanceState.participants.forEach((p, i) => {
+        if (y > ph - 25) { doc.addPage(); y = 18; }
+        if (i % 2 === 0) {
+            doc.setFillColor(248, 250, 252);
+            doc.rect(mx, y - 3, cw, 8, 'F');
+        }
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(30, 41, 59);
+        doc.text(String(i + 1),           mx + 3,       y + 2.5);
+        doc.text(p.name.slice(0, 28),     mx + 10,      y + 2.5);
+        doc.text((p.role  || '-').slice(0, 18), mx + 70, y + 2.5);
+        doc.text((p.email || '-').slice(0, 24), mx + 110, y + 2.5);
+        doc.text(p.confirmed ? 'Sim' : '-', pw - mx - 18, y + 2.5);
+        y += 8;
+    });
+
+    // Signature area
+    y += 12;
+    if (y > ph - 40) { doc.addPage(); y = 18; }
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    for (let s = 0; s < Math.min(3, total); s++) {
+        doc.line(mx + s * 60, y, mx + s * 60 + 50, y);
+        doc.setFontSize(7);
+        doc.setTextColor(148, 163, 184);
+        const p = AttendanceState.participants[s];
+        if (p) doc.text(p.name.slice(0, 20), mx + s * 60, y + 4);
+    }
+
+    // Footer
+    const fy = ph - 12;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.text('Lista gerada automaticamente pelo E-Transcriber.', mx, fy);
+
+    const safe = meetingTitle.toLowerCase().replace(/\s+/g, '_');
+    doc.save(`presencas_${safe}_${meetingDate}.pdf`);
+    showToast('Lista exportada em PDF!');
+    } catch (err) {
+        console.error('Erro ao exportar PDF:', err);
+        showToast('Erro ao exportar PDF. Verifique se a biblioteca está carregada.');
+    }
+}
+}
+
+// ==========================================================================
+// ATTENDANCE MODAL
+// ==========================================================================
+function openAttendanceModal() {
+    loadAttendanceState();
+    renderParticipantsTable();
+    document.getElementById('attendanceModal').classList.remove('hidden');
+    document.getElementById('ap-name').focus();
+}
+
+function closeAttendanceModal() {
+    document.getElementById('attendanceModal').classList.add('hidden');
+}
+
+// ==========================================================================
 // EVENT LISTENERS
 // ==========================================================================
 function setupMeetingEventListeners() {
@@ -684,7 +1252,7 @@ function setupMeetingEventListeners() {
     MeetingDOM.btnDownloadPdf.addEventListener('click', generateMeetingPDF);
     MeetingDOM.btnSaveMeeting.addEventListener('click', saveMeetingHistory);
 
-    // Historico Actions
+    // History
     MeetingDOM.searchMeetingHistory.addEventListener('input', e => renderMeetingHistory(e.target.value));
     MeetingDOM.btnClearMeetingHistory.addEventListener('click', () => {
         if (confirm('ATENÇÃO: Isto apagará TODO o histórico de reuniões. Confirmar?')) {
@@ -694,10 +1262,56 @@ function setupMeetingEventListeners() {
             showToast('Histórico limpo com sucesso.');
         }
     });
+
+    // QR Code
+    document.getElementById('btn-generate-qr')?.addEventListener('click', generateAttendanceQR);
+
+    // Attendance modal
+    document.getElementById('btn-show-attendance')?.addEventListener('click', openAttendanceModal);
+    document.getElementById('btn-attendance-modal-close')?.addEventListener('click', closeAttendanceModal);
+    document.getElementById('attendanceModal')?.addEventListener('click', e => {
+        if (e.target.id === 'attendanceModal') closeAttendanceModal();
+    });
+
+    // Add participant
+    document.getElementById('btn-add-participant')?.addEventListener('click', () => {
+        const name  = document.getElementById('ap-name').value.trim();
+        const role  = document.getElementById('ap-role').value.trim();
+        const email = document.getElementById('ap-email').value.trim();
+        if (!name) { showToast('Informe o nome do participante!'); return; }
+        addOrConfirmParticipant({ name, role, email, confirmed: false });
+        document.getElementById('ap-name').value  = '';
+        document.getElementById('ap-role').value  = '';
+        document.getElementById('ap-email').value = '';
+        document.getElementById('ap-name').focus();
+        showToast(`${name} adicionado(a)!`);
+    });
+
+    // Enter key on name field adds participant
+    document.getElementById('ap-name')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('btn-add-participant').click();
+    });
+
+    // Export buttons
+    document.getElementById('btn-export-attendance-excel')?.addEventListener('click', exportAttendanceExcel);
+    document.getElementById('btn-export-attendance-pdf')?.addEventListener('click', exportAttendancePDF);
+
+    // Clear attendance
+    document.getElementById('btn-clear-attendance')?.addEventListener('click', () => {
+        if (confirm('Apagar toda a lista de participantes desta sessão?')) {
+            AttendanceState.participants = [];
+            saveAttendanceState();
+            renderParticipantsTable();
+            showToast('Lista de participantes limpa.');
+        }
+    });
 }
 
 // Inicializar após carregamento completo
 window.addEventListener('DOMContentLoaded', () => {
-    // Timeout para garantir que app.js terminou seu init e funções base estão disponíveis (showToast, etc)
-    setTimeout(initMeetingModule, 100);
+    setTimeout(() => {
+        initMeetingModule();
+        loadAttendanceState();
+        handleQRCheckinParam();     // Handle ?checkin=TOKEN in URL
+    }, 100);
 });
