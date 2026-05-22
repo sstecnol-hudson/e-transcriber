@@ -754,6 +754,32 @@ const AttendanceState = {
 // ==========================================================================
 // QR CODE GENERATION
 // ==========================================================================
+
+// Função de diagnóstico (pode ser chamada no console do navegador)
+window.debugQRCode = function() {
+    const stored = JSON.parse(localStorage.getItem('etranscriber_qr_token') || 'null');
+    const now = Date.now();
+    
+    console.log('🔍 DIAGNÓSTICO DO QR CODE:');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📅 Agora:', new Date(now).toLocaleString('pt-BR'));
+    
+    if (!stored) {
+        console.log('❌ Nenhum QR Code gerado ainda');
+        return;
+    }
+    
+    console.log('📋 Token:', stored.token);
+    console.log('📝 Reunião:', stored.meetingTitle);
+    console.log('⏰ Expira em:', new Date(stored.expiresAt).toLocaleString('pt-BR'));
+    console.log('🕐 Timestamp de expiração:', stored.expiresAt);
+    console.log('🕐 Timestamp atual:', now);
+    console.log('⏱️ Diferença (ms):', stored.expiresAt - now);
+    console.log('⏱️ Minutos restantes:', Math.round((stored.expiresAt - now) / 1000 / 60));
+    console.log('✅ Válido?', now < stored.expiresAt ? 'SIM' : 'NÃO (EXPIRADO)');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+};
+
 function generateAttendanceQR() {
     console.log('🔍 Iniciando geração do QR Code...');
     console.log('ℹ️ NOTA: QR Code funciona SEM chave Groq - é funcionalidade local!');
@@ -783,18 +809,33 @@ function generateAttendanceQR() {
     console.log('📋 Dados da reunião:', { meetingDate, meetingEnd, meetingTitle });
 
     // Build expiry timestamp
+    // SEMPRE gera QR válido por pelo menos 4 horas a partir de AGORA
     let expiresAt;
+    const now = Date.now();
+    const fourHoursFromNow = now + 4 * 60 * 60 * 1000;
+    
     if (meetingDate && meetingEnd) {
-        expiresAt = new Date(`${meetingDate}T${meetingEnd}:00`).getTime();
-        if (isNaN(expiresAt) || expiresAt <= Date.now()) {
-            // fallback: +4h from now
-            expiresAt = Date.now() + 4 * 60 * 60 * 1000;
-            showToast('Horário de término inválido — QR expira em 4h.', 4000);
+        const meetingEndTime = new Date(`${meetingDate}T${meetingEnd}:00`).getTime();
+        
+        // Se o horário de término é válido E está no futuro, usa ele
+        // MAS garante que seja pelo menos 4h a partir de agora
+        if (!isNaN(meetingEndTime) && meetingEndTime > now) {
+            expiresAt = Math.max(meetingEndTime, fourHoursFromNow);
+            console.log('✅ QR expira no horário da reunião ou em 4h (o que for maior)');
+        } else {
+            // Horário já passou ou é inválido: usa 4h a partir de agora
+            expiresAt = fourHoursFromNow;
+            console.log('⚠️ Horário de término no passado/inválido — QR expira em 4h');
+            showToast('QR Code válido por 4 horas a partir de agora', 3000);
         }
     } else {
-        expiresAt = Date.now() + 4 * 60 * 60 * 1000;
-        showToast('Horário de término não definido — QR expira em 4h.', 4000);
+        // Sem horário definido: sempre 4h a partir de agora
+        expiresAt = fourHoursFromNow;
+        console.log('ℹ️ Horário não definido — QR expira em 4h');
+        showToast('QR Code válido por 4 horas', 3000);
     }
+    
+    console.log('⏰ QR Code expira em:', new Date(expiresAt).toLocaleString('pt-BR'));
 
     const token = 'qr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
     AttendanceState.currentQRToken = { token, expiresAt, meetingTitle };
@@ -1015,16 +1056,33 @@ function updateQRExpireDisplay(expiresAt) {
     const el = document.getElementById('qrExpireInfo');
     if (!el) return;
     const now = Date.now();
+    
+    console.log('🕐 Atualizando display de expiração:', {
+        now: new Date(now).toLocaleString('pt-BR'),
+        expiresAt: new Date(expiresAt).toLocaleString('pt-BR'),
+        expired: now >= expiresAt,
+        minutesRemaining: Math.round((expiresAt - now) / 1000 / 60)
+    });
+    
     if (now >= expiresAt) {
         el.innerHTML = '<span style="color:#ef4444;">⏰ QR Code expirado</span>';
         clearInterval(AttendanceState.qrExpiryInterval);
     } else {
-        el.innerHTML = `⏱ Válido até: <strong>${formatExpiry(expiresAt)}</strong>`;
+        const minutesRemaining = Math.round((expiresAt - now) / 1000 / 60);
+        el.innerHTML = `⏱ Válido até: <strong>${formatExpiry(expiresAt)}</strong> (${minutesRemaining} min restantes)`;
     }
 }
 
 function formatExpiry(ts) {
-    return new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const date = new Date(ts);
+    const formatted = date.toLocaleString('pt-BR', { 
+        day: '2-digit', 
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
+    return formatted;
 }
 
 // ==========================================================================
@@ -1046,11 +1104,28 @@ function handleQRCheckinParam() {
     let stored;
     try { stored = JSON.parse(localStorage.getItem('etranscriber_qr_token')); } catch { stored = null; }
 
+    console.log('🔍 Validando check-in:', {
+        token: token,
+        stored: stored,
+        tokenMatch: stored?.token === token,
+        now: Date.now(),
+        expiresAt: stored?.expiresAt,
+        expired: stored ? Date.now() > stored.expiresAt : 'N/A',
+        timeUntilExpiry: stored ? Math.round((stored.expiresAt - Date.now()) / 1000 / 60) + ' minutos' : 'N/A'
+    });
+
     if (!stored || stored.token !== token || Date.now() > stored.expiresAt) {
+        console.error('❌ Check-in inválido:', {
+            noStored: !stored,
+            tokenMismatch: stored?.token !== token,
+            expired: stored ? Date.now() > stored.expiresAt : false
+        });
         content.classList.add('hidden');
         expired.classList.remove('hidden');
         return;
     }
+    
+    console.log('✅ Check-in válido!');
 
     // Wire confirm button
     document.getElementById('btn-confirm-checkin').addEventListener('click', () => {
