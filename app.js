@@ -2029,5 +2029,50 @@ function setupEventListeners() {
     });
 }
 
+// ============================================================================
+// INTEGRAÇÃO COM QUALIFICADOR
+// ============================================================================
+
+/**
+ * Manipulador para o botão "Qualificar para Encaminhamento"
+ */
+function handleQualifyClick() {
+  console.log('🔵 Botão Qualificar clicado');
+  
+  // Obter dados do prontuário
+  const prontuarioText = document.getElementById('outputRecord')?.value || '';
+  const patientName = document.getElementById('patientName')?.value || 'Paciente';
+  const patientAge = document.getElementById('patientAge')?.value || '';
+  const specialty = document.getElementById('doctorSpecialty')?.value || '';
+  
+  if (!prontuarioText) {
+    alert('Por favor, gere um prontuário primeiro');
+    return;
+  }
+  
+  // Criar objeto de prontuário
+  const prontuario = {
+    patientId: 'patient_' + Date.now(),
+    patientName: patientName,
+    patientAge: patientAge,
+    specialty: specialty,
+    text: prontuarioText,
+    timestamp: new Date().toISOString()
+  };
+  
+  console.log('📋 Prontuário:', prontuario);
+  
+  // Chamar função de abertura do modal
+  if (typeof openQualificationModal === 'function') {
+    openQualificationModal(prontuario);
+  } else {
+    console.error('❌ Função openQualificationModal não encontrada');
+    alert('Erro: Módulo de qualificação não carregado');
+  }
+}
+
+// Exportar função globalmente
+window.handleQualifyClick = handleQualifyClick;
+
 // Inicializar ao carregar a página
 window.addEventListener('DOMContentLoaded', init);

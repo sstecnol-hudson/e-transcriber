@@ -2,9 +2,9 @@
 
 ## 🎉 PROJETO COMPLETO E FUNCIONAL
 
-Data: 21/05/2026  
-Versão: 1.2  
-Status: **PRONTO PARA PRODUÇÃO**
+Data: 23/05/2026  
+Versão: 1.3  
+Status: **PRONTO PARA PRODUÇÃO** (com módulo Qualificador integrado)
 
 ---
 
@@ -15,6 +15,7 @@ Status: **PRONTO PARA PRODUÇÃO**
 - [x] Transcrição via Groq Whisper
 - [x] Estruturação com IA (SOAP, Anamnese, Evolução, Orientação)
 - [x] Geração de prontuários
+- [x] **Qualificador de Encaminhamentos Médicos** (Endocrinologia, Cardiologia, Reumatologia)
 - [x] Mensagens para pacientes
 - [x] Exportação em PDF
 - [x] Compartilhamento via WhatsApp
@@ -75,6 +76,30 @@ Status: **PRONTO PARA PRODUÇÃO**
 - [x] README com instruções
 - [x] Comentários no código
 - [x] Exemplos práticos
+- [x] Documentação do Qualificador em `docs/qualificador/`
+
+### ✅ Qualificador de Encaminhamentos (v1.3)
+- [x] Protocolos clínicos: Endocrinologia, Cardiologia, Reumatologia
+- [x] Motor de elegibilidade (`EligibilityEngine`)
+- [x] Modal de seleção de especialidade
+- [x] Questionário dinâmico com auto-save
+- [x] Extração de dados da transcrição/prontuário
+- [x] Relatórios e histórico (localStorage)
+- [x] Botão "Qualificar para Encaminhamento" no prontuário
+- [x] **309 testes Jest** (`npm test`)
+
+**Fluxo manual:** Gerar prontuário → clicar em Qualificar → escolher especialidade → ver resultado.
+
+---
+
+## 🧪 Testes automatizados
+
+```bash
+npm install
+npm test
+```
+
+Suítes: lógica (node) + UI do qualificador (jsdom). Ver `package.json`.
 
 ---
 
@@ -237,6 +262,8 @@ Clique no botão **?** no canto superior direito para acessar o manual interativ
 - **TESTE-QRCODE.md** - Guia de teste do QR Code
 - **README.md** - Instruções de execução
 - **STATUS-FINAL.md** - Este arquivo
+- **docs/qualificador/** - Guias do módulo de qualificação
+- **modules/qualification/README.md** - Referência técnica do módulo
 
 ---
 
@@ -302,6 +329,6 @@ O **E-Transcriber** é um sistema completo, funcional e pronto para uso em produ
 
 *Desenvolvido com ❤️ para profissionais de saúde e empresas*
 
-**Última atualização:** 21/05/2026  
-**Versão:** 1.2  
+**Última atualização:** 23/05/2026  
+**Versão:** 1.3  
 **Autor:** Kiro AI Assistant

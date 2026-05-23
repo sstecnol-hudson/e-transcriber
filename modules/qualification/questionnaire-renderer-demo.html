@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Questionnaire Renderer Demo</title>
+    <link rel="stylesheet" href="questionnaire-styles.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        #questionnaire-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-height: 600px;
+            overflow-y: auto;
+            margin-bottom: 30px;
+        }
+
+        .output {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .output h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .output-content {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            color: #333;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .specialty-selector {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .specialty-btn {
+            padding: 10px 20px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .specialty-btn:hover {
+            border-color: #667eea;
+            background: #f3f4f6;
+        }
+
+        .specialty-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .info-box {
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            color: #166534;
+        }
+
+        .error-box {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            color: #991b1b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Questionnaire Renderer Demo</h1>
+            <p>Interactive demonstration of the questionnaire renderer with different question types</p>
+
+            <div class="specialty-selector">
+                <button class="specialty-btn active" onclick="loadQuestionnaire('endocrinologia')">
+                    🩺 Endocrinologia
+                </button>
+                <button class="specialty-btn" onclick="loadQuestionnaire('cardiologia')">
+                    ❤️ Cardiologia
+                </button>
+                <button class="specialty-btn" onclick="loadQuestionnaire('reumatologia')">
+                    🦴 Reumatologia
+                </button>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-primary" onclick="validateQuestionnaire()">
+                    ✓ Validar
+                </button>
+                <button class="btn btn-success" onclick="submitQuestionnaire()">
+                    ✓ Enviar
+                </button>
+                <button class="btn btn-secondary" onclick="resetQuestionnaire()">
+                    ↻ Limpar
+                </button>
+                <button class="btn btn-secondary" onclick="saveQuestionnaire()">
+                    💾 Salvar
+                </button>
+                <button class="btn btn-secondary" onclick="loadSavedQuestionnaire()">
+                    📂 Carregar
+                </button>
+                <button class="btn btn-danger" onclick="clearSavedQuestionnaire()">
+                    🗑️ Limpar Salvo
+                </button>
+            </div>
+        </div>
+
+        <div id="questionnaire-container"></div>
+
+        <div class="output">
+            <h3>📊 Respostas e Status</h3>
+            <div class="output-content" id="output">
+                Carregando questionário...
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="questionnaire-renderer.js"></script>
+    <script>
+        let renderer = null;
+        let currentSpecialty = 'endocrinologia';
+        let protocols = {};
+
+        // Initialize
+        async function initialize() {
+            log('🔄 Inicializando...');
+
+            // Load protocols
+            try {
+                const specialties = ['endocrinologia', 'cardiologia', 'reumatologia'];
+                for (const specialty of specialties) {
+                    const response = await fetch(`./data/protocol-${specialty}.json`);
+                    if (response.ok) {
+                        protocols[specialty] = await response.json();
+                        log(`✅ Protocolo carregado: ${specialty}`);
+                    }
+                }
+            } catch (error) {
+                log(`❌ Erro ao carregar protocolos: ${error.message}`);
+            }
+
+            // Create renderer
+            renderer = new QuestionnaireRenderer({
+                containerId: 'questionnaire-container',
+                autoSave: true,
+                debounceDelay: 500,
+                onResponseChange: (questionId, value) => {
+                    log(`📝 Resposta alterada: ${questionId} = ${JSON.stringify(value)}`);
+                    updateOutput();
+                },
+                onValidationChange: (isValid, errors) => {
+                    if (isValid) {
+                        log('✅ Questionário válido');
+                    } else {
+                        log(`⚠️ Erros de validação: ${Object.keys(errors).length}`);
+                    }
+                }
+            });
+
+            // Load initial questionnaire
+            loadQuestionnaire('endocrinologia');
+        }
+
+        function loadQuestionnaire(specialty) {
+            log(`🔄 Carregando questionário: ${specialty}`);
+
+            if (!protocols[specialty]) {
+                log(`❌ Protocolo não encontrado: ${specialty}`);
+                return;
+            }
+
+            currentSpecialty = specialty;
+
+            // Update button states
+            document.querySelectorAll('.specialty-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Render questionnaire
+            const questionnaire = protocols[specialty].questionnaire;
+            renderer.render(questionnaire);
+
+            log(`✅ Questionário carregado: ${specialty}`);
+            log(`📋 Seções: ${questionnaire.sections.length}`);
+            log(`❓ Perguntas: ${questionnaire.sections.reduce((sum, s) => sum + s.questions.length, 0)}`);
+
+            updateOutput();
+        }
+
+        function validateQuestionnaire() {
+            log('🔍 Validando questionário...');
+
+            const result = renderer.validateAll();
+
+            if (result.valid) {
+                log('✅ Questionário válido!');
+                showStatus('Questionário válido!', 'success');
+            } else {
+                log(`❌ Erros encontrados: ${Object.keys(result.errors).length}`);
+                Object.entries(result.errors).forEach(([questionId, error]) => {
+                    log(`  • ${questionId}: ${error}`);
+                });
+                showStatus(`${Object.keys(result.errors).length} erro(s) encontrado(s)`, 'error');
+                renderer.scrollToFirstError();
+            }
+
+            updateOutput();
+        }
+
+        function submitQuestionnaire() {
+            log('📤 Enviando questionário...');
+
+            const result = renderer.validateAll();
+
+            if (!result.valid) {
+                log('❌ Não é possível enviar: existem erros de validação');
+                showStatus('Corrija os erros antes de enviar', 'error');
+                return;
+            }
+
+            const responses = renderer.getResponses();
+            log('✅ Questionário enviado com sucesso!');
+            log(`📊 Total de respostas: ${Object.keys(responses).length}`);
+            showStatus('Questionário enviado com sucesso!', 'success');
+
+            updateOutput();
+        }
+
+        function resetQuestionnaire() {
+            log('↻ Limpando questionário...');
+            renderer.reset();
+            log('✅ Questionário limpo');
+            showStatus('Questionário limpo', 'info');
+            updateOutput();
+        }
+
+        function saveQuestionnaire() {
+            log('💾 Salvando questionário...');
+            renderer.saveState();
+            log('✅ Questionário salvo em localStorage');
+            showStatus('Questionário salvo', 'success');
+        }
+
+        function loadSavedQuestionnaire() {
+            log('📂 Carregando questionário salvo...');
+            const state = renderer.loadState();
+
+            if (!state) {
+                log('❌ Nenhum questionário salvo encontrado');
+                showStatus('Nenhum questionário salvo', 'error');
+                return;
+            }
+
+            renderer.setResponses(state.responses);
+            log('✅ Questionário carregado do localStorage');
+            log(`📊 Respostas restauradas: ${Object.keys(state.responses).length}`);
+            showStatus('Questionário carregado', 'success');
+            updateOutput();
+        }
+
+        function clearSavedQuestionnaire() {
+            log('🗑️ Limpando questionário salvo...');
+            renderer.clearState();
+            log('✅ Questionário salvo foi removido');
+            showStatus('Questionário salvo removido', 'info');
+        }
+
+        function updateOutput() {
+            const responses = renderer.getResponses();
+            const errors = renderer.validationErrors;
+
+            let output = '📝 RESPOSTAS ATUAIS:\n';
+            output += '═'.repeat(50) + '\n\n';
+
+            if (Object.keys(responses).length === 0) {
+                output += '(Nenhuma resposta ainda)\n';
+            } else {
+                Object.entries(responses).forEach(([questionId, value]) => {
+                    output += `${questionId}: ${JSON.stringify(value)}\n`;
+                });
+            }
+
+            output += '\n' + '═'.repeat(50) + '\n';
+            output += '⚠️ ERROS DE VALIDAÇÃO:\n';
+            output += '═'.repeat(50) + '\n\n';
+
+            if (Object.keys(errors).length === 0) {
+                output += '(Nenhum erro)\n';
+            } else {
+                Object.entries(errors).forEach(([questionId, error]) => {
+                    output += `${questionId}: ${error}\n`;
+                });
+            }
+
+            output += '\n' + '═'.repeat(50) + '\n';
+            output += '📊 ESTATÍSTICAS:\n';
+            output += '═'.repeat(50) + '\n\n';
+            output += `Total de respostas: ${Object.keys(responses).length}\n`;
+            output += `Total de erros: ${Object.keys(errors).length}\n`;
+            output += `Scroll position: ${renderer.lastScrollPosition}px\n`;
+
+            document.getElementById('output').textContent = output;
+        }
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString('pt-BR');
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        function showStatus(message, type) {
+            const output = document.getElementById('output');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status status-${type}`;
+            statusDiv.textContent = message;
+
+            // Insert at top of output
+            const firstChild = output.firstChild;
+            if (firstChild) {
+                output.insertBefore(statusDiv, firstChild);
+            } else {
+                output.appendChild(statusDiv);
+            }
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                statusDiv.remove();
+            }, 3000);
+        }
+
+        // Initialize on load
+        window.addEventListener('load', initialize);
+    </script>
+</body>
+</html>

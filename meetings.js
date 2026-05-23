@@ -106,6 +106,12 @@ const MeetingDOM = {
 // INICIALIZAÇÃO
 // ==========================================================================
 function initMeetingModule() {
+    // Verificar se os elementos de reunião existem (podem ter sido removidos)
+    if (!document.getElementById('tab-reunioes')) {
+        console.warn('⚠️ Módulo de Reuniões desabilitado - aba não encontrada');
+        return;
+    }
+    
     try { MeetingState.history = JSON.parse(localStorage.getItem('etranscriber_meetings_history')) || []; } catch { MeetingState.history = []; }
     setupMeetingEventListeners();
     drawMeetingStaticWaveform();
@@ -1499,6 +1505,12 @@ function closeAttendanceModal() {
 // EVENT LISTENERS
 // ==========================================================================
 function setupMeetingEventListeners() {
+    // Verificar se os elementos existem antes de adicionar listeners
+    if (!MeetingDOM.btnModeRecord || !MeetingDOM.btnModeUpload) {
+        console.warn('⚠️ Elementos de reunião não encontrados - listeners não configurados');
+        return;
+    }
+    
     MeetingDOM.btnModeRecord.addEventListener('click', () => setMeetingAudioMode('record'));
     MeetingDOM.btnModeUpload.addEventListener('click', () => setMeetingAudioMode('upload'));
 

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Carregamento de Protocolos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #6366f1;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #6366f1;
+            border-radius: 4px;
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #6366f1;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .protocol-info {
+            background: white;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        button {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px 5px 5px 0;
+        }
+        button:hover {
+            background: #4f46e5;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste de Carregamento de Protocolos</h1>
+        
+        <div class="test-section">
+            <h2>1. Status de Inicialização</h2>
+            <div id="init-status" class="status loading">⏳ Aguardando inicialização...</div>
+            <button onclick="testInitialization()">Testar Inicialização</button>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Protocolos Carregados</h2>
+            <div id="protocols-status" class="status loading">⏳ Aguardando...</div>
+            <div id="protocols-info" class="protocol-info"></div>
+            <button onclick="testProtocols()">Testar Protocolos</button>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Fluxo Completo</h2>
+            <p>Selecione uma especialidade para testar o fluxo completo:</p>
+            <button onclick="testFlow('endocrinologia')">Testar Endocrinologia</button>
+            <button onclick="testFlow('cardiologia')">Testar Cardiologia</button>
+            <button onclick="testFlow('reumatologia')">Testar Reumatologia</button>
+            <div id="flow-status" class="status loading" style="display:none;">⏳ Testando...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Console de Debug</h2>
+            <div id="debug-log" class="log"></div>
+            <button onclick="clearLog()">Limpar Log</button>
+        </div>
+    </div>
+
+    <!-- Carregar módulos de qualificação -->
+    <script src="modules/qualification/qualification.js"></script>
+    <script src="modules/qualification/eligibility-engine.js"></script>
+    <script src="modules/qualification/report-generator.js"></script>
+    <script src="modules/qualification/history-manager.js"></script>
+    <script src="modules/qualification/qualification-integration.js"></script>
+    <script src="modules/qualification/qualification-integration-platform.js"></script>
+
+    <script>
+        // Interceptar console.log para debug
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        function addLog(message, type = 'log') {
+            const logDiv = document.getElementById('debug-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'warn' ? '#ffd93d' : '#00ff00';
+            logDiv.innerHTML += `<div style="color: ${color};">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog(...args);
+            addLog(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError(...args);
+            addLog('❌ ' + args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalWarn(...args);
+            addLog('⚠️ ' + args.join(' '), 'warn');
+        };
+
+        function clearLog() {
+            document.getElementById('debug-log').innerHTML = '';
+        }
+
+        async function testInitialization() {
+            const statusDiv = document.getElementById('init-status');
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = '⏳ Testando inicialização...';
+            
+            try {
+                console.log('🔵 Iniciando teste de inicialização...');
+                
+                if (!qualificationSystem) {
+                    console.log('📋 qualificationSystem não existe, inicializando...');
+                    qualificationSystem = await initializeQualificationSystem();
+                } else {
+                    console.log('✅ qualificationSystem já existe');
+                }
+                
+                console.log('✅ Sistema inicializado:', !!qualificationSystem);
+                console.log('📋 Protocolos disponíveis:', Object.keys(qualificationSystem.protocols || {}));
+                
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✅ Sistema inicializado com sucesso!';
+            } catch (error) {
+                console.error('❌ Erro ao inicializar:', error);
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ Erro: ' + error.message;
+            }
+        }
+
+        async function testProtocols() {
+            const statusDiv = document.getElementById('protocols-status');
+            const infoDiv = document.getElementById('protocols-info');
+            
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = '⏳ Testando protocolos...';
+            infoDiv.innerHTML = '';
+            
+            try {
+                console.log('🔵 Testando protocolos...');
+                
+                if (!qualificationSystem) {
+                    console.log('📋 Inicializando sistema...');
+                    qualificationSystem = await initializeQualificationSystem();
+                }
+                
+                const specialties = ['endocrinologia', 'cardiologia', 'reumatologia'];
+                let allLoaded = true;
+                
+                for (const specialty of specialties) {
+                    const protocol = qualificationSystem.protocols[specialty];
+                    if (protocol) {
+                        console.log(`✅ Protocolo carregado: ${specialty}`);
+                        infoDiv.innerHTML += `<div><strong>${specialty}:</strong> ${JSON.stringify(protocol).substring(0, 100)}...</div>`;
+                    } else {
+                        console.error(`❌ Protocolo não carregado: ${specialty}`);
+                        infoDiv.innerHTML += `<div style="color: red;"><strong>${specialty}:</strong> NÃO CARREGADO</div>`;
+                        allLoaded = false;
+                    }
+                }
+                
+                if (allLoaded) {
+                    statusDiv.className = 'status success';
+                    statusDiv.textContent = '✅ Todos os protocolos carregados!';
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = '❌ Alguns protocolos não foram carregados';
+                }
+            } catch (error) {
+                console.error('❌ Erro ao testar protocolos:', error);
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ Erro: ' + error.message;
+            }
+        }
+
+        async function testFlow(specialty) {
+            const statusDiv = document.getElementById('flow-status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = `⏳ Testando fluxo para ${specialty}...`;
+            
+            try {
+                console.log(`🔵 Testando fluxo para ${specialty}...`);
+                
+                if (!qualificationSystem) {
+                    console.log('📋 Inicializando sistema...');
+                    qualificationSystem = await initializeQualificationSystem();
+                }
+                
+                // Criar prontuário de teste
+                const testProntuario = {
+                    patientId: 'test_' + Date.now(),
+                    patientName: 'Paciente Teste',
+                    age: 45,
+                    gender: 'M',
+                    medicalHistory: 'Histórico de teste'
+                };
+                
+                console.log('📋 Prontuário de teste:', testProntuario);
+                
+                // Iniciar qualificação
+                const session = qualificationSystem.startQualification(
+                    testProntuario.patientId,
+                    specialty,
+                    testProntuario
+                );
+                
+                console.log('✅ Sessão iniciada:', session);
+                
+                statusDiv.className = 'status success';
+                statusDiv.textContent = `✅ Fluxo iniciado com sucesso para ${specialty}!`;
+                
+                // Mostrar informações da sessão
+                console.log('📋 ID da Sessão:', session.sessionId);
+                console.log('📋 Especialidade:', session.specialty);
+                console.log('📋 Questionário:', session.questionnaire);
+                
+            } catch (error) {
+                console.error(`❌ Erro ao testar fluxo para ${specialty}:`, error);
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `❌ Erro: ${error.message}`;
+            }
+        }
+
+        // Inicializar automaticamente quando a página carregar
+        window.addEventListener('load', async () => {
+            console.log('🔵 Página carregada, iniciando testes automáticos...');
+            await testInitialization();
+        });
+    </script>
+</body>
+</html>

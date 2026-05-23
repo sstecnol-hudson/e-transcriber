@@ -1,0 +1,62 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║                    🧪 TESTE DE ESPECIALIDADE 🧪                          ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+PROBLEMA:
+Quando seleciona a especialidade, nada acontece.
+
+CAUSA POSSÍVEL:
+qualificationSystem pode não estar carregado globalmente.
+
+SOLUÇÃO:
+
+1. Recarregue a página (Ctrl + F5)
+2. Abra o Console (F12)
+3. Procure por mensagens de debug:
+   - "✅ Módulo de Qualificação inicializado com sucesso"
+   - "🔵 Abrindo modal de especialidade"
+   - "✅ Especialidade selecionada: [especialidade]"
+
+4. Se ver erros vermelhos, copie e compartilhe comigo
+
+═══════════════════════════════════════════════════════════════════════════════
+
+TESTE PASSO A PASSO:
+
+1. Abra http://localhost:8080
+2. Abra o Console (F12)
+3. Gere um prontuário
+4. Clique em "Qualificar para Encaminhamento"
+5. Procure por: "🔵 Abrindo modal de especialidade"
+6. Clique em uma especialidade
+7. Procure por: "✅ Especialidade selecionada: [especialidade]"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+MENSAGENS ESPERADAS NO CONSOLE:
+
+✅ Módulo de Qualificação inicializado com sucesso
+🔵 Botão Qualificar clicado
+🔵 Abrindo modal de especialidade
+📋 Especialidades: [...]
+✅ Modal de especialidade criado
+🔍 Encontradas 3 cards de especialidade
+✅ Especialidade selecionada: [especialidade]
+🔵 Iniciando fluxo de qualificação
+✅ Sessão iniciada: {...}
+
+═══════════════════════════════════════════════════════════════════════════════
+
+SE NÃO FUNCIONAR:
+
+1. Verifique se há erros vermelhos no Console
+2. Copie os erros
+3. Compartilhe comigo
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Tudo pronto! 🎉
+
+═══════════════════════════════════════════════════════════════════════════════

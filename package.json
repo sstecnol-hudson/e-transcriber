@@ -1,0 +1,40 @@
+{
+  "name": "e-transciber-plus",
+  "version": "1.0.0",
+  "description": "E-Transcriber+ - Plataforma de Gestão Clínica Integrada",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/modules/**/*.test.js"
+    ],
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/modules/**/*.test.js"
+    ],
+    "projects": [
+      {
+        "displayName": "node",
+        "testEnvironment": "node",
+        "testMatch": [
+          "**/modules/**/!(modal-component|questionnaire-renderer).test.js"
+        ]
+      },
+      {
+        "displayName": "jsdom",
+        "testEnvironment": "jsdom",
+        "testMatch": [
+          "**/modules/**/modal-component.test.js",
+          "**/modules/**/questionnaire-renderer.test.js"
+        ]
+      }
+    ]
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}

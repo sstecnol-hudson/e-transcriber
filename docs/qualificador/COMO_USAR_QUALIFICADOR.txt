@@ -1,0 +1,191 @@
+================================================================================
+                    COMO USAR O QUALIFICADOR AUTOMÁTICO
+================================================================================
+
+🎯 OBJETIVO
+-----------
+Qualificar automaticamente pacientes para encaminhamento a especialistas
+sem necessidade de responder questionários.
+
+================================================================================
+                    PASSO A PASSO
+================================================================================
+
+PASSO 1: Gerar Prontuário
+─────────────────────────
+1. Abra http://localhost:8000/index.html
+2. Preencha os dados do paciente:
+   - Nome do Paciente
+   - Idade / Data de Nascimento
+   - Especialidade / Tipo de Atendimento
+3. Grave ou envie o áudio da consulta
+4. Clique em "Estruturar com IA"
+5. Aguarde o prontuário ser gerado
+
+PASSO 2: Qualificar para Encaminhamento
+────────────────────────────────────────
+1. Após o prontuário ser gerado, clique em:
+   "Qualificar para Encaminhamento"
+
+PASSO 3: Selecionar Especialidade
+──────────────────────────────────
+1. Um modal aparecerá com 3 opções:
+   - 🩺 Endocrinologia
+   - ❤️ Cardiologia
+   - 🦴 Reumatologia
+
+2. Clique na especialidade desejada
+
+PASSO 4: Resultado Automático
+──────────────────────────────
+1. O sistema analisará automaticamente os dados
+2. Um resultado aparecerá com:
+   - Status: ✅ Qualificado / ⚠️ Não Qualificado / 🚨 Urgência
+   - Achados Relevantes
+   - Recomendação de Ação
+
+PASSO 5: Baixar Resumo (Opcional)
+──────────────────────────────────
+1. Clique em "Baixar Resumo"
+2. Um arquivo de texto será baixado com o resultado
+
+================================================================================
+                    ENTENDENDO OS RESULTADOS
+================================================================================
+
+✅ QUALIFICADO
+──────────────
+Significado: Paciente atende aos critérios para encaminhamento
+Ação: Encaminhar para especialista
+
+⚠️ NÃO QUALIFICADO
+──────────────────
+Significado: Paciente não atende aos critérios
+Ação: Manter acompanhamento na clínica geral
+
+🚨 URGÊNCIA
+───────────
+Significado: Paciente apresenta sintomas graves
+Ação: Encaminhar com prioridade para especialista
+
+================================================================================
+                    CRITÉRIOS POR ESPECIALIDADE
+================================================================================
+
+ENDOCRINOLOGIA
+──────────────
+✅ Qualificado se mencionar:
+   - Diabetes
+   - Glicose alterada
+   - Insulina
+   - Problemas metabólicos
+
+🚨 Urgência se mencionar:
+   - Alterações metabólicas graves
+   - Descompensação diabética
+
+CARDIOLOGIA
+───────────
+✅ Qualificado se mencionar:
+   - Pressão alta
+   - Hipertensão
+   - Problemas cardíacos
+   - Arritmia
+
+🚨 Urgência se mencionar:
+   - Infarto
+   - Angina
+   - Falta de ar (dispneia)
+
+REUMATOLOGIA
+────────────
+✅ Qualificado se mencionar:
+   - Artrite
+   - Artrose
+   - Problemas nas articulações
+   - Lúpus
+   - Inflamação
+
+🚨 Urgência se mencionar:
+   - Dor articular intensa
+
+================================================================================
+                    DICAS IMPORTANTES
+================================================================================
+
+1. DADOS COMPLETOS
+   └─ Quanto mais detalhes no prontuário, melhor a análise
+
+2. LINGUAGEM MÉDICA
+   └─ Use termos médicos corretos para melhor reconhecimento
+
+3. ESPECIALIDADE CORRETA
+   └─ Selecione a especialidade apropriada para o caso
+
+4. REVISAR RESULTADO
+   └─ Sempre revise o resultado antes de encaminhar
+
+5. DOCUMENTAÇÃO
+   └─ Baixe o resumo para manter registro
+
+================================================================================
+                    EXEMPLOS DE USO
+================================================================================
+
+EXEMPLO 1: Paciente com Diabetes
+─────────────────────────────────
+Prontuário: "Paciente com diabetes tipo 2, glicose em jejum 180 mg/dL..."
+Especialidade: Endocrinologia
+Resultado: ✅ QUALIFICADO
+Recomendação: Encaminhar para avaliação endocrinológica
+
+EXEMPLO 2: Paciente com Hipertensão
+────────────────────────────────────
+Prontuário: "Paciente com pressão arterial 160/100 mmHg..."
+Especialidade: Cardiologia
+Resultado: ✅ QUALIFICADO
+Recomendação: Encaminhar para avaliação cardiológica
+
+EXEMPLO 3: Paciente com Dor Articular
+──────────────────────────────────────
+Prontuário: "Paciente com dor nas articulações, suspeita de artrite..."
+Especialidade: Reumatologia
+Resultado: ✅ QUALIFICADO
+Recomendação: Encaminhar para avaliação reumatológica
+
+================================================================================
+                    TROUBLESHOOTING
+================================================================================
+
+❌ PROBLEMA: Resultado não aparece
+──────────────────────────────────
+Solução:
+1. Verifique se o prontuário foi gerado corretamente
+2. Verifique se selecionou uma especialidade
+3. Abra o console (F12) e procure por erros
+4. Recarregue a página
+
+❌ PROBLEMA: Resultado incorreto
+────────────────────────────────
+Solução:
+1. Verifique se os dados do prontuário estão corretos
+2. Verifique se selecionou a especialidade correta
+3. Revise os critérios de qualificação
+
+❌ PROBLEMA: Não consegue baixar resumo
+───────────────────────────────────────
+Solução:
+1. Verifique as configurações de download do navegador
+2. Tente novamente
+3. Verifique se há espaço em disco
+
+================================================================================
+                    SUPORTE
+================================================================================
+
+Para mais informações, consulte:
+- QUALIFICADOR_AUTOMATICO.md (documentação técnica)
+- RESUMO_VISUAL.txt (resumo visual)
+- Console do navegador (F12) para mensagens de debug
+
+================================================================================

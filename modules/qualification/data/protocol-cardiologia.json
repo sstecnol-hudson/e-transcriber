@@ -1,0 +1,238 @@
+{
+  "id": "cardiologia",
+  "name": "Cardiologia - Hipertensão Arterial Crônica",
+  "description": "Protocolo para qualificação de pacientes com Hipertensão Arterial Crônica para encaminhamento a Cardiologia",
+  "version": "1.0",
+  "lastUpdated": "2024-01-01",
+  "specialty": "Cardiologia",
+  "focus": "Hipertensão Arterial Crônica",
+
+  "questionnaire": {
+    "sections": [
+      {
+        "id": "elegibilidade",
+        "title": "Filtros de Elegibilidade",
+        "description": "Responda as perguntas abaixo para determinar se o paciente é elegível",
+        "questions": [
+          {
+            "id": "filter_1",
+            "text": "Paciente usa 3 ou mais anti-hipertensivos em doses máximas com PA > 140/90 mmHg?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.blood_pressure",
+            "hint": "Hipertensão Resistente"
+          },
+          {
+            "id": "filter_2",
+            "text": "Suspeita de Hipertensão Secundária (idade < 30 com HAS súbita/grave)?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.age",
+            "hint": "Investigar causa secundária"
+          },
+          {
+            "id": "filter_3",
+            "text": "Histórico de IAM, AVC recente ou IC com piora?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.medical_history",
+            "hint": "Lesão em órgão-alvo"
+          },
+          {
+            "id": "filter_4",
+            "text": "PA > 160/100 mmHg persistente apesar de tratamento?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.blood_pressure",
+            "hint": "Controle inadequado"
+          },
+          {
+            "id": "filter_5",
+            "text": "Paciente com proteinúria ou redução de TFG?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.lab_results",
+            "hint": "Se NÃO, falha elegibilidade"
+          }
+        ]
+      },
+      {
+        "id": "sinais_alerta",
+        "title": "Sinais de Alerta (Urgência)",
+        "description": "Marque se o paciente apresenta algum dos sinais de alerta abaixo",
+        "questions": [
+          {
+            "id": "alert_1",
+            "text": "PA ≥ 180/120 mmHg com dor no peito, falta de ar aguda ou dor de cabeça súbita?",
+            "type": "boolean",
+            "required": true,
+            "hint": "Emergência Hipertensiva - Encaminhar para PS"
+          },
+          {
+            "id": "alert_2",
+            "text": "PA ≥ 180/120 mmHg com perda de movimentos ou fala?",
+            "type": "boolean",
+            "required": true,
+            "hint": "Possível AVC - Encaminhar para PS"
+          },
+          {
+            "id": "alert_3",
+            "text": "PA ≥ 180/120 mmHg com edema pulmonar?",
+            "type": "boolean",
+            "required": true,
+            "hint": "Insuficiência Cardíaca Aguda - Encaminhar para PS"
+          },
+          {
+            "id": "alert_4",
+            "text": "Outro sinal de alerta não listado acima?",
+            "type": "text",
+            "required": false,
+            "hint": "Descreva brevemente"
+          }
+        ]
+      },
+      {
+        "id": "exames",
+        "title": "Checklist de Exames Obrigatórios",
+        "description": "Confirme o status de cada exame obrigatório",
+        "questions": [
+          {
+            "id": "exam_ecg",
+            "text": "Eletrocardiograma (ECG) de repouso - últimos 6 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_creatinina",
+            "text": "Creatinina e Potássio sérico - últimos 3 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_eas",
+            "text": "Exame de Urina Simples (EAS) - últimos 6 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_rx_torax",
+            "text": "Raio-X de Tórax - últimos 12 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_mapa",
+            "text": "MAPA 24h ou MRPA (desejável) - últimos 12 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          }
+        ]
+      }
+    ]
+  },
+
+  "eligibilityFilters": [
+    {
+      "id": "filter_1",
+      "question": "Paciente usa 3+ anti-hipertensivos em doses máximas com PA > 140/90?",
+      "type": "qualification_criteria",
+      "logic": "if_yes_then_qualified"
+    },
+    {
+      "id": "filter_2",
+      "question": "Suspeita de Hipertensão Secundária?",
+      "type": "qualification_criteria",
+      "logic": "if_yes_then_qualified"
+    },
+    {
+      "id": "filter_3",
+      "question": "Histórico de IAM, AVC recente ou IC com piora?",
+      "type": "qualification_criteria",
+      "logic": "if_yes_then_qualified"
+    },
+    {
+      "id": "filter_4",
+      "question": "PA > 160/100 persistente apesar de tratamento?",
+      "type": "qualification_criteria",
+      "logic": "if_yes_then_qualified"
+    },
+    {
+      "id": "filter_5",
+      "question": "Paciente com proteinúria ou redução de TFG?",
+      "type": "qualification_criteria",
+      "logic": "if_no_then_not_qualified"
+    }
+  ],
+
+  "alerts": [
+    {
+      "id": "alert_1",
+      "name": "Emergência Hipertensiva",
+      "conditions": ["PA >= 180/120", "dor no peito", "falta de ar aguda", "dor de cabeça súbita"],
+      "recommendation": "Encaminhar para Pronto Socorro imediatamente",
+      "severity": "CRITICAL"
+    },
+    {
+      "id": "alert_2",
+      "name": "Possível AVC",
+      "conditions": ["PA >= 180/120", "perda de movimentos", "perda de fala"],
+      "recommendation": "Encaminhar para Pronto Socorro imediatamente",
+      "severity": "CRITICAL"
+    },
+    {
+      "id": "alert_3",
+      "name": "Insuficiência Cardíaca Aguda",
+      "conditions": ["PA >= 180/120", "edema pulmonar"],
+      "recommendation": "Encaminhar para Pronto Socorro imediatamente",
+      "severity": "CRITICAL"
+    }
+  ],
+
+  "requiredExams": [
+    {
+      "id": "exam_ecg",
+      "name": "Eletrocardiograma (ECG) de repouso",
+      "maxAgeDays": 180,
+      "mandatory": true
+    },
+    {
+      "id": "exam_creatinina",
+      "name": "Creatinina e Potássio sérico",
+      "maxAgeDays": 90,
+      "mandatory": true
+    },
+    {
+      "id": "exam_eas",
+      "name": "Exame de Urina Simples (EAS)",
+      "maxAgeDays": 180,
+      "mandatory": true
+    },
+    {
+      "id": "exam_rx_torax",
+      "name": "Raio-X de Tórax",
+      "maxAgeDays": 365,
+      "mandatory": true
+    },
+    {
+      "id": "exam_mapa",
+      "name": "MAPA 24h ou MRPA",
+      "maxAgeDays": 365,
+      "mandatory": true
+    }
+  ],
+
+  "decisionLogic": {
+    "step1": "Avaliar Filtros de Elegibilidade",
+    "step2": "Se algum filtro falha → Não Qualificado",
+    "step3": "Se todos passam → Detectar Sinais de Alerta",
+    "step4": "Se algum alerta detectado → Urgência",
+    "step5": "Se nenhum alerta → Validar Exames Obrigatórios",
+    "step6": "Se todos exames presentes → Qualificado",
+    "step7": "Se alguns exames faltam → Qualificado com Ressalvas"
+  }
+}
