@@ -10,16 +10,21 @@
 // ============================================================================
 
 let currentQualificationSession = null;
-let qualificationSystem = null;
 
 /** Obtém instância do sistema (browser global ou mock em testes) */
 function getQualificationSystem() {
-  if (qualificationSystem) return qualificationSystem;
+  if (typeof window !== 'undefined' && window.qualificationSystem) {
+    return window.qualificationSystem;
+  }
   if (typeof globalThis !== 'undefined' && globalThis.qualificationSystem) {
     return globalThis.qualificationSystem;
   }
-  if (typeof window !== 'undefined' && window.qualificationSystem) {
-    return window.qualificationSystem;
+  try {
+    if (typeof getQualificationSystemFromModule === 'function') {
+      return getQualificationSystemFromModule();
+    }
+  } catch {
+    /* sistema ainda não inicializado */
   }
   return null;
 }
@@ -29,8 +34,7 @@ function getQualificationSystem() {
  */
 async function initializeQualificationInPlatform() {
   try {
-    // Inicializar o módulo de qualificação
-    qualificationSystem = await initializeQualificationSystem();
+    window.qualificationSystem = await initializeQualificationSystem();
     console.log('✅ Módulo de Qualificação inicializado com sucesso');
     
     // Adicionar botão de qualificação ao menu
@@ -39,7 +43,7 @@ async function initializeQualificationInPlatform() {
     // Adicionar listeners para integração
     setupQualificationIntegration();
     
-    return qualificationSystem;
+    return window.qualificationSystem;
   } catch (error) {
     console.error('❌ Erro ao inicializar módulo de qualificação:', error);
     showToast('Erro ao inicializar módulo de qualificação', 'error');
@@ -573,8 +577,9 @@ function showToast(message, type = 'info') {
 // 6. INICIALIZAÇÃO
 // ============================================================================
 
-// Inicializar quando a página carregar (não em ambiente de teste)
-if (typeof document !== 'undefined' && process.env.NODE_ENV !== 'test') {
+// Inicializar quando a página carregar (não em ambiente de teste Jest)
+const _isNodeTestEnv = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test';
+if (typeof document !== 'undefined' && !_isNodeTestEnv) {
   document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(async () => {
       try {

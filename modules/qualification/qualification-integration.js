@@ -523,9 +523,19 @@ function getQualificationSystem() {
   return qualificationSystem;
 }
 
+/** Alias interno para evitar conflito com getQualificationSystem da plataforma */
+function getQualificationSystemFromModule() {
+  return getQualificationSystem();
+}
+
 // ============================================================================
 // EXPORTAR CLASSES E FUNÇÕES
 // ============================================================================
+
+if (typeof window !== 'undefined') {
+  window.initializeQualificationSystem = initializeQualificationSystem;
+  window.getQualificationSystemFromModule = getQualificationSystemFromModule;
+}
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {

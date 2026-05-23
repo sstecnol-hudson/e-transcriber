@@ -1149,6 +1149,28 @@ function clearUploadedFile() {
 // ==========================================================================
 // 10. CHAMADAS DA API DO GROQ
 // ==========================================================================
+
+/** Extrai mensagem amigável de erro da API Groq */
+function parseGroqApiError(status, errText) {
+    if (status === 401) {
+        return 'Chave Groq inválida ou expirada. Gere uma nova em console.groq.com → API Keys e salve em Configurações.';
+    }
+    if (status === 429) {
+        return 'Limite de requisições atingido. Aguarde alguns minutos e tente novamente.';
+    }
+    let parsed = null;
+    try {
+        parsed = JSON.parse(errText);
+    } catch {
+        /* corpo não é JSON */
+    }
+    const apiErr = parsed?.error;
+    if (apiErr?.code === 'invalid_api_key' || apiErr?.message === 'Invalid API Key') {
+        return 'Chave Groq inválida. Verifique se começa com gsk_, sem espaços, e clique em Salvar Chave antes de gerar o prontuário.';
+    }
+    return apiErr?.message || (errText.length > 200 ? `Erro ${status} na API Groq` : errText) || `Erro ${status} na API Groq`;
+}
+
 async function processRecordedAudio() {
     if (!AppState.audioChunks.length) return;
     const blob = new Blob(AppState.audioChunks, { type: AppState.mediaRecorder.mimeType || 'audio/webm' });
@@ -1243,12 +1265,7 @@ async function generateClinicalDocuments() {
     }).then(async r => {
         if (!r.ok) {
             const errText = await r.text();
-            try {
-                const errJson = JSON.parse(errText);
-                throw new Error(errJson.error?.message || errText);
-            } catch (e) {
-                throw new Error(errText);
-            }
+            throw new Error(parseGroqApiError(r.status, errText));
         }
         return r.json();
     });
@@ -1299,7 +1316,15 @@ async function testGroqConnection() {
             headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: 'Diga apenas Ok.' }], max_tokens: 5 })
         });
-        showToast(res.ok ? '✓ Conexão bem-sucedida! Chave válida.' : `Erro ${res.status}: Chave inválida.`);
+        if (res.ok) {
+            localStorage.setItem('etranscriber_groq_key', key);
+            AppState.apiKey = key;
+            updateApiStatusUI();
+            showToast('✓ Conexão bem-sucedida! Chave válida e salva.');
+        } else {
+            const errText = await res.text();
+            showToast(parseGroqApiError(res.status, errText));
+        }
     } catch {
         showToast('Falha na conexão. Verifique a internet.');
     } finally {
@@ -2036,38 +2061,42 @@ function setupEventListeners() {
 /**
  * Manipulador para o botão "Qualificar para Encaminhamento"
  */
-function handleQualifyClick() {
-  console.log('🔵 Botão Qualificar clicado');
-  
-  // Obter dados do prontuário
+async function handleQualifyClick() {
   const prontuarioText = document.getElementById('outputRecord')?.value || '';
   const patientName = document.getElementById('patientName')?.value || 'Paciente';
   const patientAge = document.getElementById('patientAge')?.value || '';
   const specialty = document.getElementById('doctorSpecialty')?.value || '';
-  
-  if (!prontuarioText) {
-    alert('Por favor, gere um prontuário primeiro');
+
+  if (!prontuarioText.trim()) {
+    showToast('Gere um prontuário antes de qualificar para encaminhamento.');
     return;
   }
-  
-  // Criar objeto de prontuário
+
   const prontuario = {
     patientId: 'patient_' + Date.now(),
-    patientName: patientName,
-    patientAge: patientAge,
-    specialty: specialty,
+    patientName,
+    patientAge,
+    specialty,
     text: prontuarioText,
+    rawText: prontuarioText,
     timestamp: new Date().toISOString()
   };
-  
-  console.log('📋 Prontuário:', prontuario);
-  
-  // Chamar função de abertura do modal
-  if (typeof openQualificationModal === 'function') {
-    openQualificationModal(prontuario);
-  } else {
-    console.error('❌ Função openQualificationModal não encontrada');
-    alert('Erro: Módulo de qualificação não carregado');
+
+  const openModal = window.openQualificationModal;
+  if (typeof openModal !== 'function') {
+    console.error('openQualificationModal não encontrada. Verifique erros no Console (F12) ao carregar scripts em modules/qualification/.');
+    showToast('Módulo de qualificação não carregou. Recarregue a página (Ctrl+Shift+R).');
+    return;
+  }
+
+  try {
+    if (typeof window.initializeQualificationSystem === 'function' && !window.qualificationSystem) {
+      window.qualificationSystem = await window.initializeQualificationSystem();
+    }
+    await openModal(prontuario);
+  } catch (err) {
+    console.error('Erro ao abrir qualificador:', err);
+    showToast('Erro ao abrir qualificador: ' + (err.message || 'tente recarregar a página'));
   }
 }
 
