@@ -850,10 +850,12 @@ function generateAttendanceQR() {
     localStorage.setItem('etranscriber_qr_token', JSON.stringify(AttendanceState.currentQRToken));
 
     // Build check-in URL (same page with hash param)
+    // IMPORTANTE: Incluir expiresAt na URL para validação cross-device
     const baseUrl = window.location.href.split('#')[0].split('?')[0];
-    const checkinUrl = `${baseUrl}?checkin=${token}`;
+    const checkinUrl = `${baseUrl}?checkin=${token}&expires=${expiresAt}&meeting=${encodeURIComponent(meetingTitle)}`;
 
     console.log('🔗 URL do QR Code:', checkinUrl);
+    console.log('📋 Dados codificados na URL:', { token, expiresAt, meetingTitle });
 
     // Render QR
     const container = document.getElementById('qrCodeContainer');
@@ -1106,25 +1108,36 @@ function handleQRCheckinParam() {
 
     modal.classList.remove('hidden');
 
-    // Validate token
+    // Ler dados da URL (prioridade) ou do localStorage (fallback)
+    const expiresAtFromUrl = params.get('expires');
+    const meetingTitleFromUrl = params.get('meeting');
+    
     let stored;
     try { stored = JSON.parse(localStorage.getItem('etranscriber_qr_token')); } catch { stored = null; }
 
+    // Usar dados da URL se disponíveis, senão usar localStorage
+    const expiresAt = expiresAtFromUrl ? parseInt(expiresAtFromUrl) : stored?.expiresAt;
+    const meetingTitle = meetingTitleFromUrl ? decodeURIComponent(meetingTitleFromUrl) : stored?.meetingTitle;
+    const now = Date.now();
+
     console.log('🔍 Validando check-in:', {
         token: token,
-        stored: stored,
-        tokenMatch: stored?.token === token,
-        now: Date.now(),
-        expiresAt: stored?.expiresAt,
-        expired: stored ? Date.now() > stored.expiresAt : 'N/A',
-        timeUntilExpiry: stored ? Math.round((stored.expiresAt - Date.now()) / 1000 / 60) + ' minutos' : 'N/A'
+        expiresAtFromUrl: expiresAtFromUrl,
+        expiresAt: expiresAt,
+        meetingTitle: meetingTitle,
+        now: now,
+        expired: expiresAt ? now > expiresAt : 'N/A',
+        timeUntilExpiry: expiresAt ? Math.round((expiresAt - now) / 1000 / 60) + ' minutos' : 'N/A',
+        dataSource: expiresAtFromUrl ? 'URL' : 'localStorage'
     });
 
-    if (!stored || stored.token !== token || Date.now() > stored.expiresAt) {
+    // Validar: precisa ter expiresAt E não pode estar expirado
+    if (!expiresAt || now > expiresAt) {
         console.error('❌ Check-in inválido:', {
-            noStored: !stored,
-            tokenMismatch: stored?.token !== token,
-            expired: stored ? Date.now() > stored.expiresAt : false
+            noExpiresAt: !expiresAt,
+            expired: expiresAt ? now > expiresAt : false,
+            expiresAt: expiresAt,
+            now: now
         });
         content.classList.add('hidden');
         expired.classList.remove('hidden');
@@ -1132,6 +1145,12 @@ function handleQRCheckinParam() {
     }
     
     console.log('✅ Check-in válido!');
+    
+    // Salvar no localStorage para referência futura
+    if (expiresAtFromUrl) {
+        const tokenData = { token, expiresAt, meetingTitle };
+        localStorage.setItem('etranscriber_qr_token', JSON.stringify(tokenData));
+    }
 
     // Wire confirm button
     document.getElementById('btn-confirm-checkin').addEventListener('click', () => {
