@@ -1361,13 +1361,13 @@ function updateQualityDisplay(metrics) {
     let qualityColor = '#10b981'; // green - excellent
     let qualityText = 'EXCELENTE';
     
-    if (metrics.clipping) {
+    if (metrics && metrics.clipping) {
         qualityColor = '#ef4444'; // red - poor
         qualityText = 'RUIM';
-    } else if (metrics.noiseLevel > 100) {
+    } else if (metrics && metrics.noiseLevel > 100) {
         qualityColor = '#f59e0b'; // yellow - fair
         qualityText = 'RAZOÁVEL';
-    } else if (metrics.noiseLevel > 50) {
+    } else if (metrics && metrics.noiseLevel > 50) {
         qualityColor = '#10b981'; // green - good
         qualityText = 'BOM';
     }
@@ -1382,9 +1382,9 @@ function updateQualityDisplay(metrics) {
         qualityValue.textContent = qualityText;
         qualityValue.style.color = qualityColor;
     }
-    if (noiseValue) noiseValue.textContent = metrics.noiseLevel;
-    if (clippingValue) clippingValue.textContent = metrics.clipping ? 'SIM' : 'NÃO';
-    if (peakValue) peakValue.textContent = metrics.peakLevel;
+    if (noiseValue) noiseValue.textContent = metrics ? metrics.noiseLevel : '0';
+    if (clippingValue) clippingValue.textContent = metrics ? (metrics.clipping ? 'SIM' : 'NÃO') : 'NÃO';
+    if (peakValue) peakValue.textContent = metrics ? metrics.peakLevel : '0';
 }
 
 async function stopRecording() {
@@ -2579,4 +2579,8 @@ function setupEventListeners() {
 }
 
 // Inicializar ao carregar a página
-window.addEventListener('DOMContentLoaded', init);
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

@@ -80,6 +80,9 @@ class AudioProcessor {
   async startPresentialRecording() {
     try {
       this.initAudioContext();
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        await this.audioContext.resume().catch(e => console.warn('Falha ao resumir AudioContext:', e));
+      }
       const constraints = this.getAudioConstraints('presencial');
 
       this.stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -109,6 +112,9 @@ class AudioProcessor {
   async startOnlineRecording() {
     try {
       this.initAudioContext();
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        await this.audioContext.resume().catch(e => console.warn('Falha ao resumir AudioContext:', e));
+      }
       const constraints = this.getAudioConstraints('online');
 
       // Obter áudio do microfone

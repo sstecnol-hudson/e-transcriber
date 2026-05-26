@@ -108,56 +108,43 @@ const MeetingDOM = {
 function initMeetingModule() {
     try { MeetingState.history = JSON.parse(localStorage.getItem('etranscriber_meetings_history')) || []; } catch { MeetingState.history = []; }
 
-    // Diagnóstico: verificar se os elementos DOM foram resolvidos
-    const domCheck = {
-        btnRecordStart: !!MeetingDOM.btnRecordStart,
-        btnRecordOnline: !!MeetingDOM.btnRecordOnline,
-        btnRecordStop: !!MeetingDOM.btnRecordStop,
-        waveformCanvas: !!MeetingDOM.waveformCanvas,
-        rawTranscript: !!MeetingDOM.rawTranscript,
-    };
-    const nullKeys = Object.entries(domCheck).filter(([,v]) => !v).map(([k]) => k);
-    if (nullKeys.length > 0) {
-        console.warn('[MeetingModule] DOM elements null, re-resolving:', nullKeys);
-        // Re-resolver elementos que falharam
-        MeetingDOM.btnModeRecord = document.getElementById('btn-meeting-mode-record');
-        MeetingDOM.btnModeUpload = document.getElementById('btn-meeting-mode-upload');
-        MeetingDOM.panelRecord = document.getElementById('capture-meeting-panel-record');
-        MeetingDOM.panelUpload = document.getElementById('capture-meeting-panel-upload');
-        MeetingDOM.waveformCanvas = document.getElementById('waveformMeetingCanvas');
-        MeetingDOM.recordingTimer = document.getElementById('recordingMeetingTimer');
-        MeetingDOM.btnRecordStart = document.getElementById('btn-meeting-record-start');
-        MeetingDOM.btnRecordOnline = document.getElementById('btn-meeting-record-online');
-        MeetingDOM.btnRecordStop = document.getElementById('btn-meeting-record-stop');
-        MeetingDOM.audioDropZone = document.getElementById('audioMeetingDropZone');
-        MeetingDOM.audioFileInput = document.getElementById('audioMeetingFileInput');
-        MeetingDOM.fileInfoContainer = document.getElementById('file-meeting-info-container');
-        MeetingDOM.uploadedFileName = document.getElementById('uploaded-meeting-file-name');
-        MeetingDOM.uploadedFileSize = document.getElementById('uploaded-meeting-file-size');
-        MeetingDOM.btnClearFile = document.getElementById('btn-clear-meeting-file');
-        MeetingDOM.btnProcessUpload = document.getElementById('btn-process-meeting-upload');
-        MeetingDOM.rawTranscript = document.getElementById('rawMeetingTranscript');
-        MeetingDOM.transcriptionLoader = document.getElementById('meeting-transcription-loader');
-        MeetingDOM.transcriptionLoaderText = document.getElementById('meeting-transcription-loader-text');
-        MeetingDOM.aiModel = document.getElementById('aiMeetingModel');
-        MeetingDOM.btnGenerateDocs = document.getElementById('btn-generate-meeting-docs');
-        MeetingDOM.resultsSection = document.getElementById('meeting-results-section');
-        MeetingDOM.outputRecord = document.getElementById('outputMeetingRecord');
-        MeetingDOM.ataLoader = document.getElementById('ata-loader');
-        MeetingDOM.btnCopyRecord = document.getElementById('btn-copy-meeting-record');
-        MeetingDOM.btnDownloadPdf = document.getElementById('btn-download-meeting-pdf');
-        MeetingDOM.actionsSaveRow = document.getElementById('actions-meeting-save-row');
-        MeetingDOM.btnSaveMeeting = document.getElementById('btn-save-meeting');
-        MeetingDOM.meetingTitle = document.getElementById('meetingTitle');
-        MeetingDOM.meetingType = document.getElementById('meetingType');
-        MeetingDOM.meetingModality = document.getElementById('meetingModality');
-        MeetingDOM.meetingLang = document.getElementById('meetingLang');
-        MeetingDOM.historyTableBody = document.getElementById('meetingHistoryTableBody');
-        MeetingDOM.searchMeetingHistory = document.getElementById('searchMeetingHistory');
-        MeetingDOM.btnClearMeetingHistory = document.getElementById('btn-clear-meeting-history');
-    } else {
-        console.log('[MeetingModule] Todos os elementos DOM resolvidos com sucesso.');
-    }
+    // Re-resolver todos os elementos do DOM incondicionalmente para evitar referências nulas
+    console.log('[MeetingModule] Resolvendo elementos DOM...');
+    MeetingDOM.btnModeRecord = document.getElementById('btn-meeting-mode-record');
+    MeetingDOM.btnModeUpload = document.getElementById('btn-meeting-mode-upload');
+    MeetingDOM.panelRecord = document.getElementById('capture-meeting-panel-record');
+    MeetingDOM.panelUpload = document.getElementById('capture-meeting-panel-upload');
+    MeetingDOM.waveformCanvas = document.getElementById('waveformMeetingCanvas');
+    MeetingDOM.recordingTimer = document.getElementById('recordingMeetingTimer');
+    MeetingDOM.btnRecordStart = document.getElementById('btn-meeting-record-start');
+    MeetingDOM.btnRecordOnline = document.getElementById('btn-meeting-record-online');
+    MeetingDOM.btnRecordStop = document.getElementById('btn-meeting-record-stop');
+    MeetingDOM.audioDropZone = document.getElementById('audioMeetingDropZone');
+    MeetingDOM.audioFileInput = document.getElementById('audioMeetingFileInput');
+    MeetingDOM.fileInfoContainer = document.getElementById('file-meeting-info-container');
+    MeetingDOM.uploadedFileName = document.getElementById('uploaded-meeting-file-name');
+    MeetingDOM.uploadedFileSize = document.getElementById('uploaded-meeting-file-size');
+    MeetingDOM.btnClearFile = document.getElementById('btn-clear-meeting-file');
+    MeetingDOM.btnProcessUpload = document.getElementById('btn-process-meeting-upload');
+    MeetingDOM.rawTranscript = document.getElementById('rawMeetingTranscript');
+    MeetingDOM.transcriptionLoader = document.getElementById('meeting-transcription-loader');
+    MeetingDOM.transcriptionLoaderText = document.getElementById('meeting-transcription-loader-text');
+    MeetingDOM.aiModel = document.getElementById('aiMeetingModel');
+    MeetingDOM.btnGenerateDocs = document.getElementById('btn-generate-meeting-docs');
+    MeetingDOM.resultsSection = document.getElementById('meeting-results-section');
+    MeetingDOM.outputRecord = document.getElementById('outputMeetingRecord');
+    MeetingDOM.ataLoader = document.getElementById('ata-loader');
+    MeetingDOM.btnCopyRecord = document.getElementById('btn-copy-meeting-record');
+    MeetingDOM.btnDownloadPdf = document.getElementById('btn-download-meeting-pdf');
+    MeetingDOM.actionsSaveRow = document.getElementById('actions-meeting-save-row');
+    MeetingDOM.btnSaveMeeting = document.getElementById('btn-save-meeting');
+    MeetingDOM.meetingTitle = document.getElementById('meetingTitle');
+    MeetingDOM.meetingType = document.getElementById('meetingType');
+    MeetingDOM.meetingModality = document.getElementById('meetingModality');
+    MeetingDOM.meetingLang = document.getElementById('meetingLang');
+    MeetingDOM.historyTableBody = document.getElementById('meetingHistoryTableBody');
+    MeetingDOM.searchMeetingHistory = document.getElementById('searchMeetingHistory');
+    MeetingDOM.btnClearMeetingHistory = document.getElementById('btn-clear-meeting-history');
 
     // Inicializar AudioProcessor
     MeetingState.audioProcessor = new AudioProcessor();
@@ -375,13 +362,13 @@ function updateMeetingQualityDisplay(metrics) {
     let qualityColor = '#10b981'; // green - excellent
     let qualityText = 'EXCELENTE';
     
-    if (metrics.clipping) {
+    if (metrics && metrics.clipping) {
         qualityColor = '#ef4444'; // red - poor
         qualityText = 'RUIM';
-    } else if (metrics.noiseLevel > 100) {
+    } else if (metrics && metrics.noiseLevel > 100) {
         qualityColor = '#f59e0b'; // yellow - fair
         qualityText = 'RAZOÁVEL';
-    } else if (metrics.noiseLevel > 50) {
+    } else if (metrics && metrics.noiseLevel > 50) {
         qualityColor = '#10b981'; // green - good
         qualityText = 'BOM';
     }
@@ -396,9 +383,9 @@ function updateMeetingQualityDisplay(metrics) {
         qualityValue.textContent = qualityText;
         qualityValue.style.color = qualityColor;
     }
-    if (noiseValue) noiseValue.textContent = metrics.noiseLevel;
-    if (clippingValue) clippingValue.textContent = metrics.clipping ? 'SIM' : 'NÃO';
-    if (peakValue) peakValue.textContent = metrics.peakLevel;
+    if (noiseValue) noiseValue.textContent = metrics ? metrics.noiseLevel : '0';
+    if (clippingValue) clippingValue.textContent = metrics ? (metrics.clipping ? 'SIM' : 'NÃO') : 'NÃO';
+    if (peakValue) peakValue.textContent = metrics ? metrics.peakLevel : '0';
 }
 
 // ==========================================================================
@@ -717,13 +704,14 @@ function saveMeetingHistory() {
 }
 
 function renderMeetingHistory(filter = '') {
+    if (!MeetingDOM.historyTableBody) return;
     MeetingDOM.historyTableBody.innerHTML = '';
     
     const filtered = MeetingState.history.filter(m => 
-        m.title.toLowerCase().includes(filter.toLowerCase()) || 
-        m.type.toLowerCase().includes(filter.toLowerCase()) ||
-        m.modality.toLowerCase().includes(filter.toLowerCase()) ||
-        m.dateString.toLowerCase().includes(filter.toLowerCase())
+        (m.title || '').toLowerCase().includes(filter.toLowerCase()) || 
+        (m.type || '').toLowerCase().includes(filter.toLowerCase()) ||
+        (m.modality || '').toLowerCase().includes(filter.toLowerCase()) ||
+        (m.dateString || '').toLowerCase().includes(filter.toLowerCase())
     );
 
     if (filtered.length === 0) {
@@ -1719,20 +1707,26 @@ function setupMeetingEventListeners() {
 }
 
 // Inicializar após carregamento completo
-window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        initMeetingModule();
-        loadAttendanceState();
-        handleQRCheckinParam();     // Handle ?checkin=TOKEN in URL
-        
-        // Teste da biblioteca QRCode
-        console.log('🔍 Testando bibliotecas...');
-        console.log('QRCode disponível:', typeof QRCode !== 'undefined');
-        console.log('jsPDF disponível:', typeof window.jspdf !== 'undefined');
-        console.log('XLSX disponível:', typeof XLSX !== 'undefined');
-        
-        if (typeof QRCode === 'undefined') {
-            console.error('❌ QRCode não carregou. Verifique a conexão com a internet.');
-        }
-    }, 100);
-});
+function runMeetingsInitSequence() {
+    initMeetingModule();
+    loadAttendanceState();
+    handleQRCheckinParam();     // Handle ?checkin=TOKEN in URL
+    
+    // Teste da biblioteca QRCode
+    console.log('🔍 Testando bibliotecas...');
+    console.log('QRCode disponível:', typeof QRCode !== 'undefined');
+    console.log('jsPDF disponível:', typeof window.jspdf !== 'undefined');
+    console.log('XLSX disponível:', typeof XLSX !== 'undefined');
+    
+    if (typeof QRCode === 'undefined') {
+        console.error('❌ QRCode não carregou. Verifique a conexão com a internet.');
+    }
+}
+
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(runMeetingsInitSequence, 100);
+    });
+} else {
+    setTimeout(runMeetingsInitSequence, 100);
+}
