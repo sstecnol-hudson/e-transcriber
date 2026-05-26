@@ -249,6 +249,11 @@ const DOM = {
     clinicalTemplate: document.getElementById('clinicalTemplate'),
     aiModel: document.getElementById('aiModel'),
     btnGenerateDocs: document.getElementById('btn-generate-documents'),
+    
+    // BVS Dynamic Button
+    bvsDynamicContainer: document.getElementById('bvs-dynamic-container'),
+    btnDynamicBvs: document.getElementById('btn-dynamic-bvs'),
+    bvsDynamicText: document.getElementById('bvs-dynamic-text'),
 
     // Resultados
     resultsSection: document.getElementById('results-section'),
@@ -1542,10 +1547,14 @@ async function generateClinicalDocuments() {
         DOM.actionsSaveRow.classList.remove('hidden');
         showToast('Documentos gerados com suporte de evidências!');
         
-        // BVS APS Automático na UI
+        // BVS APS Dinâmico na UI
         if (extractedKeyword && typeof bvsService !== 'undefined') {
+            DOM.bvsDynamicContainer.classList.remove('hidden');
+            DOM.bvsDynamicText.textContent = `Evidências BVS APS: ${extractedKeyword}`;
+            // Salva a keyword no input de busca para quando abrir
             document.getElementById('bvs-search-input').value = extractedKeyword;
-            performBvsSearch(extractedKeyword, true); // Abre o painel
+        } else {
+            DOM.bvsDynamicContainer.classList.add('hidden');
         }
     }
 
@@ -2389,6 +2398,7 @@ function setupEventListeners() {
     const inputBvsSearch = document.getElementById('bvs-search-input');
 
     if (btnToggleBvs) btnToggleBvs.addEventListener('click', toggleBvsSidebar);
+    if (DOM.btnDynamicBvs) DOM.btnDynamicBvs.addEventListener('click', toggleBvsSidebar);
     if (btnCloseBvs) btnCloseBvs.addEventListener('click', closeBvsSidebar);
     if (bvsOverlay) bvsOverlay.addEventListener('click', closeBvsSidebar);
     

@@ -95,10 +95,6 @@
                     <button id="btn-help" class="btn-theme-toggle button" title="Abrir Manual de Ajuda" style="margin-left: 8px;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
                     </button>
-                    <!-- Botão Material de Apoio BVS APS -->
-                    <button id="btn-toggle-bvs" class="btn-theme-toggle button" title="Material de Apoio (BVS APS)" style="margin-left: 8px; color: var(--accent-teal);">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                    </button>
                 </div>
             </header>
 
@@ -277,6 +273,15 @@
                                 <span>Estruturar com IA</span>
                             </button>
                         </div>
+                        
+                        <!-- Botão Dinâmico BVS APS -->
+                        <div id="bvs-dynamic-container" class="hidden" style="margin-top: 15px; padding: 0 20px 20px 20px; width: 100%;">
+                            <button id="btn-dynamic-bvs" class="btn btn-secondary shadow-pulse" style="width: 100%; border-color: var(--primary); color: var(--primary); background: rgba(43, 92, 119, 0.05); font-weight: bold; justify-content: center;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+                                <span id="bvs-dynamic-text">Apoio Clínico BVS</span>
+                            </button>
+                        </div>
+                        
                     </div>
                 </div>
 
