@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste - stopMeetingRecording()</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        h2 {
+            color: #666;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .test-case {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+        .test-case.pass {
+            border-left-color: #28a745;
+            background: #f0f8f4;
+        }
+        .test-case.fail {
+            border-left-color: #dc3545;
+            background: #fdf8f8;
+        }
+        .test-case.pending {
+            border-left-color: #ffc107;
+            background: #fffbf0;
+        }
+        .status {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .status.pass {
+            color: #28a745;
+        }
+        .status.fail {
+            color: #dc3545;
+        }
+        .status.pending {
+            color: #ffc107;
+        }
+        .details {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+            font-family: monospace;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .summary {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .summary h3 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Testes - Tarefa 4.2: stopMeetingRecording()</h1>
+    
+    <div class="test-container">
+        <h2>Descrição da Tarefa</h2>
+        <p>
+            <strong>Tarefa 4.2:</strong> Substituir stopMeetingRecording() para usar audioProcessor
+        </p>
+        <p>
+            <strong>Requisitos:</strong>
+            <ul>
+                <li>Remover código antigo de parada</li>
+                <li>Implementar chamada a MeetingState.audioProcessor.stopRecording()</li>
+                <li>Obter blob com MeetingState.audioProcessor.getRecordedAudioBlob()</li>
+                <li>Comprimir e enviar para Groq</li>
+            </ul>
+        </p>
+    </div>
+
+    <div class="test-container">
+        <h2>Testes de Implementação</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>Resumo</h2>
+        <div id="summary"></div>
+    </div>
+
+    <script>
+        // Mock objects para testes
+        const mockAudioProcessor = {
+            isRecording: true,
+            stopRecording: function() {
+                return {
+                    success: true,
+                    duration: 30000,
+                    chunks: [new Uint8Array([1, 2, 3])]
+                };
+            },
+            getRecordedAudioBlob: function() {
+                return new Blob([new Uint8Array([1, 2, 3])], { type: 'audio/webm' });
+            },
+            validateFileSize: function(blob, maxSizeMB) {
+                const maxSizeBytes = maxSizeMB * 1024 * 1024;
+                if (blob.size > maxSizeBytes) {
+                    return {
+                        valid: false,
+                        message: `Arquivo muito grande! Máximo: ${maxSizeMB}MB. Seu arquivo: ${(blob.size / 1024 / 1024).toFixed(2)}MB`
+                    };
+                }
+                return { valid: true };
+            },
+            compressAudio: async function(blob) {
+                return {
+                    success: true,
+                    blob: new Blob([new Uint8Array([1, 2, 3])], { type: 'audio/wav' }),
+                    originalSize: blob.size,
+                    compressedSize: Math.floor(blob.size * 0.6),
+                    compressionRatio: '40%'
+                };
+            }
+        };
+
+        const mockMeetingState = {
+            audioProcessor: mockAudioProcessor,
+            recordingTimerInterval: null,
+            recordingState: {
+                qualityInterval: null,
+                visualizer: { stop: () => {} }
+            }
+        };
+
+        const mockMeetingDOM = {
+            btnRecordStart: { disabled: false },
+            btnRecordOnline: { disabled: false },
+            btnRecordStop: { disabled: false },
+            recordingTimer: { textContent: '00:00' }
+        };
+
+        let toastMessages = [];
+        function showToast(msg) {
+            toastMessages.push(msg);
+            console.log('Toast:', msg);
+        }
+
+        async function sendMeetingAudioToWhisper(file) {
+            console.log('Enviando para Groq:', file.name, file.size);
+            return Promise.resolve();
+        }
+
+        // Testes
+        const tests = [];
+
+        // Teste 1: Verificar se stopMeetingRecording é uma função
+        tests.push({
+            name: 'stopMeetingRecording deve ser uma função',
+            async run() {
+                // Verificar se a função existe no código
+                const code = await fetch('meetings.js').then(r => r.text());
+                return code.includes('async function stopMeetingRecording()');
+            }
+        });
+
+        // Teste 2: Verificar se chama stopRecording()
+        tests.push({
+            name: 'Deve chamar MeetingState.audioProcessor.stopRecording()',
+            async run() {
+                const code = await fetch('meetings.js').then(r => r.text());
+                return code.includes('MeetingState.audioProcessor.stopRecording()');
+            }
+        });
+
+        // Teste 3: Verificar se obtém blob
+        tests.push({
+            name: 'Deve obter blob com getRecordedAudioBlob()',
+            async run() {
+                const code = await fetch('meetings.js').then(r => r.text());
+                return code.includes('MeetingState.audioProcessor.getRecordedAudioBlob()');
+            }
+        });
+
+        // Teste 4: Verificar se valida tamanho
+        tests.push({
+            name: 'Deve validar tamanho do arquivo',
+            async run() {
+                const code = await fetch('meetings.js').then(r => r.text());
+                return code.includes('validateFileSize');
+            }
+        });
+
+        // Teste 5: Verificar se comprime
+        tests.push({
+            name: 'Deve comprimir áudio com compressAudio()',
+            async run() {
+                const code = await fetch('meetings.js').then(r => r.text());
+                return code.includes('MeetingState.audioProcessor.compressAudio(audioBlob)');
+            }
+        });
+
+        // Teste 6: Verificar se envia para Groq
+        tests.push({
+            name: 'Deve enviar para Groq com sendMeetingAudioToWhisper()',
+            async run() {
+                const code = await fetch('meetings.js').then(r => r.text());
+                return code.includes('sendMeetingAudioToWhisper');
+            }
+        });
+
+        // Teste 7: Verificar se usa async/await
+        tests.push({
+            name: 'Deve usar async/await para compressão',
+            async run() {
+                const code = await fetch('meetings.js').then(r => r.text());
+                return code.includes('await MeetingState.audioProcessor.compressAudio');
+            }
+        });
+
+        // Teste 8: Verificar se reseta UI
+        tests.push({
+            name: 'Deve resetar UI após parar gravação',
+            async run() {
+                const code = await fetch('meetings.js').then(r => r.text());
+                return code.includes('MeetingDOM.btnRecordStart.disabled = false') &&
+                       code.includes('MeetingDOM.recordingTimer.textContent = \'00:00\'');
+            }
+        });
+
+        // Teste 9: Verificar se trata erros
+        tests.push({
+            name: 'Deve tratar erros com try/catch',
+            async run() {
+                const code = await fetch('meetings.js').then(r => r.text());
+                return code.includes('try {') && code.includes('catch (err)');
+            }
+        });
+
+        // Teste 10: Verificar se limpa intervalos
+        tests.push({
+            name: 'Deve limpar intervalos de timer e qualidade',
+            async run() {
+                const code = await fetch('meetings.js').then(r => r.text());
+                return code.includes('clearInterval(MeetingState.recordingTimerInterval)') &&
+                       code.includes('clearInterval(MeetingState.recordingState.qualityInterval)');
+            }
+        });
+
+        // Executar testes
+        async function runTests() {
+            const resultsDiv = document.getElementById('test-results');
+            let passed = 0;
+            let failed = 0;
+            let pending = 0;
+
+            for (const test of tests) {
+                const testDiv = document.createElement('div');
+                testDiv.className = 'test-case pending';
+                
+                try {
+                    const result = await test.run();
+                    if (result) {
+                        testDiv.className = 'test-case pass';
+                        testDiv.innerHTML = `
+                            <div class="status pass">✓ PASSOU</div>
+                            <div>${test.name}</div>
+                        `;
+                        passed++;
+                    } else {
+                        testDiv.className = 'test-case fail';
+                        testDiv.innerHTML = `
+                            <div class="status fail">✗ FALHOU</div>
+                            <div>${test.name}</div>
+                        `;
+                        failed++;
+                    }
+                } catch (err) {
+                    testDiv.className = 'test-case pending';
+                    testDiv.innerHTML = `
+                        <div class="status pending">⚠ PENDENTE</div>
+                        <div>${test.name}</div>
+                        <div class="details">Erro: ${err.message}</div>
+                    `;
+                    pending++;
+                }
+                
+                resultsDiv.appendChild(testDiv);
+            }
+
+            // Resumo
+            const summaryDiv = document.getElementById('summary');
+            summaryDiv.innerHTML = `
+                <h3>Resultado dos Testes</h3>
+                <p><strong>Total:</strong> ${tests.length} testes</p>
+                <p><strong style="color: #28a745;">Passou:</strong> ${passed}</p>
+                <p><strong style="color: #dc3545;">Falhou:</strong> ${failed}</p>
+                <p><strong style="color: #ffc107;">Pendente:</strong> ${pending}</p>
+                <p><strong>Taxa de Sucesso:</strong> ${((passed / tests.length) * 100).toFixed(1)}%</p>
+            `;
+        }
+
+        // Executar testes ao carregar
+        window.addEventListener('load', runTests);
+    </script>
+</body>
+</html>

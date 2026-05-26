@@ -376,6 +376,43 @@ function clearMeetingUploadedFile() {
 
 // ==========================================================================
 // CHAMADAS DA API DO GROQ (Whisper + Llama)
+const GROQ_TRANSCRIBE_MODEL = 'whisper-large-v3';
+
+// Função utilitária para gerar hash SHA-256 do Blob de áudio
+async function getAudioHash(blob) {
+  const arrayBuffer = await blob.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+  return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Wrapper de transcrição que verifica cache antes de chamar a API Groq
+async function transcribeWithCache(blob, language = 'pt') {
+  const hash = await getAudioHash(blob);
+  const cacheKey = `groq_whisper_${hash}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) {
+    console.log('🔄 Transcrição carregada do cache');
+    return cached;
+  }
+  const formData = new FormData();
+  formData.append('file', blob);
+  formData.append('model', GROQ_TRANSCRIBE_MODEL);
+  formData.append('language', language);
+  formData.append('response_format', 'json');
+  const res = await fetchWithRetry('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${AppState.apiKey}` },
+    body: formData
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Transcrição Groq falhou (${res.status}): ${errText}`);
+  }
+  const data = await res.json();
+  localStorage.setItem(cacheKey, data.text);
+  return data.text;
+}
+
 // ==========================================================================
 // A função obsoleta processMeetingRecordedAudio foi removida.
 // O processamento agora ocorre no stopMeetingRecording.
@@ -394,11 +431,12 @@ async function sendMeetingAudioToWhisper(file) {
     MeetingDOM.transcriptionLoaderText.textContent = 'Transcrevendo áudio via Groq Whisper...';
     MeetingDOM.rawTranscript.value = '';
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('model', 'whisper-large-v3');
-    formData.append('language', MeetingDOM.meetingLang.value);
-    formData.append('response_format', 'json');
+    const transcriptText = await transcribeWithCache(file, MeetingDOM.meetingLang.value);
+MeetingDOM.rawTranscript.value = transcriptText;
+MeetingState.currentTranscription = transcriptText;
+if (typeof toggleAiButtonsState === 'function') toggleAiButtonsState();
+showToast(transcriptText?.trim() ? '✅ Transcrição da reunião concluída!' : 'Aviso: nenhum áudio detectado.');
+return;
 
     try {
         const res = await fetchWithRetry('https://api.groq.com/openai/v1/audio/transcriptions', {

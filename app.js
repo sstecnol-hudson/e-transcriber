@@ -203,6 +203,46 @@ const AppState = {
     currentPatientMsgOutput: ''
 };
 
+// Configurações globais para transcrição via Groq
+const GROQ_TRANSCRIBE_MODEL = 'whisper-large-v3'; // modelo Whisper suportado pela API Groq
+
+// Função utilitária para gerar hash SHA‑256 do Blob de áudio
+async function getAudioHash(blob) {
+    const arrayBuffer = await blob.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+    // converte para hex string
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Wrapper de transcrição que verifica cache antes de chamar a API Groq
+async function transcribeWithCache(fileBlob, language = 'pt') {
+    const hash = await getAudioHash(fileBlob);
+    const cacheKey = `groq_whisper_${hash}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+        console.log('🔄 Transcrição carregada do cache');
+        return cached;
+    }
+    // Caso não esteja em cache, envia para a API
+    const formData = new FormData();
+    formData.append('file', fileBlob);
+    formData.append('model', GROQ_TRANSCRIBE_MODEL);
+    formData.append('language', language);
+    formData.append('response_format', 'json');
+    const res = await fetchWithRetry('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${AppState.apiKey}` },
+        body: formData
+    });
+    if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Transcrição Groq falhou (${res.status}): ${errText}`);
+    }
+    const data = await res.json();
+    localStorage.setItem(cacheKey, data.text);
+    return data.text;
+}
+
 // ---- ELEMENTOS DO DOM ----
 const DOM = {
     // Navegação
@@ -505,7 +545,7 @@ function updateApiStatusUI() {
     } else {
         DOM.apiStatusDot.className = 'status-dot red';
         DOM.apiStatusText.textContent = 'Groq Desconectado';
-        DOM.apiKeyAlert.classList.remove('hidden');
+        DOM.apiKeyAlert.classList.add('hidden');
     }
     
     // Atualizar estado de botões que dependem da API
@@ -662,6 +702,7 @@ function resetConsultationFields() {
     clearUploadedFile();
     
     if (DOM.resultsSection) DOM.resultsSection.classList.add('hidden');
+
     if (DOM.actionsSaveRow) DOM.actionsSaveRow.classList.add('hidden');
     if (DOM.bvsDynamicContainer) DOM.bvsDynamicContainer.classList.add('hidden');
     
@@ -867,9 +908,6 @@ function startConsultForPatient(patientId) {
     showToast(`Consulta iniciada para ${p.name}`);
 }
 
-// ==========================================================================
-// 6. AUTOCOMPLETE DE PACIENTES NO CAMPO NOME
-// ==========================================================================
 function setupPatientAutocomplete() {
     DOM.patientName.addEventListener('input', handleAutocompleteInput);
     DOM.patientName.addEventListener('focus', handleAutocompleteInput);
@@ -905,7 +943,7 @@ function handleAutocompleteInput() {
         document.getElementById('autocomplete-create-new').addEventListener('click', () => {
             openPatientModal();
             DOM.pmName.value = DOM.patientName.value;
-            DOM.patientAutocomplete.classList.add('hidden');
+            DOM.patientAutocomplete.classList.remove('hidden');
         });
         return;
     }
@@ -938,7 +976,7 @@ function handleAutocompleteInput() {
                 DOM.patientAge.value = patient.birthdate || '';
                 if (patient.notes) showToast(`⚠️ Obs: ${patient.notes}`);
             }
-            DOM.patientAutocomplete.classList.add('hidden');
+            DOM.patientAutocomplete.classList.remove('hidden');
         });
     });
 }
@@ -1476,8 +1514,6 @@ function clearUploadedFile() {
 }
 
 // ==========================================================================
-// 10. CHAMADAS DA API DO GROQ
-// ==========================================================================
 async function processRecordedAudio() {
     if (!AppState.audioChunks.length) return;
     const audioBlob = new Blob(AppState.audioChunks, { type: AppState.mediaRecorder.mimeType || 'audio/webm' });
@@ -1507,61 +1543,22 @@ async function processRecordedAudio() {
 }
 
 async function sendAudioToWhisper(file) {
-    if (!AppState.apiKey) { showToast('Chave de API do Groq ausente!'); return; }
-    
-    // Validar tamanho do arquivo (máximo 25MB para Groq)
-    const MAX_SIZE = 25 * 1024 * 1024; // 25MB
-    if (file.size > MAX_SIZE) {
-        showToast(`❌ Arquivo muito grande! Máximo: 25MB. Seu arquivo: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-        return;
-    }
-    
-    DOM.transcriptionLoader.classList.remove('hidden');
-    DOM.transcriptionLoaderText.textContent = 'Transcrevendo áudio via Groq Whisper...';
-    DOM.rawTranscript.value = '';
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('model', 'whisper-large-v3');
-    formData.append('language', DOM.transcriptionLang.value);
-    formData.append('response_format', 'json');
-
     try {
-        const res = await fetchWithRetry('https://api.groq.com/openai/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${AppState.apiKey}` },
-            body: formData,
-            timeout: 60000 // 60 segundos
-        });
-        
-        if (!res.ok) {
-            const errorText = await res.text();
-            let errorMsg = `Erro ${res.status}`;
-            
-            // Tratamento específico para erro 413
-            if (res.status === 413) {
-                errorMsg = '❌ Arquivo muito grande! A API Groq aceita máximo 25MB. Tente comprimir o áudio ou dividir em partes menores.';
-            } else if (res.status === 400) {
-                errorMsg = '❌ Erro na requisição. Verifique o formato do áudio (MP3, WAV, M4A, WEBM, MP4).';
-            } else if (res.status === 401) {
-                errorMsg = '❌ Chave Groq inválida ou expirada. Verifique em Configurações.';
-            } else if (res.status === 429) {
-                errorMsg = '❌ Limite de requisições atingido. Aguarde alguns minutos e tente novamente.';
-            }
-            
-            throw new Error(errorMsg);
-        }
-        
-        const data = await res.json();
-        DOM.rawTranscript.value = data.text || '';
-        AppState.currentTranscription = data.text || '';
-        toggleAiButtonsState();
-        showToast(data.text?.trim() ? '✅ Transcrição concluída!' : 'Aviso: nenhum áudio detectado.');
+        // Show loader step
+        DOM.transcriptionLoader.classList.remove('hidden');
+        DOM.transcriptionLoaderText.textContent = '⏳ Transcrevendo áudio...';
+        // Call wrapper that handles cache and API request
+        const transcription = await transcribeWithCache(file);
+        // Update UI with result
+        AppState.currentTranscription = transcription;
+        DOM.rawTranscript.value = transcription;
+        showToast('✅ Transcrição concluída.');
     } catch (err) {
-        DOM.rawTranscript.value = `Erro: ${err.message}`;
+        // Show error to user
         showToast(err.message || 'Erro ao transcrever áudio.');
         console.error(err);
     } finally {
+        // Hide loader regardless of outcome
         DOM.transcriptionLoader.classList.add('hidden');
     }
 }
