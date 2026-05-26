@@ -1496,7 +1496,7 @@ async function generateClinicalDocuments() {
         // Passo 0: Extrair tema clínico e buscar na BVS para RAG (Retrieval-Augmented Generation)
         DOM.transcriptionLoaderText && (DOM.transcriptionLoaderText.textContent = 'Buscando evidências clínicas...');
         
-        const keywordPrompt = "Leia a transcrição médica abaixo. Identifique o diagnóstico principal, problema ou conduta que precisa ser pesquisada. Responda APENAS com os termos de busca ideais (1 a 4 palavras) para pesquisar em uma base de evidências médicas (ex: 'Dengue tratamento adulto', 'Hipertensão gestante', 'Asma crise pediatria'). Não use pontuação nem explicações.\n\nTranscrição: " + rawText;
+        const keywordPrompt = "Leia a transcrição médica abaixo e identifique a DOENÇA ou SINTOMA principal. Responda APENAS com 1 ou 2 palavras no máximo (ex: 'Dengue', 'Hipertensão', 'Diabetes', 'Infecção Urinária'). Não use pontuação, nem conectivos, nem explique nada. Seja extremamente genérico para facilitar a busca em um banco de dados.\n\nTranscrição: " + rawText;
         const keywordRes = await callGroq(keywordPrompt, 0.1, 'llama-3.1-8b-instant');
         extractedKeyword = keywordRes.choices[0].message.content.trim().replace(/['"]/g, '');
         
