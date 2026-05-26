@@ -1,4 +1,4 @@
-# E-Transcriber - Inteligência Artificial Médica
+# E-Qualify - Inteligência Artificial Médica
 
 Sistema avançado de transcrição médica e estruturação de prontuários com IA, desenvolvido para profissionais de saúde.
 
@@ -23,20 +23,31 @@ Este projeto é uma PWA (Progressive Web App) que precisa ser executada através
 
 ### 🖥️ Executando Localmente
 
-1. **Abra o terminal/prompt** na pasta do projeto:
-   ```bash
+1. **Abra o PowerShell** na pasta do projeto:
+   ```powershell
    cd C:\Projects\e-transciber
    ```
 
-2. **Inicie o servidor HTTP local:**
-   ```bash
-   python -m http.server 8000
+2. **Execute o script** para iniciar o servidor HTTP local (porta padrão 8000):
+   ```powershell
+   .\run_server.ps1
+   ```
+   Ou especifique outra porta:
+   ```powershell
+   .\run_server.ps1 8080
    ```
 
-3. **Abra no navegador:**
+   O script verifica a presença do Python no PATH e inicia `python -m http.server` com saída em tempo real.
+
+3. **Abra no navegador** na URL indicada pelo script, normalmente:
    ```
    http://localhost:8000
    ```
+
+*Observação:* Caso a política de execução do PowerShell impeça a execução, permita scripts temporariamente com:
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
 
 ### 🌐 Alternativas de Servidor
 
@@ -129,7 +140,7 @@ O projeto é atualizado automaticamente via GitHub Pages:
 ## 📞 Suporte
 
 Para dúvidas ou problemas:
-- 📧 Email: suporte@e-transcriber.com.br
+- 📧 Email: suporte@e-qualify.com.br
 - 🌐 Site: https://e-transcriber.com.br
 - 📱 WhatsApp: Disponível no app
 

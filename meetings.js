@@ -106,12 +106,6 @@ const MeetingDOM = {
 // INICIALIZAÇÃO
 // ==========================================================================
 function initMeetingModule() {
-    // Verificar se os elementos de reunião existem (podem ter sido removidos)
-    if (!document.getElementById('tab-reunioes')) {
-        console.warn('⚠️ Módulo de Reuniões desabilitado - aba não encontrada');
-        return;
-    }
-    
     try { MeetingState.history = JSON.parse(localStorage.getItem('etranscriber_meetings_history')) || []; } catch { MeetingState.history = []; }
     setupMeetingEventListeners();
     drawMeetingStaticWaveform();
@@ -850,12 +844,10 @@ function generateAttendanceQR() {
     localStorage.setItem('etranscriber_qr_token', JSON.stringify(AttendanceState.currentQRToken));
 
     // Build check-in URL (same page with hash param)
-    // IMPORTANTE: Incluir expiresAt na URL para validação cross-device
     const baseUrl = window.location.href.split('#')[0].split('?')[0];
-    const checkinUrl = `${baseUrl}?checkin=${token}&expires=${expiresAt}&meeting=${encodeURIComponent(meetingTitle)}`;
+    const checkinUrl = `${baseUrl}?checkin=${token}`;
 
     console.log('🔗 URL do QR Code:', checkinUrl);
-    console.log('📋 Dados codificados na URL:', { token, expiresAt, meetingTitle });
 
     // Render QR
     const container = document.getElementById('qrCodeContainer');
@@ -1108,36 +1100,25 @@ function handleQRCheckinParam() {
 
     modal.classList.remove('hidden');
 
-    // Ler dados da URL (prioridade) ou do localStorage (fallback)
-    const expiresAtFromUrl = params.get('expires');
-    const meetingTitleFromUrl = params.get('meeting');
-    
+    // Validate token
     let stored;
     try { stored = JSON.parse(localStorage.getItem('etranscriber_qr_token')); } catch { stored = null; }
 
-    // Usar dados da URL se disponíveis, senão usar localStorage
-    const expiresAt = expiresAtFromUrl ? parseInt(expiresAtFromUrl) : stored?.expiresAt;
-    const meetingTitle = meetingTitleFromUrl ? decodeURIComponent(meetingTitleFromUrl) : stored?.meetingTitle;
-    const now = Date.now();
-
     console.log('🔍 Validando check-in:', {
         token: token,
-        expiresAtFromUrl: expiresAtFromUrl,
-        expiresAt: expiresAt,
-        meetingTitle: meetingTitle,
-        now: now,
-        expired: expiresAt ? now > expiresAt : 'N/A',
-        timeUntilExpiry: expiresAt ? Math.round((expiresAt - now) / 1000 / 60) + ' minutos' : 'N/A',
-        dataSource: expiresAtFromUrl ? 'URL' : 'localStorage'
+        stored: stored,
+        tokenMatch: stored?.token === token,
+        now: Date.now(),
+        expiresAt: stored?.expiresAt,
+        expired: stored ? Date.now() > stored.expiresAt : 'N/A',
+        timeUntilExpiry: stored ? Math.round((stored.expiresAt - Date.now()) / 1000 / 60) + ' minutos' : 'N/A'
     });
 
-    // Validar: precisa ter expiresAt E não pode estar expirado
-    if (!expiresAt || now > expiresAt) {
+    if (!stored || stored.token !== token || Date.now() > stored.expiresAt) {
         console.error('❌ Check-in inválido:', {
-            noExpiresAt: !expiresAt,
-            expired: expiresAt ? now > expiresAt : false,
-            expiresAt: expiresAt,
-            now: now
+            noStored: !stored,
+            tokenMismatch: stored?.token !== token,
+            expired: stored ? Date.now() > stored.expiresAt : false
         });
         content.classList.add('hidden');
         expired.classList.remove('hidden');
@@ -1145,12 +1126,6 @@ function handleQRCheckinParam() {
     }
     
     console.log('✅ Check-in válido!');
-    
-    // Salvar no localStorage para referência futura
-    if (expiresAtFromUrl) {
-        const tokenData = { token, expiresAt, meetingTitle };
-        localStorage.setItem('etranscriber_qr_token', JSON.stringify(tokenData));
-    }
 
     // Wire confirm button
     document.getElementById('btn-confirm-checkin').addEventListener('click', () => {
@@ -1524,12 +1499,6 @@ function closeAttendanceModal() {
 // EVENT LISTENERS
 // ==========================================================================
 function setupMeetingEventListeners() {
-    // Verificar se os elementos existem antes de adicionar listeners
-    if (!MeetingDOM.btnModeRecord || !MeetingDOM.btnModeUpload) {
-        console.warn('⚠️ Elementos de reunião não encontrados - listeners não configurados');
-        return;
-    }
-    
     MeetingDOM.btnModeRecord.addEventListener('click', () => setMeetingAudioMode('record'));
     MeetingDOM.btnModeUpload.addEventListener('click', () => setMeetingAudioMode('upload'));
 

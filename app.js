@@ -142,6 +142,8 @@ const DOM = {
     btnThemeToggle: document.getElementById('btn-theme-toggle'),
     iconMoon: document.getElementById('icon-moon'),
     iconSun: document.getElementById('icon-sun'),
+    iconAuto: document.getElementById('icon-auto'),
+    themeSelect: document.getElementById('themeSelect'),
 
     // Modal de Ajuda
     btnHelp: document.getElementById('btn-help'),
@@ -339,25 +341,68 @@ function init() {
 // 2. SISTEMA DE TEMA CLARO / ESCURO
 // ==========================================================================
 function initTheme() {
-    const saved = localStorage.getItem('etranscriber_theme') || 'dark';
+    const saved = localStorage.getItem('etranscriber_theme') || 'auto';
     applyTheme(saved);
+
+    // Dynamic listener for system theme changes when set to auto
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = () => {
+        const currentPref = localStorage.getItem('etranscriber_theme') || 'auto';
+        if (currentPref === 'auto') {
+            applyTheme('auto');
+        }
+    };
+    if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handleSystemThemeChange);
+    } else if (mediaQuery.addListener) {
+        mediaQuery.addListener(handleSystemThemeChange);
+    }
 }
 
 function toggleTheme() {
-    const current = document.body.getAttribute('data-theme') || 'dark';
-    const next = current === 'dark' ? 'light' : 'dark';
-    applyTheme(next);
-    localStorage.setItem('etranscriber_theme', next);
+    const currentPref = localStorage.getItem('etranscriber_theme') || 'auto';
+    let nextPref;
+    if (currentPref === 'auto') {
+        nextPref = 'light';
+    } else if (currentPref === 'light') {
+        nextPref = 'dark';
+    } else {
+        nextPref = 'auto';
+    }
+    applyTheme(nextPref);
+    localStorage.setItem('etranscriber_theme', nextPref);
+
+    const labels = { auto: 'Automático (Sistema)', light: 'Tema Claro', dark: 'Tema Escuro' };
+    showToast(`Tema alterado para: ${labels[nextPref]}`);
 }
 
-function applyTheme(theme) {
-    document.body.setAttribute('data-theme', theme);
-    if (theme === 'light') {
+function applyTheme(themeMode) {
+    let themeToApply = themeMode;
+    if (themeMode === 'auto') {
+        const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        themeToApply = isSystemDark ? 'dark' : 'light';
+    }
+
+    document.body.setAttribute('data-theme', themeToApply);
+
+    // Update icons visibility
+    if (themeMode === 'light') {
         DOM.iconMoon.classList.add('hidden');
         DOM.iconSun.classList.remove('hidden');
-    } else {
+        if (DOM.iconAuto) DOM.iconAuto.classList.add('hidden');
+    } else if (themeMode === 'dark') {
         DOM.iconMoon.classList.remove('hidden');
         DOM.iconSun.classList.add('hidden');
+        if (DOM.iconAuto) DOM.iconAuto.classList.add('hidden');
+    } else {
+        DOM.iconMoon.classList.add('hidden');
+        DOM.iconSun.classList.add('hidden');
+        if (DOM.iconAuto) DOM.iconAuto.classList.remove('hidden');
+    }
+
+    // Update select dropdown selection if it exists
+    if (DOM.themeSelect) {
+        DOM.themeSelect.value = themeMode;
     }
 }
 
@@ -1149,28 +1194,6 @@ function clearUploadedFile() {
 // ==========================================================================
 // 10. CHAMADAS DA API DO GROQ
 // ==========================================================================
-
-/** Extrai mensagem amigável de erro da API Groq */
-function parseGroqApiError(status, errText) {
-    if (status === 401) {
-        return 'Chave Groq inválida ou expirada. Gere uma nova em console.groq.com → API Keys e salve em Configurações.';
-    }
-    if (status === 429) {
-        return 'Limite de requisições atingido. Aguarde alguns minutos e tente novamente.';
-    }
-    let parsed = null;
-    try {
-        parsed = JSON.parse(errText);
-    } catch {
-        /* corpo não é JSON */
-    }
-    const apiErr = parsed?.error;
-    if (apiErr?.code === 'invalid_api_key' || apiErr?.message === 'Invalid API Key') {
-        return 'Chave Groq inválida. Verifique se começa com gsk_, sem espaços, e clique em Salvar Chave antes de gerar o prontuário.';
-    }
-    return apiErr?.message || (errText.length > 200 ? `Erro ${status} na API Groq` : errText) || `Erro ${status} na API Groq`;
-}
-
 async function processRecordedAudio() {
     if (!AppState.audioChunks.length) return;
     const blob = new Blob(AppState.audioChunks, { type: AppState.mediaRecorder.mimeType || 'audio/webm' });
@@ -1265,7 +1288,12 @@ async function generateClinicalDocuments() {
     }).then(async r => {
         if (!r.ok) {
             const errText = await r.text();
-            throw new Error(parseGroqApiError(r.status, errText));
+            try {
+                const errJson = JSON.parse(errText);
+                throw new Error(errJson.error?.message || errText);
+            } catch (e) {
+                throw new Error(errText);
+            }
         }
         return r.json();
     });
@@ -1316,15 +1344,7 @@ async function testGroqConnection() {
             headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: 'Diga apenas Ok.' }], max_tokens: 5 })
         });
-        if (res.ok) {
-            localStorage.setItem('etranscriber_groq_key', key);
-            AppState.apiKey = key;
-            updateApiStatusUI();
-            showToast('✓ Conexão bem-sucedida! Chave válida e salva.');
-        } else {
-            const errText = await res.text();
-            showToast(parseGroqApiError(res.status, errText));
-        }
+        showToast(res.ok ? '✓ Conexão bem-sucedida! Chave válida.' : `Erro ${res.status}: Chave inválida.`);
     } catch {
         showToast('Falha na conexão. Verifique a internet.');
     } finally {
@@ -1940,6 +1960,15 @@ function searchHelp(query) {
 function setupEventListeners() {
     // Tema
     DOM.btnThemeToggle.addEventListener('click', toggleTheme);
+    if (DOM.themeSelect) {
+        DOM.themeSelect.addEventListener('change', (e) => {
+            const nextPref = e.target.value;
+            applyTheme(nextPref);
+            localStorage.setItem('etranscriber_theme', nextPref);
+            const labels = { auto: 'Automático (Sistema)', light: 'Tema Claro', dark: 'Tema Escuro' };
+            showToast(`Tema alterado para: ${labels[nextPref]}`);
+        });
+    }
 
     // Modal de Ajuda
     if (DOM.btnHelp) DOM.btnHelp.addEventListener('click', openHelpModal);
@@ -2053,55 +2082,6 @@ function setupEventListeners() {
         }
     });
 }
-
-// ============================================================================
-// INTEGRAÇÃO COM QUALIFICADOR
-// ============================================================================
-
-/**
- * Manipulador para o botão "Qualificar para Encaminhamento"
- */
-async function handleQualifyClick() {
-  const prontuarioText = document.getElementById('outputRecord')?.value || '';
-  const patientName = document.getElementById('patientName')?.value || 'Paciente';
-  const patientAge = document.getElementById('patientAge')?.value || '';
-  const specialty = document.getElementById('doctorSpecialty')?.value || '';
-
-  if (!prontuarioText.trim()) {
-    showToast('Gere um prontuário antes de qualificar para encaminhamento.');
-    return;
-  }
-
-  const prontuario = {
-    patientId: 'patient_' + Date.now(),
-    patientName,
-    patientAge,
-    specialty,
-    text: prontuarioText,
-    rawText: prontuarioText,
-    timestamp: new Date().toISOString()
-  };
-
-  const openModal = window.openQualificationModal;
-  if (typeof openModal !== 'function') {
-    console.error('openQualificationModal não encontrada. Verifique erros no Console (F12) ao carregar scripts em modules/qualification/.');
-    showToast('Módulo de qualificação não carregou. Recarregue a página (Ctrl+Shift+R).');
-    return;
-  }
-
-  try {
-    if (typeof window.initializeQualificationSystem === 'function' && !window.qualificationSystem) {
-      window.qualificationSystem = await window.initializeQualificationSystem();
-    }
-    await openModal(prontuario);
-  } catch (err) {
-    console.error('Erro ao abrir qualificador:', err);
-    showToast('Erro ao abrir qualificador: ' + (err.message || 'tente recarregar a página'));
-  }
-}
-
-// Exportar função globalmente
-window.handleQualifyClick = handleQualifyClick;
 
 // Inicializar ao carregar a página
 window.addEventListener('DOMContentLoaded', init);
