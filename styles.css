@@ -8,40 +8,40 @@
     --font-display: 'Outfit', var(--font-sans);
     
     /* Cores de Fundo e Containers */
-    --bg-main: #070a13;
-    --bg-sidebar: #0b0f1d;
-    --bg-card: rgba(17, 22, 37, 0.65);
-    --bg-card-hover: rgba(22, 30, 50, 0.85);
-    --bg-input: rgba(10, 15, 28, 0.8);
+    --bg-main: #050505;
+    --bg-sidebar: #0a0a0a;
+    --bg-card: rgba(15, 15, 20, 0.7);
+    --bg-card-hover: rgba(20, 20, 25, 0.85);
+    --bg-input: rgba(25, 25, 30, 0.6);
     
     /* Cores de Acento */
-    --primary: #6366f1;
-    --primary-hover: #4f46e5;
-    --primary-rgb: 99, 102, 241;
+    --primary: #4f46e5;
+    --primary-hover: #6366f1;
+    --primary-rgb: 79, 70, 229;
     
-    --secondary: #8b5cf6;
-    --secondary-hover: #7c3aed;
+    --secondary: #ec4899;
+    --secondary-hover: #f472b6;
     
-    --accent-teal: #14b8a6;
-    --accent-teal-hover: #0d9488;
+    --accent-teal: #06b6d4;
+    --accent-teal-hover: #22d3ee;
     
     --danger: #ef4444;
-    --danger-hover: #dc2626;
+    --danger-hover: #f87171;
     --danger-light: rgba(239, 68, 68, 0.15);
     
     --success: #10b981;
-    --success-hover: #059669;
+    --success-hover: #34d399;
     --success-light: rgba(16, 185, 129, 0.15);
     
     /* Bordas e Sombras */
-    --border-color: rgba(255, 255, 255, 0.08);
-    --border-color-focus: rgba(99, 102, 241, 0.4);
-    --box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    --backdrop-blur: blur(12px);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --border-color-focus: rgba(79, 70, 229, 0.5);
+    --box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    --backdrop-blur: blur(16px);
     
     /* Cores de Texto */
     --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
+    --text-secondary: #cbd5e1;
     --text-muted: #64748b;
     --text-on-primary: #ffffff;
 }
@@ -2334,5 +2334,197 @@ body[data-theme="light"] .badge-light {
     
     .help-content {
         padding: 16px;
+    }
+}
+
+/* ========================================
+   PAINEL BVS APS (MATERIAL DE APOIO)
+======================================== */
+.bvs-sidebar {
+    position: fixed;
+    top: 0;
+    right: -400px; /* Off-canvas default */
+    width: 400px;
+    height: 100vh;
+    background: var(--bg-card);
+    backdrop-filter: var(--backdrop-blur);
+    -webkit-backdrop-filter: var(--backdrop-blur);
+    border-left: 1px solid var(--border-color);
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.bvs-sidebar.active {
+    right: 0;
+}
+
+.bvs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.bvs-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--accent-teal);
+}
+
+.bvs-title h3 {
+    font-size: 1.1rem;
+    font-family: var(--font-display);
+    margin: 0;
+}
+
+.bvs-search-container {
+    padding: 16px;
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.bvs-search-container input {
+    flex: 1;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.bvs-search-container input:focus {
+    border-color: var(--accent-teal);
+}
+
+.bvs-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.bvs-empty-state, .bvs-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    height: 100%;
+    gap: 16px;
+}
+
+.bvs-loading .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent-teal);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.bvs-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.bvs-card:hover {
+    border-color: var(--accent-teal);
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.bvs-card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.bvs-card-content {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 12px;
+    max-height: 100px;
+    overflow: hidden;
+    position: relative;
+}
+
+.bvs-card-content::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 40px;
+    background: linear-gradient(transparent, var(--bg-card));
+}
+
+.bvs-card-content.expanded {
+    max-height: none;
+}
+
+.bvs-card-content.expanded::after {
+    display: none;
+}
+
+.bvs-card-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border-color);
+    padding-top: 12px;
+}
+
+.bvs-btn-read {
+    background: none;
+    border: none;
+    color: var(--accent-teal);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bvs-btn-read:hover {
+    text-decoration: underline;
+}
+
+.bvs-link {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.bvs-link:hover {
+    color: var(--text-primary);
+}
+
+@media (max-width: 768px) {
+    .bvs-sidebar {
+        width: 100%;
+        right: -100%;
     }
 }

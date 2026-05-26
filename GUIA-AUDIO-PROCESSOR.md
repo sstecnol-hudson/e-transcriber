@@ -520,3 +520,362 @@ Para dúvidas ou problemas:
 
 **Documento Concluído:** 25/05/2026  
 **Status:** ✅ Pronto para Integração
+
+
+---
+
+## 🔗 INTEGRAÇÃO NO E-TRANSCRIBER
+
+### Integração em app.js
+
+```javascript
+// 1. Inicializar AudioProcessor na função init()
+function init() {
+  // ... código existente ...
+  
+  // Inicializar AudioProcessor
+  AppState.audioProcessor = new AudioProcessor();
+  AppState.recordingState = {};
+  
+  // ... resto do código ...
+}
+
+// 2. Usar em startRecording()
+async function startRecording(isTelemed = false) {
+  if (!AppState.apiKey) {
+    showToast('Configure sua chave Groq em Configurações primeiro!');
+    return;
+  }
+
+  try {
+    let result;
+    
+    if (!isTelemed) {
+      // Gravação presencial
+      result = await AppState.audioProcessor.startPresentialRecording();
+    } else {
+      // Gravação telemedicina
+      result = await AppState.audioProcessor.startOnlineRecording();
+    }
+
+    if (!result.success) {
+      showToast(result.message);
+      return;
+    }
+
+    // Configurar visualizador
+    const canvas = DOM.waveformCanvas;
+    const visualizer = AppState.audioProcessor.setupVisualizer(canvas, result.stream);
+    visualizer.start('bars');
+
+    // Iniciar monitoramento de qualidade
+    const qualityMonitor = AppState.audioProcessor.startQualityMonitoring();
+    const qualityInterval = setInterval(() => {
+      const metrics = AppState.audioProcessor.getQualityMetrics();
+      updateQualityDisplay(metrics);
+    }, 500);
+
+    // Armazenar estado
+    AppState.recordingState = {
+      visualizer,
+      qualityInterval,
+      qualityMonitor
+    };
+
+    showToast(isTelemed ? 'Gravação de Telemedicina iniciada.' : 'Gravação presencial iniciada');
+  } catch (err) {
+    handleRecordingError(err);
+  }
+}
+
+// 3. Usar em stopRecording()
+async function stopRecording() {
+  if (!AppState.audioProcessor.isRecording) return;
+
+  try {
+    // Parar gravação
+    const result = AppState.audioProcessor.stopRecording();
+    if (!result.success) {
+      showToast('Erro ao parar gravação');
+      return;
+    }
+
+    // Limpar UI
+    clearInterval(AppState.recordingTimerInterval);
+    clearInterval(AppState.recordingState.qualityInterval);
+    AppState.recordingState.visualizer?.stop();
+
+    // Obter blob
+    const audioBlob = AppState.audioProcessor.getRecordedAudioBlob();
+
+    // Comprimir
+    showToast('Comprimindo áudio...');
+    const compressed = await AppState.audioProcessor.compressAudio(audioBlob);
+    const finalBlob = compressed.success ? compressed.blob : audioBlob;
+
+    // Enviar para Groq
+    await sendAudioToWhisper(finalBlob);
+
+    // Resetar UI
+    DOM.btnRecordStart.disabled = false;
+    DOM.btnRecordTelemed.disabled = false;
+    DOM.btnRecordStop.disabled = true;
+    DOM.recordingTimer.textContent = '00:00';
+  } catch (err) {
+    handleRecordingError(err);
+  }
+}
+
+// 4. Tratamento de erros
+function handleRecordingError(err) {
+  let errorMessage = 'Erro desconhecido ao acessar áudio.';
+
+  if (err.name === 'NotAllowedError') {
+    errorMessage = '❌ Permissão negada. Verifique as permissões de microfone.';
+  } else if (err.name === 'NotFoundError') {
+    errorMessage = '❌ Nenhum dispositivo de áudio encontrado.';
+  } else if (err.name === 'NotReadableError') {
+    errorMessage = '❌ Não foi possível acessar o dispositivo de áudio.';
+  }
+
+  showToast(errorMessage, 5000);
+  
+  // Resetar UI
+  DOM.btnRecordStart.disabled = false;
+  DOM.btnRecordTelemed.disabled = false;
+  DOM.btnRecordStop.disabled = true;
+}
+
+// 5. Atualizar qualidade
+function updateQualityDisplay(metrics) {
+  const qualityPanel = document.getElementById('quality-metrics-panel');
+  if (!qualityPanel) return;
+
+  let color = '#10b981'; // green
+  if (metrics.clipping) {
+    color = '#ef4444'; // red
+  } else if (metrics.noiseLevel > 100) {
+    color = '#f59e0b'; // yellow
+  }
+
+  const qualityValue = document.getElementById('qualityValue');
+  if (qualityValue) {
+    qualityValue.textContent = metrics.quality.toUpperCase();
+    qualityValue.style.color = color;
+  }
+}
+```
+
+### Integração em meetings.js
+
+```javascript
+// 1. Inicializar AudioProcessor
+function initMeetingModule() {
+  // ... código existente ...
+  
+  MeetingState.audioProcessor = new AudioProcessor();
+  MeetingState.recordingState = {};
+  
+  // ... resto do código ...
+}
+
+// 2. Usar em startMeetingRecording()
+async function startMeetingRecording(isOnline = false) {
+  if (!AppState.apiKey) {
+    showToast('Configure sua chave Groq nas Configurações primeiro!');
+    return;
+  }
+
+  try {
+    let result;
+    
+    if (!isOnline) {
+      result = await MeetingState.audioProcessor.startPresentialRecording();
+    } else {
+      result = await MeetingState.audioProcessor.startOnlineRecording();
+    }
+
+    if (!result.success) {
+      showToast(result.message);
+      return;
+    }
+
+    // Configurar visualizador
+    const canvas = MeetingDOM.waveformCanvas;
+    const visualizer = MeetingState.audioProcessor.setupVisualizer(canvas, result.stream);
+    visualizer.start('bars');
+
+    // Iniciar monitoramento
+    const qualityMonitor = MeetingState.audioProcessor.startQualityMonitoring();
+    const qualityInterval = setInterval(() => {
+      const metrics = MeetingState.audioProcessor.getQualityMetrics();
+      updateMeetingQualityDisplay(metrics);
+    }, 500);
+
+    MeetingState.recordingState = {
+      visualizer,
+      qualityInterval,
+      qualityMonitor
+    };
+
+    showToast(isOnline ? 'Gravação de Reunião Online iniciada.' : 'Gravação de Reunião Presencial iniciada.');
+  } catch (err) {
+    console.error('Erro ao iniciar gravação de reunião:', err);
+    showToast(`Erro: ${err.message}`);
+  }
+}
+
+// 3. Usar em stopMeetingRecording()
+async function stopMeetingRecording() {
+  if (!MeetingState.audioProcessor.isRecording) return;
+
+  try {
+    const result = MeetingState.audioProcessor.stopRecording();
+    if (!result.success) {
+      showToast('Erro ao parar gravação');
+      return;
+    }
+
+    clearInterval(MeetingState.recordingTimerInterval);
+    clearInterval(MeetingState.recordingState.qualityInterval);
+    MeetingState.recordingState.visualizer?.stop();
+
+    const audioBlob = MeetingState.audioProcessor.getRecordedAudioBlob();
+
+    showToast('Comprimindo áudio...');
+    const compressed = await MeetingState.audioProcessor.compressAudio(audioBlob);
+    const finalBlob = compressed.success ? compressed.blob : audioBlob;
+
+    await sendMeetingAudioToWhisper(new File([finalBlob], `reuniao_${Date.now()}.webm`, { type: finalBlob.type }));
+
+    MeetingDOM.btnRecordStart.disabled = false;
+    MeetingDOM.btnRecordOnline.disabled = false;
+    MeetingDOM.btnRecordStop.disabled = true;
+    MeetingDOM.recordingTimer.textContent = '00:00';
+  } catch (err) {
+    console.error('Erro ao parar gravação de reunião:', err);
+    showToast(`Erro: ${err.message}`);
+  }
+}
+```
+
+### HTML para Controles
+
+```html
+<!-- Seletor de Visualização -->
+<div id="visualization-controls" class="visualization-controls hidden">
+  <button class="viz-btn active" data-style="bars">Barras</button>
+  <button class="viz-btn" data-style="waveform">Onda</button>
+  <button class="viz-btn" data-style="circular">Circular</button>
+</div>
+
+<!-- Painel de Qualidade -->
+<div id="quality-metrics-panel" class="quality-metrics-panel hidden">
+  <div style="display: flex; justify-content: space-between; font-size: 12px;">
+    <div>
+      <span>Qualidade:</span>
+      <span id="qualityValue" style="font-weight: bold; color: #10b981;">EXCELENTE</span>
+    </div>
+    <div>
+      <span>Ruído:</span>
+      <span id="noiseValue" style="font-weight: bold;">0</span>
+    </div>
+    <div>
+      <span>Clipping:</span>
+      <span id="clippingValue" style="font-weight: bold;">NÃO</span>
+    </div>
+    <div>
+      <span>Pico:</span>
+      <span id="peakValue" style="font-weight: bold;">0</span>
+    </div>
+  </div>
+</div>
+```
+
+### CSS para Controles
+
+```css
+.visualization-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.visualization-controls.hidden {
+  display: none !important;
+}
+
+.viz-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.viz-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.viz-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white;
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.quality-metrics-panel {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  padding: 12px 16px;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.quality-metrics-panel.hidden {
+  display: none !important;
+}
+```
+
+---
+
+## ✅ CHECKLIST DE INTEGRAÇÃO
+
+- [x] AudioProcessor adicionado ao HTML
+- [x] Instâncias criadas em app.js e meetings.js
+- [x] startRecording() integrado com audioProcessor
+- [x] stopRecording() integrado com audioProcessor
+- [x] startMeetingRecording() integrado com audioProcessor
+- [x] stopMeetingRecording() integrado com audioProcessor
+- [x] Visualizador configurado
+- [x] Monitoramento de qualidade implementado
+- [x] Compressão de áudio integrada
+- [x] Tratamento de erros implementado
+- [x] UI/UX melhorada
+- [x] Documentação atualizada
+- [x] Testes realizados
+
+---
+
+**Integração Concluída:** 25/05/2026  
+**Status:** ✅ Pronto para Produção
+

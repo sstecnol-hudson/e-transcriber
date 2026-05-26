@@ -26,6 +26,54 @@ function debounce(fn, delay = 250) {
     };
 }
 
+/** Fetch com timeout integrado via AbortController */
+async function fetchWithTimeout(resource, options = {}) {
+    const { timeout = 30000 } = options;
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+        const response = await fetch(resource, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        if (error.name === 'AbortError') {
+            throw new Error('⏱️ A requisição excedeu o tempo limite. Verifique sua conexão e tente novamente.');
+        }
+        throw error;
+    }
+}
+window.fetchWithTimeout = fetchWithTimeout;
+
+/** Habilita ou desabilita dinamicamente os botões que dependem da API Groq */
+function toggleAiButtonsState() {
+    const hasKey = !!AppState.apiKey;
+    
+    // Módulo Clínico
+    const rawText = DOM.rawTranscript.value.trim();
+    DOM.btnGenerateDocs.disabled = !hasKey || rawText.length === 0;
+    DOM.btnProcessUpload.disabled = !hasKey || !AppState.uploadedFile;
+    
+    // Módulo de Reuniões
+    const btnMeetingDocs = document.getElementById('btn-generate-meeting-docs');
+    const rawMeetingTranscript = document.getElementById('rawMeetingTranscript');
+    if (btnMeetingDocs && rawMeetingTranscript) {
+        btnMeetingDocs.disabled = !hasKey || rawMeetingTranscript.value.trim().length === 0;
+    }
+    
+    const btnMeetingProcessUpload = document.getElementById('btn-process-meeting-upload');
+    const meetingFile = (typeof MeetingState !== 'undefined') ? MeetingState.uploadedFile : null;
+    if (btnMeetingProcessUpload) {
+        btnMeetingProcessUpload.disabled = !hasKey || !meetingFile;
+    }
+}
+window.toggleAiButtonsState = toggleAiButtonsState;
+
+
 // ---- PROMPTS DE SISTEMA PADRÃO ----
 const DEFAULT_PROMPTS = {
     soap: `Você é um assistente de inteligência artificial médica especializado em estruturação de prontuários médicos. Sua tarefa é analisar a transcrição de uma consulta clínica e gerar um prontuário médico estruturado no padrão SOAP.
@@ -300,6 +348,10 @@ function init() {
     // Restaurar modelo de IA selecionado
     if (DOM.aiModel && AppState.aiModel) DOM.aiModel.value = AppState.aiModel;
 
+    // Inicializar AudioProcessor e estado de gravação
+    AppState.audioProcessor = new AudioProcessor();
+    AppState.recordingState = {};
+
     // Inicializar UI
     updateApiStatusUI();
     initTheme();
@@ -313,7 +365,10 @@ function init() {
     setupPatientAutocomplete();
     drawStaticWaveform();
 
-    if (!AppState.apiKey) DOM.apiKeyAlert.classList.remove('hidden');
+    if (!AppState.apiKey) {
+        DOM.apiKeyAlert.classList.remove('hidden');
+        setTimeout(() => showToast('⚠️ Configure sua chave Groq em Configurações para usar IA'), 500);
+    }
 
     // Listener para salvar dados da empresa de reuniões
     const btnSaveMeetingCompany = document.getElementById('btn-save-meeting-company');
@@ -410,14 +465,19 @@ function applyTheme(themeMode) {
 // 3. GERENCIAMENTO DE STATUS E UTILITÁRIOS
 // ==========================================================================
 function updateApiStatusUI() {
-    if (AppState.apiKey) {
+    const hasKey = !!AppState.apiKey;
+    if (hasKey) {
         DOM.apiStatusDot.className = 'status-dot green';
         DOM.apiStatusText.textContent = 'Groq Configurado';
         DOM.apiKeyAlert.classList.add('hidden');
     } else {
         DOM.apiStatusDot.className = 'status-dot red';
         DOM.apiStatusText.textContent = 'Groq Desconectado';
+        DOM.apiKeyAlert.classList.remove('hidden');
     }
+    
+    // Atualizar estado de botões que dependem da API
+    toggleAiButtonsState();
 }
 
 let toastTimeout = null;
@@ -686,7 +746,7 @@ function startConsultForPatient(patientId) {
     DOM.rawTranscript.value = '';
     DOM.outputRecord.value = '';
     DOM.outputPatientMsg.value = '';
-    DOM.btnGenerateDocs.disabled = true;
+    toggleAiButtonsState();
     DOM.btnSaveConsult.disabled = false;
     DOM.btnSaveConsult.textContent = 'Salvar no Histórico Local';
     DOM.resultsSection.classList.add('hidden');
@@ -966,141 +1026,132 @@ function setAudioMode(mode) {
     DOM.panelUpload.classList.toggle('active', mode === 'upload');
 }
 
-async function startRecording(isTelemed = false) {
+async function startRecording() {
     if (!AppState.apiKey) {
-        showToast('Configure sua chave Groq nas Configurações primeiro!');
+        showToast('Configure sua chave Groq em Configurações primeiro!');
         switchTab('tab-config');
         return;
     }
-    AppState.audioChunks = [];
+
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true,
-                sampleRate: 48000,
-                channelCount: 1
-            } 
-        });
-        AppState.audioStream = stream;
-        let finalStream = stream;
-
-        if (isTelemed) {
-            try {
-                const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
-                    video: true, 
-                    audio: {
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                        autoGainControl: true
-                    } 
-                });
-                AppState.displayStream = displayStream;
-
-                const hasAudio = displayStream.getAudioTracks().length > 0;
-                if (!hasAudio) {
-                    showToast('AVISO: Áudio da guia não compartilhado. Grave novamente e marque "Compartilhar áudio".', 5000);
-                }
-
-                AppState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                AppState.dest = AppState.audioContext.createMediaStreamDestination();
-
-                const micSource = AppState.audioContext.createMediaStreamSource(stream);
-                micSource.connect(AppState.dest);
-
-                if (hasAudio) {
-                    const displayAudioStream = new MediaStream(displayStream.getAudioTracks());
-                    const displaySource = AppState.audioContext.createMediaStreamSource(displayAudioStream);
-                    displaySource.connect(AppState.dest);
-                }
-
-                finalStream = AppState.dest.stream;
-
-                // Para a gravação se o usuário parar de compartilhar a tela
-                displayStream.getVideoTracks()[0].onended = () => {
-                    if (AppState.isRecording) stopRecording();
-                };
-            } catch (err) {
-                console.error('Display media error:', err);
-                showToast('Erro ao capturar tela para telemedicina. Compartilhamento cancelado.');
-                stream.getTracks().forEach(t => t.stop());
-                return;
-            }
+        // Gravação presencial - usar audioProcessor
+        const result = await AppState.audioProcessor.startPresentialRecording();
+        if (!result.success) {
+            showToast(result.message);
+            return;
         }
 
-        let options = {};
-        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) options = { mimeType: 'audio/webm;codecs=opus' };
-        else if (MediaRecorder.isTypeSupported('audio/webm')) options = { mimeType: 'audio/webm' };
-        else if (MediaRecorder.isTypeSupported('audio/ogg')) options = { mimeType: 'audio/ogg' };
-        else if (MediaRecorder.isTypeSupported('audio/mp4')) options = { mimeType: 'audio/mp4' };
+        // Configurar visualizador
+        const canvas = DOM.waveformCanvas;
+        const visualizer = AppState.audioProcessor.setupVisualizer(canvas, result.stream);
+        visualizer.start('bars');
 
-        AppState.mediaRecorder = new MediaRecorder(finalStream, options);
-        AppState.mediaRecorder.ondataavailable = e => { if (e.data?.size > 0) AppState.audioChunks.push(e.data); };
-        AppState.mediaRecorder.onstop = processRecordedAudio;
-        AppState.mediaRecorder.start(250);
-        AppState.isRecording = true;
+        // Iniciar monitoramento de qualidade
+        const qualityMonitor = AppState.audioProcessor.startQualityMonitoring();
+        const qualityInterval = setInterval(() => {
+            const metrics = AppState.audioProcessor.getQualityMetrics();
+            updateQualityDisplay(metrics);
+        }, 500);
 
+        // Iniciar timer
+        AppState.recordingStartTime = Date.now();
+        AppState.recordingTimerInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - AppState.recordingStartTime) / 1000);
+            const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const s = (elapsed % 60).toString().padStart(2, '0');
+            DOM.recordingTimer.textContent = `${m}:${s}`;
+        }, 1000);
+
+        // Atualizar UI
         DOM.btnRecordStart.disabled = true;
         DOM.btnRecordTelemed.disabled = true;
         DOM.btnRecordStop.disabled = false;
 
-        AppState.recordingDuration = 0;
-        DOM.recordingTimer.textContent = '00:00';
+        // Armazenar estado
+        AppState.recordingState = {
+            visualizer,
+            qualityInterval,
+            qualityMonitor
+        };
+
+        showToast('Gravação presencial iniciada');
+    } catch (err) {
+        console.error('Erro ao iniciar gravação presencial:', err);
+        showToast(`Erro: ${err.message}`);
+    }
+}
+
+// ==========================================================================
+// 3.1 GRAVAÇÃO TELEMEDICINA - Usar audioProcessor.startOnlineRecording()
+// ==========================================================================
+
+/**
+ * Inicia gravação de telemedicina combinando áudio do microfone e da tela
+ * Valida API key antes de iniciar
+ * Trata resultado com sucesso/erro
+ * 
+ * Requirements: 1.2, 1.3, 1.7, 10.1
+ */
+async function startTelemedicineRecording() {
+    // Validar API key
+    if (!AppState.apiKey) {
+        showToast('Configure sua chave Groq em Configurações primeiro!');
+        switchTab('tab-config');
+        return;
+    }
+
+    try {
+        // Implementar chamada a audioProcessor.startOnlineRecording()
+        const result = await AppState.audioProcessor.startOnlineRecording();
+        
+        // Tratar resultado com erro
+        if (!result.success) {
+            showToast(result.message);
+            return;
+        }
+
+        // Configurar visualizador
+        const canvas = DOM.waveformCanvas;
+        const visualizer = AppState.audioProcessor.setupVisualizer(canvas, result.stream);
+        visualizer.start('bars');
+
+        // Iniciar monitoramento de qualidade
+        const qualityMonitor = AppState.audioProcessor.startQualityMonitoring();
+        const qualityInterval = setInterval(() => {
+            const metrics = AppState.audioProcessor.getQualityMetrics();
+            updateQualityDisplay(metrics);
+        }, 500);
+
+        // Iniciar timer
+        AppState.recordingStartTime = Date.now();
         AppState.recordingTimerInterval = setInterval(() => {
-            AppState.recordingDuration++;
-            const m = Math.floor(AppState.recordingDuration / 60).toString().padStart(2, '0');
-            const s = (AppState.recordingDuration % 60).toString().padStart(2, '0');
+            const elapsed = Math.floor((Date.now() - AppState.recordingStartTime) / 1000);
+            const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const s = (elapsed % 60).toString().padStart(2, '0');
             DOM.recordingTimer.textContent = `${m}:${s}`;
         }, 1000);
 
-        setupAudioVisualizer(finalStream);
-        showToast(isTelemed ? 'Gravação de Telemedicina iniciada.' : 'Gravação Presencial iniciada.');
+        // Atualizar UI
+        DOM.btnRecordStart.disabled = true;
+        DOM.btnRecordTelemed.disabled = true;
+        DOM.btnRecordStop.disabled = false;
+
+        // Armazenar estado
+        AppState.recordingState = {
+            visualizer,
+            qualityInterval,
+            qualityMonitor
+        };
+
+        // Tratar resultado com sucesso
+        showToast('Gravação de Telemedicina iniciada.');
     } catch (err) {
-        console.error(err);
-        showToast('Erro ao acessar microfone ou tela. Verifique as permissões.');
+        console.error('Erro ao iniciar gravação de telemedicina:', err);
+        showToast(`Erro: ${err.message}`);
     }
 }
 
-function setupAudioVisualizer(stream) {
-    // Em modo telemedicina o AudioContext já foi criado para mixar os streams.
-    // Reutilizá-lo evita leak de recursos; só cria um novo se ainda não existir.
-    if (!AppState.audioContext || AppState.audioContext.state === 'closed') {
-        AppState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    AppState.analyser = AppState.audioContext.createAnalyser();
-    AppState.source = AppState.audioContext.createMediaStreamSource(stream);
-    AppState.source.connect(AppState.analyser);
-    AppState.analyser.fftSize = 128;
-    AppState.dataArray = new Uint8Array(AppState.analyser.frequencyBinCount);
-    animateWaveform();
-}
 
-function animateWaveform() {
-    if (!AppState.isRecording) return;
-    AppState.animationFrameId = requestAnimationFrame(animateWaveform);
-    const canvas = DOM.waveformCanvas;
-    const ctx = canvas.getContext('2d');
-    const { width, height } = canvas;
-    AppState.analyser.getByteFrequencyData(AppState.dataArray);
-    ctx.clearRect(0, 0, width, height);
-
-    // Gradiente criado uma vez por frame (não por barra) — evita 3840 objetos/s
-    const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, '#6366f1');
-    grad.addColorStop(0.5, '#8b5cf6');
-    grad.addColorStop(1, '#14b8a6');
-    ctx.fillStyle = grad;
-
-    const barWidth = (width / AppState.dataArray.length) * 1.5;
-    let x = 0;
-    for (let i = 0; i < AppState.dataArray.length; i++) {
-        const barHeight = Math.max(4, (AppState.dataArray[i] / 255) * height * 0.9);
-        const y = (height - barHeight) / 2;
-        drawRoundRect(ctx, x, y, barWidth - 3, barHeight, 4);
-        x += barWidth;
-    }
-}
 
 function drawRoundRect(ctx, x, y, w, h, r) {
     if (w < 0) w = 0; if (h < 0) h = 0;
@@ -1145,22 +1196,134 @@ function drawStaticWaveform() {
     }
 }
 
-function stopRecording() {
-    if (!AppState.isRecording) return;
-    AppState.isRecording = false;
-    clearInterval(AppState.recordingTimerInterval);
-    cancelAnimationFrame(AppState.animationFrameId);
-    AppState.audioStream?.getTracks().forEach(t => t.stop());
-    AppState.displayStream?.getTracks().forEach(t => t.stop());
-    if (AppState.audioContext && AppState.audioContext.state !== 'closed') {
-        AppState.audioContext.close();
+function updateQualityDisplay(metrics) {
+    const qualityPanel = document.getElementById('quality-metrics-panel');
+    const vizControls = document.getElementById('visualization-controls');
+    
+    if (!qualityPanel || !vizControls) return;
+    
+    // Mostrar painéis
+    qualityPanel.classList.remove('hidden');
+    vizControls.classList.remove('hidden');
+
+    // Determinar cor baseado na qualidade
+    let qualityColor = '#10b981'; // green - excellent
+    let qualityText = 'EXCELENTE';
+    
+    if (metrics.clipping) {
+        qualityColor = '#ef4444'; // red - poor
+        qualityText = 'RUIM';
+    } else if (metrics.noiseLevel > 100) {
+        qualityColor = '#f59e0b'; // yellow - fair
+        qualityText = 'RAZOÁVEL';
+    } else if (metrics.noiseLevel > 50) {
+        qualityColor = '#10b981'; // green - good
+        qualityText = 'BOM';
     }
-    AppState.mediaRecorder?.stop();
+
+    // Atualizar valores
+    const qualityValue = document.getElementById('qualityValue');
+    const noiseValue = document.getElementById('noiseValue');
+    const clippingValue = document.getElementById('clippingValue');
+    const peakValue = document.getElementById('peakValue');
+
+    if (qualityValue) {
+        qualityValue.textContent = qualityText;
+        qualityValue.style.color = qualityColor;
+    }
+    if (noiseValue) noiseValue.textContent = metrics.noiseLevel;
+    if (clippingValue) clippingValue.textContent = metrics.clipping ? 'SIM' : 'NÃO';
+    if (peakValue) peakValue.textContent = metrics.peakLevel;
+}
+
+async function stopRecording() {
+    if (!AppState.audioProcessor.isRecording) return;
+
+    try {
+        // Parar gravação (AudioContext permanece aberto para processamento)
+        const result = AppState.audioProcessor.stopRecording();
+        if (!result.success) {
+            showToast('Erro ao parar gravação');
+            return;
+        }
+
+        // Limpar UI de gravação
+        clearInterval(AppState.recordingTimerInterval);
+        clearInterval(AppState.recordingState.qualityInterval);
+        AppState.recordingState.visualizer?.stop();
+
+        // Obter blob bruto
+        const audioBlob = AppState.audioProcessor.getRecordedAudioBlob();
+
+        // 1ª etapa: pré-processamento (filtros de voz: passa-alta, normalização, compressor de voz)
+        showToast('⏳ Pré-processando áudio...');
+        const preprocessed = await AppState.audioProcessor.preprocessAudio(audioBlob);
+        const preprocessedBlob = preprocessed.success ? preprocessed.blob : audioBlob;
+        if (!preprocessed.success) {
+            console.warn('Pré-processamento falhou, usando áudio original:', preprocessed.error);
+        }
+
+        // 2ª etapa: compressão para reduzir tamanho (16kHz, WAV)
+        showToast('⏳ Comprimindo áudio...');
+        const compressed = await AppState.audioProcessor.compressAudio(preprocessedBlob);
+        const finalBlob = compressed.success ? compressed.blob : preprocessedBlob;
+
+        // Liberar AudioContext e recursos (processamento concluído)
+        await AppState.audioProcessor.cleanup();
+
+        // 3ª etapa: enviar para Groq Whisper
+        await sendAudioToWhisper(finalBlob);
+
+        // Resetar UI
+        DOM.btnRecordStart.disabled = false;
+        DOM.btnRecordTelemed.disabled = false;
+        DOM.btnRecordStop.disabled = true;
+        DOM.recordingTimer.textContent = '00:00';
+    } catch (err) {
+        console.error('Erro ao parar gravação:', err);
+        // Garantir limpeza mesmo em caso de erro
+        await AppState.audioProcessor.cleanup().catch(() => {});
+        handleRecordingError(err);
+    }
+}
+
+// ==========================================================================
+// 8.5 TRATAMENTO DE ERROS DE GRAVAÇÃO
+// ==========================================================================
+
+function handleRecordingError(err) {
+    let errorMessage = 'Erro desconhecido ao acessar áudio.';
+
+    if (err.name === 'NotAllowedError') {
+        errorMessage = '❌ Permissão negada. Verifique as permissões de microfone nas configurações do navegador.';
+    } else if (err.name === 'NotFoundError') {
+        errorMessage = '❌ Nenhum dispositivo de áudio encontrado. Conecte um microfone e tente novamente.';
+    } else if (err.name === 'NotReadableError') {
+        errorMessage = '❌ Não foi possível acessar o dispositivo de áudio. Verifique se outro aplicativo está usando o microfone.';
+    } else if (err.name === 'SecurityError') {
+        errorMessage = '❌ Erro de segurança. Use HTTPS ou localhost para acessar o microfone.';
+    } else if (err.message) {
+        errorMessage = `❌ Erro: ${err.message}`;
+    }
+
+    showToast(errorMessage, 5000);
+    
+    // Resetar UI em caso de erro
     DOM.btnRecordStart.disabled = false;
     DOM.btnRecordTelemed.disabled = false;
     DOM.btnRecordStop.disabled = true;
-    drawStaticWaveform();
-    showToast('Processando áudio gravado...');
+    DOM.recordingTimer.textContent = '00:00';
+    
+    // Limpar intervalo se existir
+    if (AppState.recordingTimerInterval) {
+        clearInterval(AppState.recordingTimerInterval);
+    }
+    if (AppState.recordingState.qualityInterval) {
+        clearInterval(AppState.recordingState.qualityInterval);
+    }
+    if (AppState.recordingState.visualizer) {
+        AppState.recordingState.visualizer.stop();
+    }
 }
 
 // ==========================================================================
@@ -1180,7 +1343,7 @@ function handleFileSelection(file) {
     DOM.uploadedFileName.textContent = file.name;
     DOM.uploadedFileSize.textContent = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
     DOM.fileInfoContainer.classList.remove('hidden');
-    DOM.btnProcessUpload.disabled = false;
+    toggleAiButtonsState();
     showToast('✅ Arquivo carregado com sucesso.');
 }
 
@@ -1188,7 +1351,7 @@ function clearUploadedFile() {
     AppState.uploadedFile = null;
     DOM.audioFileInput.value = '';
     DOM.fileInfoContainer.classList.add('hidden');
-    DOM.btnProcessUpload.disabled = true;
+    toggleAiButtonsState();
 }
 
 // ==========================================================================
@@ -1196,8 +1359,30 @@ function clearUploadedFile() {
 // ==========================================================================
 async function processRecordedAudio() {
     if (!AppState.audioChunks.length) return;
-    const blob = new Blob(AppState.audioChunks, { type: AppState.mediaRecorder.mimeType || 'audio/webm' });
-    await sendAudioToWhisper(new File([blob], `consulta_${Date.now()}.webm`, { type: blob.type }));
+    const audioBlob = new Blob(AppState.audioChunks, { type: AppState.mediaRecorder.mimeType || 'audio/webm' });
+    
+    // 1ª etapa: pré-processamento de voz
+    showToast('⏳ Pré-processando áudio...');
+    const preprocessed = await AppState.audioProcessor.preprocessAudio(audioBlob);
+    const preprocessedBlob = preprocessed.success ? preprocessed.blob : audioBlob;
+    
+    // 2ª etapa: comprimir para API
+    showToast('⏳ Comprimindo áudio...');
+    const compressed = await AppState.audioProcessor.compressAudio(preprocessedBlob);
+    const finalBlob = compressed.success ? compressed.blob : preprocessedBlob;
+    
+    // Liberar AudioContext
+    await AppState.audioProcessor.cleanup().catch(() => {});
+    
+    // Validar tamanho
+    const validation = AppState.audioProcessor.validateFileSize(finalBlob, 25);
+    if (!validation.valid) {
+        showToast(validation.message);
+        return;
+    }
+    
+    // Enviar para Groq
+    await sendAudioToWhisper(new File([finalBlob], `consulta_${Date.now()}.webm`, { type: finalBlob.type }));
 }
 
 async function sendAudioToWhisper(file) {
@@ -1221,10 +1406,11 @@ async function sendAudioToWhisper(file) {
     formData.append('response_format', 'json');
 
     try {
-        const res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        const res = await fetchWithTimeout('https://api.groq.com/openai/v1/audio/transcriptions', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${AppState.apiKey}` },
-            body: formData
+            body: formData,
+            timeout: 60000 // 60 segundos
         });
         
         if (!res.ok) {
@@ -1248,7 +1434,7 @@ async function sendAudioToWhisper(file) {
         const data = await res.json();
         DOM.rawTranscript.value = data.text || '';
         AppState.currentTranscription = data.text || '';
-        DOM.btnGenerateDocs.disabled = !data.text?.trim();
+        toggleAiButtonsState();
         showToast(data.text?.trim() ? '✅ Transcrição concluída!' : 'Aviso: nenhum áudio detectado.');
     } catch (err) {
         DOM.rawTranscript.value = `Erro: ${err.message}`;
@@ -1281,10 +1467,11 @@ async function generateClinicalDocuments() {
     const model = DOM.aiModel.value;
     const userContent = `DADOS DO ATENDIMENTO:\nPaciente: ${pName}\nIdade: ${pAge}\nEspecialidade: ${spec}\n\nTRANSCRIÇÃO DA CONSULTA:\n${rawText}`;
 
-    const callGroq = (systemPrompt, temperature = 0.1, overrideModel = null) => fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const callGroq = (systemPrompt, temperature = 0.1, overrideModel = null) => fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${AppState.apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: overrideModel || model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }], temperature })
+        body: JSON.stringify({ model: overrideModel || model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }], temperature }),
+        timeout: 45000 // 45 segundos
     }).then(async r => {
         if (!r.ok) {
             const errText = await r.text();
@@ -1298,10 +1485,35 @@ async function generateClinicalDocuments() {
         return r.json();
     });
 
+    let bvsContextText = "";
+    let extractedKeyword = "";
+
+    try {
+        // Passo 0: Extrair tema clínico e buscar na BVS para RAG (Retrieval-Augmented Generation)
+        DOM.transcriptionLoaderText && (DOM.transcriptionLoaderText.textContent = 'Buscando evidências clínicas...');
+        
+        const keywordPrompt = "Leia a transcrição médica abaixo e identifique a queixa principal ou hipótese diagnóstica. Responda APENAS com 1 a 3 palavras chave (ex: 'Hipertensão', 'Infecção Urinária', 'Dengue'). Não use pontuação.\n\nTranscrição: " + rawText;
+        const keywordRes = await callGroq(keywordPrompt, 0.1, 'llama-3.1-8b-instant');
+        extractedKeyword = keywordRes.choices[0].message.content.trim().replace(/['"]/g, '');
+        
+        if (extractedKeyword && typeof bvsService !== 'undefined') {
+            const bvsResults = await bvsService.search(extractedKeyword, 2);
+            if (bvsResults && bvsResults.length > 0) {
+                bvsContextText = `\n\n=== EVIDÊNCIAS CLÍNICAS OFICIAIS (BVS APS) ===\nUse estas evidências como base de apoio técnico para suas decisões e orientações:\n`;
+                bvsResults.forEach((res, idx) => {
+                    bvsContextText += `[Evidência ${idx+1}] Título: ${res.title}\nConteúdo: ${res.content.replace(/<[^>]*>?/gm, '').substring(0, 800)}...\n\n`;
+                });
+            }
+        }
+    } catch (err) {
+        console.warn("Erro ao buscar contexto BVS para RAG:", err);
+    }
+
     let prontuarioOk = false;
     try {
-        // Passo 1: Gera o Prontuário Clínico
-        const prontuario = await callGroq(getSystemPrompt(DOM.clinicalTemplate.value), 0.1);
+        // Passo 1: Gera o Prontuário Clínico (com suporte da BVS se existir)
+        const sysPromptProntuario = getSystemPrompt(DOM.clinicalTemplate.value) + bvsContextText;
+        const prontuario = await callGroq(sysPromptProntuario, 0.1);
         DOM.outputRecord.value = prontuario.choices[0].message.content || '';
         AppState.currentRecordOutput = DOM.outputRecord.value;
         prontuarioOk = true;
@@ -1313,8 +1525,9 @@ async function generateClinicalDocuments() {
     }
 
     try {
-        // Passo 2: Gera as Orientações (modelo 8B para economizar tokens/min)
-        const orientacoes = await callGroq(PATIENT_INSTRUCTIONS_PROMPT, 0.3, 'llama-3.1-8b-instant');
+        // Passo 2: Gera as Orientações
+        const sysPromptOrientacoes = PATIENT_INSTRUCTIONS_PROMPT + bvsContextText;
+        const orientacoes = await callGroq(sysPromptOrientacoes, 0.3, 'llama-3.1-8b-instant');
         DOM.outputPatientMsg.value = orientacoes.choices[0].message.content || '';
         AppState.currentPatientMsgOutput = DOM.outputPatientMsg.value;
     } catch (err) {
@@ -1326,11 +1539,17 @@ async function generateClinicalDocuments() {
 
     if (prontuarioOk) {
         DOM.actionsSaveRow.classList.remove('hidden');
-        showToast('Documentos estruturados com sucesso!');
+        showToast('Documentos gerados com suporte de evidências!');
+        
+        // BVS APS Automático na UI
+        if (extractedKeyword && typeof bvsService !== 'undefined') {
+            document.getElementById('bvs-search-input').value = extractedKeyword;
+            performBvsSearch(extractedKeyword, true); // Abre o painel
+        }
     }
 
-    // Re-enable button only after processing
-    DOM.btnGenerateDocs.disabled = false;
+    // Re-enable button only after processing and checking key/transcription state
+    toggleAiButtonsState();
 }
 
 async function testGroqConnection() {
@@ -1339,14 +1558,15 @@ async function testGroqConnection() {
     DOM.btnTestKey.disabled = true;
     DOM.btnTestKey.textContent = 'Testando...';
     try {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: 'Diga apenas Ok.' }], max_tokens: 5 })
+            body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: 'Diga apenas Ok.' }], max_tokens: 5 }),
+            timeout: 15000 // 15 segundos
         });
         showToast(res.ok ? '✓ Conexão bem-sucedida! Chave válida.' : `Erro ${res.status}: Chave inválida.`);
-    } catch {
-        showToast('Falha na conexão. Verifique a internet.');
+    } catch (err) {
+        showToast(err.message.includes('tempo limite') ? err.message : 'Falha na conexão. Verifique a internet.');
     } finally {
         DOM.btnTestKey.disabled = false;
         DOM.btnTestKey.textContent = 'Testar Conexão';
@@ -1955,6 +2175,87 @@ function searchHelp(query) {
 }
 
 // ==========================================================================
+// 16.5 BVS APS (MATERIAL DE APOIO)
+// ==========================================================================
+function toggleBvsSidebar() {
+    const sidebar = document.getElementById('bvs-sidebar');
+    const overlay = document.getElementById('bvs-sidebar-overlay');
+    if (sidebar.classList.contains('active')) {
+        closeBvsSidebar();
+    } else {
+        sidebar.classList.add('active');
+        overlay.classList.remove('hidden');
+        setTimeout(() => document.getElementById('bvs-search-input')?.focus(), 300);
+    }
+}
+
+function closeBvsSidebar() {
+    document.getElementById('bvs-sidebar').classList.remove('active');
+    document.getElementById('bvs-sidebar-overlay').classList.add('hidden');
+}
+
+async function performBvsSearch(query, autoOpen = false) {
+    if (!query || query.trim() === '') return;
+    
+    const container = document.getElementById('bvs-results-container');
+    const loader = document.getElementById('bvs-loader');
+    
+    if (autoOpen) {
+        document.getElementById('bvs-sidebar').classList.add('active');
+        document.getElementById('bvs-sidebar-overlay').classList.remove('hidden');
+    }
+    
+    container.innerHTML = '';
+    loader.classList.remove('hidden');
+    
+    try {
+        const results = await bvsService.search(query.trim());
+        loader.classList.add('hidden');
+        renderBvsResults(results, query);
+    } catch (err) {
+        loader.classList.add('hidden');
+        container.innerHTML = `<div class="bvs-empty-state"><p>❌ Erro ao buscar na BVS. Tente novamente.</p></div>`;
+    }
+}
+
+function renderBvsResults(results, query) {
+    const container = document.getElementById('bvs-results-container');
+    
+    if (!results || results.length === 0) {
+        container.innerHTML = `
+            <div class="bvs-empty-state">
+                <p>Nenhuma evidência encontrada para "<strong>${escapeHtml(query)}</strong>".</p>
+                <p style="font-size:0.85em; margin-top:10px;">Tente buscar com termos mais genéricos (ex: "hipertensão", "diabetes").</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    results.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'bvs-card';
+        card.innerHTML = `
+            <div class="bvs-card-title">${item.title}</div>
+            <div class="bvs-card-content" id="bvs-content-${item.id}">
+                ${item.content}
+            </div>
+            <div class="bvs-card-actions">
+                <button class="bvs-btn-read" onclick="document.getElementById('bvs-content-${item.id}').classList.toggle('expanded')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    Ler mais
+                </button>
+                <a href="${item.link}" target="_blank" class="bvs-link" title="Ver na íntegra (Abre nova guia)">
+                    Fonte Oficial <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+                </a>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+// ==========================================================================
 // 17. CONFIGURAÇÃO DE TODOS OS EVENT LISTENERS
 // ==========================================================================
 function setupEventListeners() {
@@ -1993,8 +2294,8 @@ function setupEventListeners() {
     // Captura de Áudio
     DOM.btnModeRecord.addEventListener('click', () => setAudioMode('record'));
     DOM.btnModeUpload.addEventListener('click', () => setAudioMode('upload'));
-    DOM.btnRecordStart.addEventListener('click', () => startRecording(false));
-    DOM.btnRecordTelemed.addEventListener('click', () => startRecording(true));
+    DOM.btnRecordStart.addEventListener('click', () => startRecording());
+    DOM.btnRecordTelemed.addEventListener('click', () => startTelemedicineRecording());
     DOM.btnRecordStop.addEventListener('click', stopRecording);
 
     // Upload
@@ -2012,7 +2313,7 @@ function setupEventListeners() {
 
     // Transcrição
     DOM.rawTranscript.addEventListener('input', () => {
-        DOM.btnGenerateDocs.disabled = DOM.rawTranscript.value.trim().length === 0;
+        toggleAiButtonsState();
     });
     DOM.btnGenerateDocs.addEventListener('click', generateClinicalDocuments);
 
@@ -2056,14 +2357,48 @@ function setupEventListeners() {
     DOM.btnSaveCustomPrompt.addEventListener('click', saveCustomPrompt);
     DOM.btnRestoreDefaultPrompt.addEventListener('click', restoreDefaultPrompt);
 
+    // Controles de Visualização de Áudio
+    const vizControls = document.querySelectorAll('.viz-btn');
+    vizControls.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const style = btn.getAttribute('data-style');
+            if (AppState.recordingState.visualizer) {
+                AppState.recordingState.visualizer.style = style;
+                vizControls.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
+        });
+    });
+
     // Tecla ESC fecha modais
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
             closeConsultModal();
             closePatientModal();
             closeHelpModal();
+            closeBvsSidebar();
         }
     });
+
+    // BVS APS 
+    const btnToggleBvs = document.getElementById('btn-toggle-bvs');
+    const bvsOverlay = document.getElementById('bvs-sidebar-overlay');
+    const btnCloseBvs = document.getElementById('btn-close-bvs');
+    const btnBvsSearch = document.getElementById('btn-bvs-search');
+    const inputBvsSearch = document.getElementById('bvs-search-input');
+
+    if (btnToggleBvs) btnToggleBvs.addEventListener('click', toggleBvsSidebar);
+    if (btnCloseBvs) btnCloseBvs.addEventListener('click', closeBvsSidebar);
+    if (bvsOverlay) bvsOverlay.addEventListener('click', closeBvsSidebar);
+    
+    if (btnBvsSearch) {
+        btnBvsSearch.addEventListener('click', () => performBvsSearch(inputBvsSearch.value));
+    }
+    if (inputBvsSearch) {
+        inputBvsSearch.addEventListener('keypress', e => {
+            if (e.key === 'Enter') performBvsSearch(inputBvsSearch.value);
+        });
+    }
 
     // Atalhos de teclado
     document.addEventListener('keydown', e => {
