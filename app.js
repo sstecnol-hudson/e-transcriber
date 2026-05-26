@@ -1543,7 +1543,8 @@ async function processRecordedAudio() {
     }
     
     // Enviar para Groq
-    await sendAudioToWhisper(new File([finalBlob], `consulta_${Date.now()}.webm`, { type: finalBlob.type }));
+    const fileExt = finalBlob.type.includes('wav') ? 'wav' : 'webm';
+    await sendAudioToWhisper(new File([finalBlob], `consulta_${Date.now()}.${fileExt}`, { type: finalBlob.type }));
 }
 
 async function sendAudioToWhisper(file) {
@@ -2564,7 +2565,8 @@ function setupEventListeners() {
     document.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'r' && AppState.activeTab === 'tab-consulta') {
             e.preventDefault();
-            if (!AppState.isRecording) startRecording();
+            const isRec = AppState.audioProcessor && AppState.audioProcessor.isRecording;
+            if (!isRec) startRecording();
             else stopRecording();
         }
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && AppState.activeTab === 'tab-consulta') {

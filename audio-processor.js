@@ -117,47 +117,53 @@ class AudioProcessor {
       }
       const constraints = this.getAudioConstraints('online');
 
-      // Obter áudio do microfone
-      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      // Iniciar ambas as requisições em paralelo (no mesmo tick síncrono do clique)
+      // para preservar o token de gesto do usuário para a tela/sistema
+      const micPromise = navigator.mediaDevices.getUserMedia(constraints);
+      const displayPromise = navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      }).catch(err => {
+        console.warn('Áudio da tela não disponível ou cancelado pelo usuário:', err);
+        return null;
+      });
+
+      // Aguardar resultados
+      this.stream = await micPromise;
+      this.displayStream = await displayPromise;
 
       let systemAudioActive = false;
 
-      // Obter áudio da tela/guia
-      try {
-        this.displayStream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          }
-        });
-
+      if (this.displayStream) {
         // Verificar se áudio foi realmente compartilhado
         const displayAudioTracks = this.displayStream.getAudioTracks();
-        if (displayAudioTracks.length === 0) {
-          throw new Error('Sem áudio do sistema compartilhado');
+        if (displayAudioTracks.length > 0) {
+          // Combinar áudio do microfone e da tela
+          const combinedStream = this.combineAudioStreams(this.stream, this.displayStream);
+          await this.setupRecording(combinedStream);
+          systemAudioActive = true;
+        } else {
+          console.warn('Tela compartilhada sem marcar a opção de compartilhar áudio do sistema.');
+          // Parar a transmissão de vídeo do display que não tem áudio
+          this.displayStream.getTracks().forEach(track => track.stop());
+          this.displayStream = null;
+          await this.setupRecording(this.stream);
         }
 
-        // Combinar áudio do microfone e da tela
-        const combinedStream = this.combineAudioStreams(this.stream, this.displayStream);
-        await this.setupRecording(combinedStream);
-        systemAudioActive = true;
-
         // Parar gravação se usuário parar de compartilhar tela
-        if (this.displayStream.getVideoTracks().length > 0) {
+        if (this.displayStream && this.displayStream.getVideoTracks().length > 0) {
           this.displayStream.getVideoTracks()[0].onended = () => {
             if (this.isRecording) {
               this.stopRecording();
             }
           };
         }
-      } catch (err) {
-        console.warn('Áudio da tela não disponível ou sem áudio compartilhado, usando apenas microfone:', err);
-        if (this.displayStream) {
-          this.displayStream.getTracks().forEach(track => track.stop());
-          this.displayStream = null;
-        }
+      } else {
+        // Sem áudio de tela/sistema, usa apenas microfone
         await this.setupRecording(this.stream);
       }
 
@@ -371,7 +377,7 @@ class AudioProcessor {
       const filtered = await this.applyHighPassFilter(normalized, audioContext);
 
       // 4. Comprimir dinamicamente
-      const compressed = await this.applyDynamicsCompression(filtered, audioContext);
+      const compressed = await this.applyDynamicsCompression(filtered.getChannelData(0), audioContext);
 
       // 5. Converter para WAV
       const wavBlob = this.audioBufferToWav(compressed);

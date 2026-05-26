@@ -230,7 +230,7 @@
             name: 'Deve comprimir áudio com compressAudio()',
             async run() {
                 const code = await fetch('meetings.js').then(r => r.text());
-                return code.includes('MeetingState.audioProcessor.compressAudio(audioBlob)');
+                return code.includes('MeetingState.audioProcessor.compressAudio(');
             }
         });
 

@@ -487,7 +487,8 @@ async function stopMeetingRecording() {
         }
 
         // 8. Enviar para Groq Whisper
-        await sendMeetingAudioToWhisper(new File([finalBlob], `reuniao_${Date.now()}.wav`, { type: finalBlob.type }));
+        const fileExt = finalBlob.type.includes('wav') ? 'wav' : 'webm';
+        await sendMeetingAudioToWhisper(new File([finalBlob], `reuniao_${Date.now()}.${fileExt}`, { type: finalBlob.type }));
 
         // 9. Resetar UI
         MeetingDOM.btnRecordStart.disabled = false;
@@ -581,7 +582,6 @@ function clearMeetingUploadedFile() {
 
 // ==========================================================================
 // CHAMADAS DA API DO GROQ (Whisper + Llama)
-const GROQ_TRANSCRIBE_MODEL = 'whisper-large-v3';
 
 // Função utilitária para gerar hash SHA-256 do Blob de áudio
 async function getAudioHash(blob) {
