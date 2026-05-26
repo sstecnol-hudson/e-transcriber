@@ -114,6 +114,8 @@ class AudioProcessor {
       // Obter áudio do microfone
       this.stream = await navigator.mediaDevices.getUserMedia(constraints);
 
+      let systemAudioActive = false;
+
       // Obter áudio da tela/guia
       try {
         this.displayStream = await navigator.mediaDevices.getDisplayMedia({
@@ -125,18 +127,31 @@ class AudioProcessor {
           }
         });
 
+        // Verificar se áudio foi realmente compartilhado
+        const displayAudioTracks = this.displayStream.getAudioTracks();
+        if (displayAudioTracks.length === 0) {
+          throw new Error('Sem áudio do sistema compartilhado');
+        }
+
         // Combinar áudio do microfone e da tela
         const combinedStream = this.combineAudioStreams(this.stream, this.displayStream);
         await this.setupRecording(combinedStream);
+        systemAudioActive = true;
 
         // Parar gravação se usuário parar de compartilhar tela
-        this.displayStream.getVideoTracks()[0].onended = () => {
-          if (this.isRecording) {
-            this.stopRecording();
-          }
-        };
+        if (this.displayStream.getVideoTracks().length > 0) {
+          this.displayStream.getVideoTracks()[0].onended = () => {
+            if (this.isRecording) {
+              this.stopRecording();
+            }
+          };
+        }
       } catch (err) {
-        console.warn('Áudio da tela não disponível, usando apenas microfone:', err);
+        console.warn('Áudio da tela não disponível ou sem áudio compartilhado, usando apenas microfone:', err);
+        if (this.displayStream) {
+          this.displayStream.getTracks().forEach(track => track.stop());
+          this.displayStream = null;
+        }
         await this.setupRecording(this.stream);
       }
 
@@ -146,6 +161,7 @@ class AudioProcessor {
       return {
         success: true,
         message: 'Gravação online iniciada',
+        systemAudioActive: systemAudioActive,
         stream: this.stream
       };
     } catch (err) {
@@ -577,6 +593,11 @@ class AudioProcessor {
    * Configurar visualizador de áudio
    */
   setupVisualizer(canvasElement, stream) {
+    if (!canvasElement) {
+      console.warn('setupVisualizer: canvasElement is null, skipping');
+      return { start: () => {}, stop: () => {} }; // safe no-op
+    }
+
     if (!this.audioContext) {
       this.initAudioContext();
     }
@@ -587,8 +608,9 @@ class AudioProcessor {
     const source = this.audioContext.createMediaStreamSource(stream);
     source.connect(this.analyser);
 
+    // NOTE: Do NOT call this.visualizer.start() here.
+    // The caller (meetings.js / app.js) is responsible for calling start(style).
     this.visualizer = new AudioVisualizer(canvasElement, this.analyser);
-    this.visualizer.start();
 
     return this.visualizer;
   }
@@ -611,7 +633,8 @@ class AudioProcessor {
    */
   startQualityMonitoring() {
     if (!this.analyser) {
-      throw new Error('Analyser não foi configurado');
+      console.warn('startQualityMonitoring: analyser não configurado, monitoramento ignorado.');
+      return null;
     }
 
     this.qualityMonitor = new AudioQualityMonitor(this.analyser);

@@ -1291,7 +1291,11 @@ async function startTelemedicineRecording() {
         };
 
         // Tratar resultado com sucesso
-        showToast('Gravação de Telemedicina iniciada.');
+        if (!result.systemAudioActive) {
+            showToast('⚠️ Áudio do sistema não compartilhado. Gravando apenas microfone.', 5000);
+        } else {
+            showToast('Gravação de Telemedicina iniciada.');
+        }
     } catch (err) {
         console.error('Erro ao iniciar gravação de telemedicina:', err);
         showToast(`Erro: ${err.message}`);

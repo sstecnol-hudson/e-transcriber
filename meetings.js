@@ -107,7 +107,58 @@ const MeetingDOM = {
 // ==========================================================================
 function initMeetingModule() {
     try { MeetingState.history = JSON.parse(localStorage.getItem('etranscriber_meetings_history')) || []; } catch { MeetingState.history = []; }
-    
+
+    // Diagnóstico: verificar se os elementos DOM foram resolvidos
+    const domCheck = {
+        btnRecordStart: !!MeetingDOM.btnRecordStart,
+        btnRecordOnline: !!MeetingDOM.btnRecordOnline,
+        btnRecordStop: !!MeetingDOM.btnRecordStop,
+        waveformCanvas: !!MeetingDOM.waveformCanvas,
+        rawTranscript: !!MeetingDOM.rawTranscript,
+    };
+    const nullKeys = Object.entries(domCheck).filter(([,v]) => !v).map(([k]) => k);
+    if (nullKeys.length > 0) {
+        console.warn('[MeetingModule] DOM elements null, re-resolving:', nullKeys);
+        // Re-resolver elementos que falharam
+        MeetingDOM.btnModeRecord = document.getElementById('btn-meeting-mode-record');
+        MeetingDOM.btnModeUpload = document.getElementById('btn-meeting-mode-upload');
+        MeetingDOM.panelRecord = document.getElementById('capture-meeting-panel-record');
+        MeetingDOM.panelUpload = document.getElementById('capture-meeting-panel-upload');
+        MeetingDOM.waveformCanvas = document.getElementById('waveformMeetingCanvas');
+        MeetingDOM.recordingTimer = document.getElementById('recordingMeetingTimer');
+        MeetingDOM.btnRecordStart = document.getElementById('btn-meeting-record-start');
+        MeetingDOM.btnRecordOnline = document.getElementById('btn-meeting-record-online');
+        MeetingDOM.btnRecordStop = document.getElementById('btn-meeting-record-stop');
+        MeetingDOM.audioDropZone = document.getElementById('audioMeetingDropZone');
+        MeetingDOM.audioFileInput = document.getElementById('audioMeetingFileInput');
+        MeetingDOM.fileInfoContainer = document.getElementById('file-meeting-info-container');
+        MeetingDOM.uploadedFileName = document.getElementById('uploaded-meeting-file-name');
+        MeetingDOM.uploadedFileSize = document.getElementById('uploaded-meeting-file-size');
+        MeetingDOM.btnClearFile = document.getElementById('btn-clear-meeting-file');
+        MeetingDOM.btnProcessUpload = document.getElementById('btn-process-meeting-upload');
+        MeetingDOM.rawTranscript = document.getElementById('rawMeetingTranscript');
+        MeetingDOM.transcriptionLoader = document.getElementById('meeting-transcription-loader');
+        MeetingDOM.transcriptionLoaderText = document.getElementById('meeting-transcription-loader-text');
+        MeetingDOM.aiModel = document.getElementById('aiMeetingModel');
+        MeetingDOM.btnGenerateDocs = document.getElementById('btn-generate-meeting-docs');
+        MeetingDOM.resultsSection = document.getElementById('meeting-results-section');
+        MeetingDOM.outputRecord = document.getElementById('outputMeetingRecord');
+        MeetingDOM.ataLoader = document.getElementById('ata-loader');
+        MeetingDOM.btnCopyRecord = document.getElementById('btn-copy-meeting-record');
+        MeetingDOM.btnDownloadPdf = document.getElementById('btn-download-meeting-pdf');
+        MeetingDOM.actionsSaveRow = document.getElementById('actions-meeting-save-row');
+        MeetingDOM.btnSaveMeeting = document.getElementById('btn-save-meeting');
+        MeetingDOM.meetingTitle = document.getElementById('meetingTitle');
+        MeetingDOM.meetingType = document.getElementById('meetingType');
+        MeetingDOM.meetingModality = document.getElementById('meetingModality');
+        MeetingDOM.meetingLang = document.getElementById('meetingLang');
+        MeetingDOM.historyTableBody = document.getElementById('meetingHistoryTableBody');
+        MeetingDOM.searchMeetingHistory = document.getElementById('searchMeetingHistory');
+        MeetingDOM.btnClearMeetingHistory = document.getElementById('btn-clear-meeting-history');
+    } else {
+        console.log('[MeetingModule] Todos os elementos DOM resolvidos com sucesso.');
+    }
+
     // Inicializar AudioProcessor
     MeetingState.audioProcessor = new AudioProcessor();
     MeetingState.recordingState = {};
@@ -188,7 +239,11 @@ async function startMeetingRecording(isOnline = false) {
             qualityMonitor
         };
 
-        showToast(isOnline ? 'Gravação de Reunião Online iniciada.' : 'Gravação de Reunião Presencial iniciada.');
+        if (isOnline && !result.systemAudioActive) {
+            showToast('⚠️ Áudio do sistema não compartilhado. Gravando apenas microfone.', 5000);
+        } else {
+            showToast(isOnline ? 'Gravação de Reunião Online iniciada.' : 'Gravação de Reunião Presencial iniciada.');
+        }
     } catch (err) {
         console.error('Erro ao iniciar gravação de reunião:', err);
         showToast(`Erro: ${err.message}`);
@@ -430,45 +485,14 @@ async function sendMeetingAudioToWhisper(file) {
     MeetingDOM.transcriptionLoader.classList.remove('hidden');
     MeetingDOM.transcriptionLoaderText.textContent = 'Transcrevendo áudio via Groq Whisper...';
     MeetingDOM.rawTranscript.value = '';
-
-    const transcriptText = await transcribeWithCache(file, MeetingDOM.meetingLang.value);
-MeetingDOM.rawTranscript.value = transcriptText;
-MeetingState.currentTranscription = transcriptText;
-if (typeof toggleAiButtonsState === 'function') toggleAiButtonsState();
-showToast(transcriptText?.trim() ? '✅ Transcrição da reunião concluída!' : 'Aviso: nenhum áudio detectado.');
-return;
+    MeetingState.currentTranscription = '';
 
     try {
-        const res = await fetchWithRetry('https://api.groq.com/openai/v1/audio/transcriptions', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${AppState.apiKey}` },
-            body: formData,
-            timeout: 60000 // 60 segundos
-        });
-        
-        if (!res.ok) {
-            const errorText = await res.text();
-            let errorMsg = `Erro ${res.status}`;
-            
-            // Tratamento específico para erro 413
-            if (res.status === 413) {
-                errorMsg = '❌ Arquivo muito grande! A API Groq aceita máximo 25MB. Tente comprimir o áudio ou dividir em partes menores.';
-            } else if (res.status === 400) {
-                errorMsg = '❌ Erro na requisição. Verifique o formato do áudio (MP3, WAV, M4A, WEBM, MP4).';
-            } else if (res.status === 401) {
-                errorMsg = '❌ Chave Groq inválida ou expirada. Verifique em Configurações.';
-            } else if (res.status === 429) {
-                errorMsg = '❌ Limite de requisições atingido. Aguarde alguns minutos e tente novamente.';
-            }
-            
-            throw new Error(errorMsg);
-        }
-        
-        const data = await res.json();
-        MeetingDOM.rawTranscript.value = data.text || '';
-        MeetingState.currentTranscription = data.text || '';
+        const transcriptText = await transcribeWithCache(file, MeetingDOM.meetingLang.value);
+        MeetingDOM.rawTranscript.value = transcriptText;
+        MeetingState.currentTranscription = transcriptText;
         if (typeof toggleAiButtonsState === 'function') toggleAiButtonsState();
-        showToast(data.text?.trim() ? '✅ Transcrição da reunião concluída!' : 'Aviso: nenhum áudio detectado.');
+        showToast(transcriptText?.trim() ? '✅ Transcrição da reunião concluída!' : 'Aviso: nenhum áudio detectado.');
     } catch (err) {
         MeetingDOM.rawTranscript.value = `Erro: ${err.message}`;
         showToast(err.message || 'Erro ao transcrever áudio.');
@@ -1547,24 +1571,24 @@ function openAttendanceModal() {
     
     loadAttendanceState();
     renderParticipantsTable();
-    document.getElementById('attendanceModal').classList.remove('hidden');
-    document.getElementById('ap-name').focus();
+    document.getElementById('attendanceModal')?.classList.remove('hidden');
+    document.getElementById('ap-name')?.focus();
 }
 
 function closeAttendanceModal() {
-    document.getElementById('attendanceModal').classList.add('hidden');
+    document.getElementById('attendanceModal')?.classList.add('hidden');
 }
 
 // ==========================================================================
 // EVENT LISTENERS
 // ==========================================================================
 function setupMeetingEventListeners() {
-    MeetingDOM.btnModeRecord.addEventListener('click', () => setMeetingAudioMode('record'));
-    MeetingDOM.btnModeUpload.addEventListener('click', () => setMeetingAudioMode('upload'));
+    MeetingDOM.btnModeRecord?.addEventListener('click', () => setMeetingAudioMode('record'));
+    MeetingDOM.btnModeUpload?.addEventListener('click', () => setMeetingAudioMode('upload'));
 
-    MeetingDOM.btnRecordStart.addEventListener('click', () => startMeetingRecording(false));
-    MeetingDOM.btnRecordOnline.addEventListener('click', () => startMeetingRecording(true));
-    MeetingDOM.btnRecordStop.addEventListener('click', stopMeetingRecording);
+    MeetingDOM.btnRecordStart?.addEventListener('click', () => startMeetingRecording(false));
+    MeetingDOM.btnRecordOnline?.addEventListener('click', () => startMeetingRecording(true));
+    MeetingDOM.btnRecordStop?.addEventListener('click', stopMeetingRecording);
 
     // Controles de Visualização de Áudio para Reuniões
     const meetingVizControls = document.querySelectorAll('#meeting-visualization-controls .viz-btn');
@@ -1579,17 +1603,17 @@ function setupMeetingEventListeners() {
         });
     });
 
-    MeetingDOM.audioDropZone.addEventListener('click', () => MeetingDOM.audioFileInput.click());
-    MeetingDOM.audioFileInput.addEventListener('change', e => handleMeetingFileSelection(e.target.files[0]));
-    MeetingDOM.audioDropZone.addEventListener('dragover', e => { e.preventDefault(); MeetingDOM.audioDropZone.classList.add('hover'); });
-    MeetingDOM.audioDropZone.addEventListener('dragleave', () => MeetingDOM.audioDropZone.classList.remove('hover'));
-    MeetingDOM.audioDropZone.addEventListener('drop', e => {
+    MeetingDOM.audioDropZone?.addEventListener('click', () => MeetingDOM.audioFileInput?.click());
+    MeetingDOM.audioFileInput?.addEventListener('change', e => handleMeetingFileSelection(e.target.files[0]));
+    MeetingDOM.audioDropZone?.addEventListener('dragover', e => { e.preventDefault(); MeetingDOM.audioDropZone?.classList.add('hover'); });
+    MeetingDOM.audioDropZone?.addEventListener('dragleave', () => MeetingDOM.audioDropZone?.classList.remove('hover'));
+    MeetingDOM.audioDropZone?.addEventListener('drop', e => {
         e.preventDefault();
-        MeetingDOM.audioDropZone.classList.remove('hover');
+        MeetingDOM.audioDropZone?.classList.remove('hover');
         if (e.dataTransfer.files.length > 0) handleMeetingFileSelection(e.dataTransfer.files[0]);
     });
-    MeetingDOM.btnClearFile.addEventListener('click', clearMeetingUploadedFile);
-    MeetingDOM.btnProcessUpload.addEventListener('click', async () => {
+    MeetingDOM.btnClearFile?.addEventListener('click', clearMeetingUploadedFile);
+    MeetingDOM.btnProcessUpload?.addEventListener('click', async () => {
         if (!MeetingState.uploadedFile) return;
         MeetingDOM.btnProcessUpload.disabled = true;
         
@@ -1614,20 +1638,20 @@ function setupMeetingEventListeners() {
         }
     });
 
-    MeetingDOM.rawTranscript.addEventListener('input', () => {
+    MeetingDOM.rawTranscript?.addEventListener('input', () => {
         if (typeof toggleAiButtonsState === 'function') toggleAiButtonsState();
     });
-    MeetingDOM.btnGenerateDocs.addEventListener('click', generateMeetingMinutes);
+    MeetingDOM.btnGenerateDocs?.addEventListener('click', generateMeetingMinutes);
 
-    MeetingDOM.btnCopyRecord.addEventListener('click', () => {
+    MeetingDOM.btnCopyRecord?.addEventListener('click', () => {
         navigator.clipboard.writeText(MeetingDOM.outputRecord.value).then(() => showToast('Ata copiada!')).catch(() => showToast('Erro ao copiar.'));
     });
-    MeetingDOM.btnDownloadPdf.addEventListener('click', generateMeetingPDF);
-    MeetingDOM.btnSaveMeeting.addEventListener('click', saveMeetingHistory);
+    MeetingDOM.btnDownloadPdf?.addEventListener('click', generateMeetingPDF);
+    MeetingDOM.btnSaveMeeting?.addEventListener('click', saveMeetingHistory);
 
     // History
-    MeetingDOM.searchMeetingHistory.addEventListener('input', e => renderMeetingHistory(e.target.value));
-    MeetingDOM.btnClearMeetingHistory.addEventListener('click', () => {
+    MeetingDOM.searchMeetingHistory?.addEventListener('input', e => renderMeetingHistory(e.target.value));
+    MeetingDOM.btnClearMeetingHistory?.addEventListener('click', () => {
         if (confirm('ATENÇÃO: Isto apagará TODO o histórico de reuniões. Confirmar?')) {
             MeetingState.history = [];
             localStorage.removeItem('etranscriber_meetings_history');
