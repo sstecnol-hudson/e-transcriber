@@ -1492,16 +1492,17 @@ async function generateClinicalDocuments() {
         // Passo 0: Extrair tema clínico e buscar na BVS para RAG (Retrieval-Augmented Generation)
         DOM.transcriptionLoaderText && (DOM.transcriptionLoaderText.textContent = 'Buscando evidências clínicas...');
         
-        const keywordPrompt = "Leia a transcrição médica abaixo e identifique a queixa principal ou hipótese diagnóstica. Responda APENAS com 1 a 3 palavras chave (ex: 'Hipertensão', 'Infecção Urinária', 'Dengue'). Não use pontuação.\n\nTranscrição: " + rawText;
+        const keywordPrompt = "Leia a transcrição médica abaixo. Identifique o diagnóstico principal, problema ou conduta que precisa ser pesquisada. Responda APENAS com os termos de busca ideais (1 a 4 palavras) para pesquisar em uma base de evidências médicas (ex: 'Dengue tratamento adulto', 'Hipertensão gestante', 'Asma crise pediatria'). Não use pontuação nem explicações.\n\nTranscrição: " + rawText;
         const keywordRes = await callGroq(keywordPrompt, 0.1, 'llama-3.1-8b-instant');
         extractedKeyword = keywordRes.choices[0].message.content.trim().replace(/['"]/g, '');
         
         if (extractedKeyword && typeof bvsService !== 'undefined') {
             const bvsResults = await bvsService.search(extractedKeyword, 2);
             if (bvsResults && bvsResults.length > 0) {
-                bvsContextText = `\n\n=== EVIDÊNCIAS CLÍNICAS OFICIAIS (BVS APS) ===\nUse estas evidências como base de apoio técnico para suas decisões e orientações:\n`;
+                bvsContextText = `\n\n=== DIRETRIZES OFICIAIS DE APOIO CLÍNICO (BVS APS) ===\nATENÇÃO: Você é um assistente rigorosamente baseado em evidências. É OBRIGATÓRIO que a sua avaliação, plano e orientações estejam em total conformidade com as diretrizes oficiais abaixo.\nNo final do prontuário gerado, você DEVE adicionar uma seção chamada "📌 BASEADO EM EVIDÊNCIAS" citando brevemente qual recomendação oficial foi utilizada para a conduta (cite o título da evidência).\n\n`;
                 bvsResults.forEach((res, idx) => {
-                    bvsContextText += `[Evidência ${idx+1}] Título: ${res.title}\nConteúdo: ${res.content.replace(/<[^>]*>?/gm, '').substring(0, 800)}...\n\n`;
+                    // Passar um limite de texto maior (4000 caracteres) para não perder a conduta que fica no final da SOF
+                    bvsContextText += `[Evidência ${idx+1}] Título: ${res.title}\nConteúdo da Diretriz: ${res.content.replace(/<[^>]*>?/gm, '').substring(0, 4000)}...\n\n`;
                 });
             }
         }
