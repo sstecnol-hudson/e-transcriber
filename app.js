@@ -1198,7 +1198,9 @@ async function startRecording() {
         const qualityInterval = setInterval(() => {
             const metrics = AppState.audioProcessor.getQualityMetrics();
             updateQualityDisplay(metrics);
-        }, 500);
+            // Atualizar VU Meter de consultas
+            updateVuMeter('vu-meter-consulta', AppState.audioProcessor.getVolumeLevelPercent());
+        }, 80);
 
         // Iniciar timer
         AppState.recordingStartTime = Date.now();
@@ -1213,6 +1215,9 @@ async function startRecording() {
         DOM.btnRecordStart.disabled = true;
         DOM.btnRecordTelemed.disabled = true;
         DOM.btnRecordStop.disabled = false;
+        // Mostrar VU Meter
+        const vuConsulta = document.getElementById('vu-meter-consulta');
+        if (vuConsulta) vuConsulta.classList.remove('hidden');
 
         // Armazenar estado
         AppState.recordingState = {
@@ -1267,7 +1272,9 @@ async function startTelemedicineRecording() {
         const qualityInterval = setInterval(() => {
             const metrics = AppState.audioProcessor.getQualityMetrics();
             updateQualityDisplay(metrics);
-        }, 500);
+            // Atualizar VU Meter de consultas
+            updateVuMeter('vu-meter-consulta', AppState.audioProcessor.getVolumeLevelPercent());
+        }, 80);
 
         // Iniciar timer
         AppState.recordingStartTime = Date.now();
@@ -1282,6 +1289,9 @@ async function startTelemedicineRecording() {
         DOM.btnRecordStart.disabled = true;
         DOM.btnRecordTelemed.disabled = true;
         DOM.btnRecordStop.disabled = false;
+        // Mostrar VU Meter
+        const vuConsulta = document.getElementById('vu-meter-consulta');
+        if (vuConsulta) vuConsulta.classList.remove('hidden');
 
         // Armazenar estado
         AppState.recordingState = {
@@ -1387,6 +1397,21 @@ function updateQualityDisplay(metrics) {
     if (peakValue) peakValue.textContent = metrics ? metrics.peakLevel : '0';
 }
 
+/**
+ * Atualiza o VU Meter visual com base no nível de volume (0–100).
+ * @param {string} meterId - ID do elemento VU Meter no DOM
+ * @param {number} level - Nível de volume de 0 a 100
+ */
+function updateVuMeter(meterId, level) {
+    const meter = document.getElementById(meterId);
+    if (!meter) return;
+    const segments = meter.querySelectorAll('.vu-segment');
+    const activeCount = Math.round((level / 100) * segments.length);
+    segments.forEach((seg, i) => {
+        seg.classList.toggle('active', i < activeCount);
+    });
+}
+
 async function stopRecording() {
     if (!AppState.audioProcessor.isRecording) return;
 
@@ -1407,6 +1432,12 @@ async function stopRecording() {
         if (result.duration < 3000) {
             showToast('⚠️ Gravação muito curta (mínimo 3 segundos). Tente novamente.');
             await AppState.audioProcessor.cleanup().catch(() => {});
+            // Ocultar VU Meter ao parar
+            const vuConsulta = document.getElementById('vu-meter-consulta');
+            if (vuConsulta) {
+                updateVuMeter('vu-meter-consulta', 0);
+                vuConsulta.classList.add('hidden');
+            }
             DOM.btnRecordStart.disabled = false;
             DOM.btnRecordTelemed.disabled = false;
             DOM.btnRecordStop.disabled = true;
@@ -1436,6 +1467,13 @@ async function stopRecording() {
 
         // 3ª etapa: enviar para Groq Whisper
         await sendAudioToWhisper(finalBlob);
+
+        // Ocultar VU Meter ao finalizar gravação
+        const vuConsulta2 = document.getElementById('vu-meter-consulta');
+        if (vuConsulta2) {
+            updateVuMeter('vu-meter-consulta', 0);
+            vuConsulta2.classList.add('hidden');
+        }
 
         // Resetar UI
         DOM.btnRecordStart.disabled = false;
@@ -1495,11 +1533,10 @@ function handleRecordingError(err) {
 function handleFileSelection(file) {
     if (!file) return;
     
-    const MAX_SIZE = 25 * 1024 * 1024; // 25MB
+    const MAX_SIZE = 25 * 1024 * 1024; // 25MB — chunking automático acima deste limite
+    // Não bloquear o upload: o chunking em sendAudioToWhisper gerenciará arquivos maiores
     if (file.size > MAX_SIZE) {
-        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-        showToast(`❌ Arquivo muito grande! Máximo: 25MB. Seu arquivo: ${sizeMB}MB`);
-        return;
+        showToast(`⚠️ Arquivo grande (${(file.size/1024/1024).toFixed(1)}MB). Será dividido automaticamente em partes para transcrição.`, 5000);
     }
     
     AppState.uploadedFile = file;
@@ -1549,21 +1586,39 @@ async function processRecordedAudio() {
 
 async function sendAudioToWhisper(file) {
     try {
-        // Show loader step
         DOM.transcriptionLoader.classList.remove('hidden');
-        DOM.transcriptionLoaderText.textContent = '⏳ Transcrevendo áudio...';
-        // Call wrapper that handles cache and API request
-        const transcription = await transcribeWithCache(file);
-        // Update UI with result
+        DOM.transcriptionLoaderText.textContent = '⏳ Verificando áudio...';
+
+        // Chunking automático: se o arquivo exceder 24MB, dividir em partes
+        const MAX_CHUNK_MB = 20;
+        const MAX_SIZE_BYTES = 24 * 1024 * 1024;
+        let transcription = '';
+
+        if (file.size > MAX_SIZE_BYTES && AppState.audioProcessor) {
+            showToast('⏳ Áudio longo — dividindo em partes...');
+            const chunks = await AppState.audioProcessor.splitAudioBlob(file, MAX_CHUNK_MB);
+            const texts = [];
+            for (let i = 0; i < chunks.length; i++) {
+                DOM.transcriptionLoaderText.textContent = `⏳ Transcrevendo parte ${i + 1} de ${chunks.length}...`;
+                const ext = chunks[i].type.includes('wav') ? 'wav' : 'webm';
+                const chunkFile = new File([chunks[i]], `consulta_parte${i + 1}.${ext}`, { type: chunks[i].type });
+                const text = await transcribeWithCache(chunkFile);
+                texts.push(text);
+            }
+            transcription = texts.join('\n\n');
+            showToast(`✅ Transcrição concluída (${chunks.length} partes).`);
+        } else {
+            DOM.transcriptionLoaderText.textContent = '⏳ Transcrevendo áudio...';
+            transcription = await transcribeWithCache(file);
+            showToast('✅ Transcrição concluída.');
+        }
+
         AppState.currentTranscription = transcription;
         DOM.rawTranscript.value = transcription;
-        showToast('✅ Transcrição concluída.');
     } catch (err) {
-        // Show error to user
         showToast(err.message || 'Erro ao transcrever áudio.');
         console.error(err);
     } finally {
-        // Hide loader regardless of outcome
         DOM.transcriptionLoader.classList.add('hidden');
     }
 }
@@ -1877,6 +1932,88 @@ function resetApplicationData() {
         localStorage.clear();
         showToast('Sistema redefinido! Recarregando...');
         setTimeout(() => window.location.reload(), 1500);
+    }
+}
+
+// ==========================================================================
+// 14.1 BACKUP E RESTAURAÇÃO DE DADOS (LGPD)
+// ==========================================================================
+
+/**
+ * Exporta todos os dados do E-Transcriber como um arquivo JSON.
+ * Inclui histórico, pacientes, configurações e chave de API.
+ */
+function exportBackup() {
+    const backupData = {
+        _meta: {
+            app: 'E-Transcriber',
+            version: '1.0',
+            exportedAt: new Date().toISOString(),
+            info: 'Backup gerado automaticamente pelo E-Transcriber. Não compartilhe este arquivo pois contém sua chave de API.'
+        }
+    };
+
+    // Coletar todas as chaves etranscriber_*
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('etranscriber_')) {
+            try {
+                backupData[key] = JSON.parse(localStorage.getItem(key));
+            } catch {
+                backupData[key] = localStorage.getItem(key);
+            }
+        }
+    }
+
+    const json = JSON.stringify(backupData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `etranscriber-backup-${date}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✅ Backup exportado com sucesso!');
+}
+
+/**
+ * Importa um arquivo de backup JSON e restaura os dados no localStorage.
+ * @param {File} file - Arquivo JSON selecionado pelo usuário
+ */
+async function importBackup(file) {
+    try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        // Validar formato do backup
+        if (!data._meta || data._meta.app !== 'E-Transcriber') {
+            showToast('❌ Arquivo inválido. Selecione um backup gerado pelo E-Transcriber.');
+            return;
+        }
+
+        const confirmed = confirm(
+            `Restaurar backup de ${new Date(data._meta.exportedAt).toLocaleDateString('pt-BR')}?\n\n` +
+            'ATENÇÃO: Os dados atuais serão substituídos pelos dados do backup. Esta ação não pode ser desfeita.'
+        );
+        if (!confirmed) return;
+
+        // Restaurar cada chave no localStorage
+        let count = 0;
+        for (const [key, value] of Object.entries(data)) {
+            if (key.startsWith('etranscriber_')) {
+                localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+                count++;
+            }
+        }
+
+        showToast(`✅ Backup restaurado! (${count} itens). Recarregando...`);
+        setTimeout(() => window.location.reload(), 1800);
+    } catch (err) {
+        console.error('Erro ao importar backup:', err);
+        showToast('❌ Erro ao importar backup. Verifique se o arquivo está correto.');
     }
 }
 
@@ -2413,6 +2550,23 @@ function setupEventListeners() {
     DOM.btnToggleKey.addEventListener('click', toggleKeyVisibility);
     DOM.btnTestKey.addEventListener('click', testGroqConnection);
     DOM.btnResetAll.addEventListener('click', resetApplicationData);
+
+    // Backup e Restauração de Dados
+    const btnExportBackup = document.getElementById('btn-export-backup');
+    const btnImportBackup = document.getElementById('btn-import-backup');
+    const backupFileInput = document.getElementById('backup-file-input');
+
+    if (btnExportBackup) btnExportBackup.addEventListener('click', exportBackup);
+    if (btnImportBackup) btnImportBackup.addEventListener('click', () => backupFileInput?.click());
+    if (backupFileInput) {
+        backupFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                importBackup(file);
+                backupFileInput.value = ''; // reset para permitir reimportar o mesmo arquivo
+            }
+        });
+    }
     DOM.btnSaveClinicInfo.addEventListener('click', saveClinicInfo);
     DOM.aiModel.addEventListener('change', () => {
         AppState.aiModel = DOM.aiModel.value;

@@ -366,7 +366,11 @@ async function startMeetingRecording(isOnline = false) {
         const qualityInterval = setInterval(() => {
             const metrics = MeetingState.audioProcessor.getQualityMetrics();
             updateMeetingQualityDisplay(metrics);
-        }, 500);
+            // Atualizar VU Meter de reuniões
+            if (typeof updateVuMeter === 'function') {
+                updateVuMeter('vu-meter-reuniao', MeetingState.audioProcessor.getVolumeLevelPercent());
+            }
+        }, 80);
 
         // Iniciar timer
         MeetingState.recordingStartTime = Date.now();
@@ -381,6 +385,9 @@ async function startMeetingRecording(isOnline = false) {
         MeetingDOM.btnRecordStart.disabled = true;
         MeetingDOM.btnRecordOnline.disabled = true;
         MeetingDOM.btnRecordStop.disabled = false;
+        // Mostrar VU Meter de reuniões
+        const vuReuniao = document.getElementById('vu-meter-reuniao');
+        if (vuReuniao) vuReuniao.classList.remove('hidden');
 
         // Armazenar estado
         MeetingState.recordingState = {
@@ -558,11 +565,9 @@ function updateMeetingQualityDisplay(metrics) {
 function handleMeetingFileSelection(file) {
     if (!file) return;
     
-    const MAX_SIZE = 25 * 1024 * 1024; // 25MB
+    const MAX_SIZE = 25 * 1024 * 1024; // 25MB — chunking automático acima deste limite
     if (file.size > MAX_SIZE) {
-        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
-        showToast(`❌ Arquivo muito grande! Máximo: 25MB. Seu arquivo: ${sizeMB}MB`);
-        return;
+        showToast(`⚠️ Arquivo grande (${(file.size/1024/1024).toFixed(1)}MB). Será dividido automaticamente em partes para transcrição.`, 5000);
     }
     
     MeetingState.uploadedFile = file;
@@ -624,25 +629,47 @@ async function transcribeWithCache(blob, language = 'pt') {
 
 async function sendMeetingAudioToWhisper(file) {
     if (!AppState.apiKey) { showToast('Chave de API do Groq ausente!'); return; }
-    
-    // Validar tamanho do arquivo (máximo 25MB para Groq)
-    const MAX_SIZE = 25 * 1024 * 1024; // 25MB
-    if (file.size > MAX_SIZE) {
-        showToast(`❌ Arquivo muito grande! Máximo: 25MB. Seu arquivo: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-        return;
-    }
-    
+
     MeetingDOM.transcriptionLoader.classList.remove('hidden');
-    MeetingDOM.transcriptionLoaderText.textContent = 'Transcrevendo áudio via Groq Whisper...';
+    MeetingDOM.transcriptionLoaderText.textContent = '⏳ Verificando áudio...';
     MeetingDOM.rawTranscript.value = '';
     MeetingState.currentTranscription = '';
 
+    // Ocultar VU Meter ao término da gravação
+    const vuReuniao = document.getElementById('vu-meter-reuniao');
+    if (vuReuniao) {
+        if (typeof updateVuMeter === 'function') updateVuMeter('vu-meter-reuniao', 0);
+        vuReuniao.classList.add('hidden');
+    }
+
     try {
-        const transcriptText = await transcribeWithCache(file, MeetingDOM.meetingLang.value);
+        const MAX_CHUNK_MB = 20;
+        const MAX_SIZE_BYTES = 24 * 1024 * 1024;
+        let transcriptText = '';
+
+        // Chunking automático: se o arquivo exceder 24MB, dividir em partes
+        if (file.size > MAX_SIZE_BYTES && MeetingState.audioProcessor) {
+            showToast('⏳ Áudio longo — dividindo em partes...');
+            const chunks = await MeetingState.audioProcessor.splitAudioBlob(file, MAX_CHUNK_MB);
+            const texts = [];
+            for (let i = 0; i < chunks.length; i++) {
+                MeetingDOM.transcriptionLoaderText.textContent = `⏳ Transcrevendo parte ${i + 1} de ${chunks.length}...`;
+                const ext = chunks[i].type.includes('wav') ? 'wav' : 'webm';
+                const chunkFile = new File([chunks[i]], `reuniao_parte${i + 1}.${ext}`, { type: chunks[i].type });
+                const text = await transcribeWithCache(chunkFile, MeetingDOM.meetingLang.value);
+                texts.push(text);
+            }
+            transcriptText = texts.join('\n\n');
+            showToast(`✅ Transcrição concluída (${chunks.length} partes)!`);
+        } else {
+            MeetingDOM.transcriptionLoaderText.textContent = 'Transcrevendo áudio via Groq Whisper...';
+            transcriptText = await transcribeWithCache(file, MeetingDOM.meetingLang.value);
+            showToast(transcriptText?.trim() ? '✅ Transcrição da reunião concluída!' : 'Aviso: nenhum áudio detectado.');
+        }
+
         MeetingDOM.rawTranscript.value = transcriptText;
         MeetingState.currentTranscription = transcriptText;
         if (typeof toggleAiButtonsState === 'function') toggleAiButtonsState();
-        showToast(transcriptText?.trim() ? '✅ Transcrição da reunião concluída!' : 'Aviso: nenhum áudio detectado.');
     } catch (err) {
         MeetingDOM.rawTranscript.value = `Erro: ${err.message}`;
         showToast(err.message || 'Erro ao transcrever áudio.');

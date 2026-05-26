@@ -44,30 +44,47 @@ class AudioProcessor {
   }
 
   /**
-   * Obter configurações de áudio otimizadas
+   * Obter configurações de áudio otimizadas por modo de gravação.
+   * @param {'presencial'|'online'} mode - Modo de gravação
    */
   getAudioConstraints(mode = 'presencial') {
-    const baseConstraints = {
+    const base = {
+      sampleRate: { ideal: 48000 },
+      channelCount: 1, // Mono
+    };
+
+    if (mode === 'online') {
+      // Online/Telemedicina: cancelamento de eco agressivo para evitar
+      // realimentação entre alto-falante e microfone.
+      return {
+        audio: {
+          ...base,
+          echoCancellation: { ideal: true },
+          noiseSuppression: { ideal: true },
+          autoGainControl: { ideal: true },
+          latency: { ideal: 0.05 },
+          typingNoiseDetection: true,
+          experimentalEchoCancellation: true,
+          experimentalNoiseSuppression: true,
+          experimentalAutoGainControl: true
+        }
+      };
+    }
+
+    // Presencial: prioriza captura de sala — baixa latência, sensibilidade natural.
+    return {
       audio: {
-        // Processamento de áudio
+        ...base,
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl: true,
-
-        // Qualidade
-        sampleRate: { ideal: 48000 },
-        channelCount: 1, // Mono
         latency: { ideal: 0.01 },
-
-        // Processamento avançado
         typingNoiseDetection: true,
         experimentalEchoCancellation: true,
         experimentalNoiseSuppression: true,
         experimentalAutoGainControl: true
       }
     };
-
-    return baseConstraints;
   }
 
   // ========================================================================
@@ -664,6 +681,19 @@ class AudioProcessor {
     return this.qualityMonitor.update();
   }
 
+  /**
+   * Retorna o nível de volume atual como percentual (0–100).
+   * Usado pelo VU Meter visual durante a gravação.
+   */
+  getVolumeLevelPercent() {
+    if (!this.analyser) return 0;
+    const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+    this.analyser.getByteFrequencyData(dataArray);
+    const sum = dataArray.reduce((a, b) => a + b, 0);
+    const avg = sum / dataArray.length;
+    return Math.min(100, Math.round((avg / 255) * 100 * 3)); // ×3 para sensibilidade visual
+  }
+
   // ========================================================================
   // UTILITÁRIOS
   // ========================================================================
@@ -708,6 +738,57 @@ class AudioProcessor {
       type: blob.type,
       duration: this.recordingDuration ? (this.recordingDuration / 1000).toFixed(2) + 's' : 'N/A'
     };
+  }
+
+  /**
+   * Divide um blob de áudio WAV em chunks menores para gravações longas.
+   * Necessário porque a API Groq Whisper tem limite de 25MB por requisição.
+   * @param {Blob} blob - Blob de áudio WAV a ser dividido
+   * @param {number} maxSizeMB - Tamanho máximo de cada chunk em MB (padrão: 20)
+   * @returns {Promise<Blob[]>} - Array de blobs menores
+   */
+  async splitAudioBlob(blob, maxSizeMB = 20) {
+    try {
+      const maxSizeBytes = maxSizeMB * 1024 * 1024;
+      if (blob.size <= maxSizeBytes) return [blob];
+
+      const audioContext = this.initAudioContext();
+      const arrayBuffer = await blob.arrayBuffer();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+      const totalDuration = audioBuffer.duration;
+      const sampleRate = audioBuffer.sampleRate;
+      const numChannels = audioBuffer.numberOfChannels;
+
+      // Calcular duração de cada chunk proporcionalmente ao tamanho máximo
+      const bytesPerSecond = blob.size / totalDuration;
+      const chunkDuration = Math.floor(maxSizeBytes / bytesPerSecond);
+
+      const chunks = [];
+      let offset = 0;
+
+      while (offset < totalDuration) {
+        const end = Math.min(offset + chunkDuration, totalDuration);
+        const chunkFrames = Math.ceil((end - offset) * sampleRate);
+        const startFrame = Math.ceil(offset * sampleRate);
+
+        const chunkBuffer = audioContext.createBuffer(numChannels, chunkFrames, sampleRate);
+        for (let ch = 0; ch < numChannels; ch++) {
+          const srcData = audioBuffer.getChannelData(ch);
+          const dstData = chunkBuffer.getChannelData(ch);
+          dstData.set(srcData.subarray(startFrame, startFrame + chunkFrames));
+        }
+
+        chunks.push(this.audioBufferToWav(chunkBuffer));
+        offset = end;
+      }
+
+      console.log(`[AudioProcessor] Áudio dividido em ${chunks.length} chunks de ~${maxSizeMB}MB.`);
+      return chunks;
+    } catch (err) {
+      console.error('[AudioProcessor] Erro ao dividir áudio:', err);
+      return [blob]; // fallback: retorna o blob original
+    }
   }
 }
 

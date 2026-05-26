@@ -2528,3 +2528,75 @@ body[data-theme="light"] .badge-light {
         right: -100%;
     }
 }
+
+/* ==========================================================================
+   VU METER - Indicador Visual de Volume em Tempo Real
+   ========================================================================== */
+
+.vu-meter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 10px;
+    animation: fadeIn 0.3s ease;
+}
+
+.vu-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    min-width: 24px;
+    text-transform: uppercase;
+}
+
+.vu-segments {
+    display: flex;
+    gap: 3px;
+    flex: 1;
+    height: 18px;
+    align-items: stretch;
+}
+
+.vu-segment {
+    flex: 1;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background-color 0.05s ease, box-shadow 0.05s ease;
+}
+
+/* Verde: segmentos 0-5 (volume baixo a médio) */
+.vu-segment.active[data-index="0"],
+.vu-segment.active[data-index="1"],
+.vu-segment.active[data-index="2"],
+.vu-segment.active[data-index="3"],
+.vu-segment.active[data-index="4"],
+.vu-segment.active[data-index="5"] {
+    background-color: #10b981;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+/* Amarelo: segmentos 6-7 (volume alto) */
+.vu-segment.active[data-index="6"],
+.vu-segment.active[data-index="7"] {
+    background-color: #f59e0b;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+}
+
+/* Vermelho: segmentos 8-9 (clipping / muito alto) */
+.vu-segment.active[data-index="8"],
+.vu-segment.active[data-index="9"] {
+    background-color: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+    animation: vu-clip-pulse 0.2s ease alternate infinite;
+}
+
+@keyframes vu-clip-pulse {
+    from { opacity: 1; }
+    to   { opacity: 0.6; }
+}
