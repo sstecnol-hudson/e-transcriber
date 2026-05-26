@@ -2397,7 +2397,16 @@ function setupEventListeners() {
     const inputBvsSearch = document.getElementById('bvs-search-input');
 
     if (btnToggleBvs) btnToggleBvs.addEventListener('click', toggleBvsSidebar);
-    if (DOM.bvsDynamicContainer) DOM.bvsDynamicContainer.addEventListener('click', toggleBvsSidebar);
+    if (DOM.bvsDynamicContainer) {
+        DOM.bvsDynamicContainer.addEventListener('click', () => {
+            const input = document.getElementById('bvs-search-input');
+            if (input && input.value) {
+                performBvsSearch(input.value, true);
+            } else {
+                toggleBvsSidebar();
+            }
+        });
+    }
     if (btnCloseBvs) btnCloseBvs.addEventListener('click', closeBvsSidebar);
     if (bvsOverlay) bvsOverlay.addEventListener('click', closeBvsSidebar);
     
