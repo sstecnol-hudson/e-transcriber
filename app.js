@@ -49,6 +49,34 @@ async function fetchWithTimeout(resource, options = {}) {
 }
 window.fetchWithTimeout = fetchWithTimeout;
 
+/** Fetch com timeout e retry em caso de erros temporários (429, 5xx) */
+async function fetchWithRetry(resource, options = {}, maxRetries = 2) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            const res = await fetchWithTimeout(resource, options);
+            
+            if ((res.status === 429 || res.status >= 500) && attempt < maxRetries) {
+                const delay = Math.pow(2, attempt) * 1500; // 1.5s, 3s
+                if (typeof showToast === 'function') {
+                    showToast(`⚠️ Servidor ocupado. Tentando novamente em ${(delay / 1000).toFixed(1)}s...`);
+                }
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+            return res;
+        } catch (err) {
+            if (attempt === maxRetries) throw err;
+            
+            const delay = 1500 * (attempt + 1); // 1.5s, 3.0s
+            if (typeof showToast === 'function') {
+                showToast(`⚠️ Conexão instável. Nova tentativa em ${(delay / 1000).toFixed(1)}s...`);
+            }
+            await new Promise(r => setTimeout(r, delay));
+        }
+    }
+}
+window.fetchWithRetry = fetchWithRetry;
+
 /** Habilita ou desabilita dinamicamente os botões que dependem da API Groq */
 function toggleAiButtonsState() {
     const hasKey = !!AppState.apiKey;
@@ -501,8 +529,15 @@ function getSystemPrompt(templateId) {
 // ==========================================================================
 function setupNavigation() {
     DOM.menuItems.forEach(item => {
-        item.addEventListener('click', () => {
+        item.addEventListener('click', (e) => {
             const targetTab = item.getAttribute('data-tab');
+            if (targetTab === 'tab-consulta') {
+                const proceed = handleNewConsultClick();
+                if (!proceed) {
+                    e.preventDefault();
+                    return;
+                }
+            }
             switchTab(targetTab, item);
         });
     });
@@ -584,6 +619,76 @@ function updateHeader(tabId) {
     const [title, subtitle] = map[tabId] || ['E-Transcriber', ''];
     DOM.headerTitle.textContent = title;
     DOM.headerSubtitle.textContent = subtitle;
+}
+
+/** Verifica se há dados não salvos e solicita confirmação do usuário */
+function handleNewConsultClick() {
+    const hasUnsavedData = (
+        (DOM.patientName && DOM.patientName.value.trim() !== '') ||
+        (DOM.patientAge && DOM.patientAge.value.trim() !== '') ||
+        (DOM.doctorSpecialty && DOM.doctorSpecialty.value.trim() !== '') ||
+        (DOM.rawTranscript && DOM.rawTranscript.value.trim() !== '') ||
+        (DOM.outputRecord && DOM.outputRecord.value.trim() !== '') ||
+        AppState.uploadedFile !== null
+    );
+
+    const isSaved = DOM.btnSaveConsult ? DOM.btnSaveConsult.disabled : false;
+    
+    if (hasUnsavedData && !isSaved) {
+        if (!confirm('Deseja iniciar uma nova consulta? A consulta atual não foi salva e seus dados serão perdidos.')) {
+            return false;
+        }
+    }
+
+    resetConsultationFields();
+    return true;
+}
+
+/** Reseta todos os campos da tela de consulta, limpando o estado */
+function resetConsultationFields() {
+    if (DOM.patientName) DOM.patientName.value = '';
+    if (DOM.patientAge) DOM.patientAge.value = '';
+    if (DOM.doctorSpecialty) DOM.doctorSpecialty.value = '';
+    
+    if (DOM.rawTranscript) DOM.rawTranscript.value = '';
+    AppState.currentTranscription = '';
+    
+    if (DOM.outputRecord) DOM.outputRecord.value = '';
+    AppState.currentRecordOutput = '';
+    
+    if (DOM.outputPatientMsg) DOM.outputPatientMsg.value = '';
+    AppState.currentPatientMsgOutput = '';
+    
+    clearUploadedFile();
+    
+    if (DOM.resultsSection) DOM.resultsSection.classList.add('hidden');
+    if (DOM.actionsSaveRow) DOM.actionsSaveRow.classList.add('hidden');
+    if (DOM.bvsDynamicContainer) DOM.bvsDynamicContainer.classList.add('hidden');
+    
+    if (DOM.btnSaveConsult) {
+        DOM.btnSaveConsult.disabled = false;
+        DOM.btnSaveConsult.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span>Salvar no Histórico Local</span>
+        `;
+    }
+    
+    // Parar gravações ativas
+    if (AppState.audioProcessor && AppState.audioProcessor.isRecording) {
+        AppState.audioProcessor.stopRecording();
+        if (AppState.recordingTimerInterval) clearInterval(AppState.recordingTimerInterval);
+        if (AppState.recordingState?.qualityInterval) clearInterval(AppState.recordingState.qualityInterval);
+        AppState.recordingState?.visualizer?.stop();
+        AppState.audioProcessor.cleanup().catch(() => {});
+    }
+    
+    if (DOM.btnRecordStart) DOM.btnRecordStart.disabled = false;
+    if (DOM.btnRecordTelemed) DOM.btnRecordTelemed.disabled = false;
+    if (DOM.btnRecordStop) DOM.btnRecordStop.disabled = true;
+    if (DOM.recordingTimer) DOM.recordingTimer.textContent = '00:00';
+    
+    drawStaticWaveform();
+    toggleAiButtonsState();
 }
 
 // ==========================================================================
@@ -1256,6 +1361,18 @@ async function stopRecording() {
         clearInterval(AppState.recordingState.qualityInterval);
         AppState.recordingState.visualizer?.stop();
 
+        // Validar duração mínima (Item 4)
+        if (result.duration < 3000) {
+            showToast('⚠️ Gravação muito curta (mínimo 3 segundos). Tente novamente.');
+            await AppState.audioProcessor.cleanup().catch(() => {});
+            DOM.btnRecordStart.disabled = false;
+            DOM.btnRecordTelemed.disabled = false;
+            DOM.btnRecordStop.disabled = true;
+            DOM.recordingTimer.textContent = '00:00';
+            drawStaticWaveform();
+            return;
+        }
+
         // Obter blob bruto
         const audioBlob = AppState.audioProcessor.getRecordedAudioBlob();
 
@@ -1410,7 +1527,7 @@ async function sendAudioToWhisper(file) {
     formData.append('response_format', 'json');
 
     try {
-        const res = await fetchWithTimeout('https://api.groq.com/openai/v1/audio/transcriptions', {
+        const res = await fetchWithRetry('https://api.groq.com/openai/v1/audio/transcriptions', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${AppState.apiKey}` },
             body: formData,
@@ -1471,7 +1588,7 @@ async function generateClinicalDocuments() {
     const model = DOM.aiModel.value;
     const userContent = `DADOS DO ATENDIMENTO:\nPaciente: ${pName}\nIdade: ${pAge}\nEspecialidade: ${spec}\n\nTRANSCRIÇÃO DA CONSULTA:\n${rawText}`;
 
-    const callGroq = (systemPrompt, temperature = 0.1, overrideModel = null) => fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+    const callGroq = (systemPrompt, temperature = 0.1, overrideModel = null) => fetchWithRetry('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${AppState.apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: overrideModel || model, messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }], temperature }),
@@ -1567,7 +1684,7 @@ async function testGroqConnection() {
     DOM.btnTestKey.disabled = true;
     DOM.btnTestKey.textContent = 'Testando...';
     try {
-        const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+        const res = await fetchWithRetry('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: 'Diga apenas Ok.' }], max_tokens: 5 }),
@@ -2318,7 +2435,30 @@ function setupEventListeners() {
         if (e.dataTransfer.files.length > 0) handleFileSelection(e.dataTransfer.files[0]);
     });
     DOM.btnClearFile.addEventListener('click', clearUploadedFile);
-    DOM.btnProcessUpload.addEventListener('click', () => { if (AppState.uploadedFile) sendAudioToWhisper(AppState.uploadedFile); });
+    DOM.btnProcessUpload.addEventListener('click', async () => {
+        if (!AppState.uploadedFile) return;
+        DOM.btnProcessUpload.disabled = true;
+        
+        try {
+            showToast('⏳ Pré-processando áudio...');
+            const preprocessed = await AppState.audioProcessor.preprocessAudio(AppState.uploadedFile);
+            const preprocessedBlob = preprocessed.success ? preprocessed.blob : AppState.uploadedFile;
+            
+            showToast('⏳ Comprimindo áudio...');
+            const compressed = await AppState.audioProcessor.compressAudio(preprocessedBlob);
+            const finalBlob = compressed.success ? compressed.blob : preprocessedBlob;
+            
+            await AppState.audioProcessor.cleanup().catch(() => {});
+            
+            const file = new File([finalBlob], `upload_${Date.now()}.wav`, { type: finalBlob.type });
+            await sendAudioToWhisper(file);
+        } catch (err) {
+            console.error('Erro ao processar upload:', err);
+            showToast('Erro ao processar áudio de upload.');
+        } finally {
+            DOM.btnProcessUpload.disabled = false;
+        }
+    });
 
     // Transcrição
     DOM.rawTranscript.addEventListener('input', () => {

@@ -212,6 +212,9 @@ class AudioProcessor {
 
   /**
    * Parar gravação
+   * NOTA: NÃO fecha o AudioContext aqui — ele ainda é necessário para
+   * compressAudio() e preprocessAudio() que rodam APÓS esta chamada.
+   * Use cleanup() para liberar recursos depois do processamento.
    */
   stopRecording() {
     if (!this.isRecording) return null;
@@ -224,7 +227,7 @@ class AudioProcessor {
       this.mediaRecorder.stop();
     }
 
-    // Parar streams
+    // Parar apenas os tracks de mídia (microfone/tela)
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());
     }
@@ -232,17 +235,30 @@ class AudioProcessor {
       this.displayStream.getTracks().forEach(track => track.stop());
     }
 
-    // Fechar AudioContext se necessário
-    if (this.audioContext && this.audioContext.state !== 'closed') {
-      this.audioContext.close();
-      this.audioContext = null;
-    }
+    // NÃO fechar o audioContext aqui!
+    // O contexto é necessário para compressAudio() e preprocessAudio().
+    // Chame cleanup() após o processamento estar concluído.
 
     return {
       success: true,
       duration: this.recordingDuration,
       chunks: this.audioChunks
     };
+  }
+
+  /**
+   * Liberar todos os recursos de áudio.
+   * Chamar APÓS o processamento do blob (compressAudio / preprocessAudio).
+   */
+  async cleanup() {
+    if (this.audioContext && this.audioContext.state !== 'closed') {
+      await this.audioContext.close();
+      this.audioContext = null;
+    }
+    this.stream = null;
+    this.displayStream = null;
+    this.analyser = null;
+    this.audioChunks = [];
   }
 
   /**
@@ -281,13 +297,13 @@ class AudioProcessor {
       const source = offlineContext.createBufferSource();
       source.buffer = audioBuffer;
 
-      // Aplicar compressor dinâmico
+      // Aplicar compressor dinâmico com parâmetros otimizados para voz humana
       const compressor = offlineContext.createDynamicsCompressor();
-      compressor.threshold.value = -50;
-      compressor.knee.value = 40;
-      compressor.ratio.value = 12;
-      compressor.attack.value = 0.003;
-      compressor.release.value = 0.25;
+      compressor.threshold.value = -24; // Começa a comprimir em -24dB (ideal para fala)
+      compressor.knee.value = 30;       // Transição suave
+      compressor.ratio.value = 4;       // Ratio natural para voz (4:1 vs 12:1 anterior)
+      compressor.attack.value = 0.003;  // Ataque rápido (mantém consoantes)
+      compressor.release.value = 0.25;  // Release natural
 
       source.connect(compressor);
       compressor.connect(offlineContext.destination);
@@ -376,29 +392,51 @@ class AudioProcessor {
   }
 
   /**
-   * Remover silêncio no início e fim
+   * Remover silêncio no início e fim com threshold adaptativo.
+   * Estima o ruído de fundo nos primeiros 100ms para definir
+   * automaticamente o limiar de corte (mínimo de 0.01).
    */
-  trimSilence(audioData, threshold = 0.01) {
+  trimSilence(audioData, threshold = null) {
+    // Threshold adaptativo: usa o ruído dos primeiros 100ms como referência
+    if (threshold === null) {
+      threshold = this.estimateNoiseFloor(audioData);
+    }
+
     let start = 0;
     let end = audioData.length - 1;
 
-    // Encontrar início
+    // Encontrar início do áudio
     for (let i = 0; i < audioData.length; i++) {
       if (Math.abs(audioData[i]) > threshold) {
-        start = i;
+        start = Math.max(0, i - 100); // margem de 100 amostras
         break;
       }
     }
 
-    // Encontrar fim
+    // Encontrar fim do áudio
     for (let i = audioData.length - 1; i >= 0; i--) {
       if (Math.abs(audioData[i]) > threshold) {
-        end = i;
+        end = Math.min(audioData.length - 1, i + 100); // margem de 100 amostras
         break;
       }
     }
 
     return audioData.slice(start, end);
+  }
+
+  /**
+   * Estima o nível de ruído de fundo usando os primeiros 100ms da gravação.
+   * Retorna um threshold mínimo de 0.01 para evitar cortes indevidos.
+   */
+  estimateNoiseFloor(audioData, sampleMs = 100, sampleRate = 48000) {
+    const sampleLength = Math.min(Math.floor(sampleRate * (sampleMs / 1000)), audioData.length);
+    let sum = 0;
+    for (let i = 0; i < sampleLength; i++) {
+      sum += Math.abs(audioData[i]);
+    }
+    const noiseFloor = sum / sampleLength;
+    // Threshold = 3× o ruído de fundo, mínimo 0.01
+    return Math.max(0.01, noiseFloor * 3);
   }
 
   /**
@@ -445,10 +483,11 @@ class AudioProcessor {
     const source = offlineContext.createBufferSource();
     source.buffer = buffer;
 
+    // Parâmetros otimizados para voz humana
     const compressor = offlineContext.createDynamicsCompressor();
-    compressor.threshold.value = -50;
-    compressor.knee.value = 40;
-    compressor.ratio.value = 12;
+    compressor.threshold.value = -24; // Ideal para fala
+    compressor.knee.value = 30;       // Transição suave
+    compressor.ratio.value = 4;       // Natural para voz
     compressor.attack.value = 0.003;
     compressor.release.value = 0.25;
 
