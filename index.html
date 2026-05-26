@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Transcriber | Inteligência Artificial Médica</title>
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- PWA Config -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <!-- Bibliotecas externas para funcionalidades avançadas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div id="toast" class="toast hidden"></div>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <img src="Logo.png" alt="Instituto Efetiva Telessaúde" style="width: 100%; height: auto;" />
+            </div>
+            <div class="mode-selector">
+                <button id="btn-mode-consultas" class="mode-btn active">CONSULTAS</button>
+                <button id="btn-mode-reunioes" class="mode-btn">REUNIÕES</button>
+            </div>
+            <nav class="sidebar-menu">
+                <button id="btn-menu-consulta" class="menu-item active" data-tab="tab-consulta" data-mode="consultas">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span>Nova Consulta</span>
+                </button>
+                <button id="btn-menu-reunioes" class="menu-item" data-tab="tab-reunioes" data-mode="reunioes">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                    <span>Reuniões</span>
+                </button>
+                <button id="btn-menu-pacientes" class="menu-item" data-tab="tab-pacientes" data-mode="consultas">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Pacientes</span>
+                    <span id="patients-count-badge" class="count-badge hidden">0</span>
+                </button>
+                <button id="btn-menu-historico" class="menu-item" data-tab="tab-historico" data-mode="consultas">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+                    <span>Histórico</span>
+                </button>
+                <button id="btn-menu-historico-reunioes" class="menu-item" data-tab="tab-historico-reunioes" data-mode="reunioes">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+                    <span>Hist. Reuniões</span>
+                </button>
+                <button id="btn-menu-modelos" class="menu-item" data-tab="tab-modelos" data-mode="consultas">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>Modelos de IA</span>
+                </button>
+                <button id="btn-menu-config" class="menu-item" data-tab="tab-config" data-mode="both">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <span>Configurações</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="api-status-indicator">
+                    <span id="api-status-dot" class="status-dot red"></span>
+                    <span id="api-status-text">Groq Desconectado</span>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-info">
+                    <h1 id="header-title">Nova Consulta</h1>
+                    <p id="header-subtitle">Grave e processe a consulta com Inteligência Artificial</p>
+                </div>
+                <div class="header-actions">
+                    <div class="alert-banner hidden" id="apiKeyAlert">
+                        <svg class="warning-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                        <span>Configure sua chave Groq em Configurações!</span>
+                    </div>
+                    <!-- Botão de Alternância de Tema Claro/Escuro -->
+                    <button id="btn-theme-toggle" class="btn-theme-toggle" title="Alternar tema claro/escuro/automático">
+                        <svg id="icon-moon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                        <svg id="icon-sun" class="hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" x2="12" y1="1" y2="3"/><line x1="12" x2="12" y1="21" y2="23"/><line x1="4.22" x2="5.64" y1="4.22" y2="5.64"/><line x1="18.36" x2="19.78" y1="18.36" y2="19.78"/><line x1="1" x2="3" y1="12" y2="12"/><line x1="21" x2="23" y1="12" y2="12"/><line x1="4.22" x2="5.64" y1="19.78" y2="18.36"/><line x1="18.36" x2="19.78" y1="5.64" y2="4.22"/></svg>
+                        <svg id="icon-auto" class="hidden" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+                    </button>
+                    <!-- Botão de Ajuda/Manual -->
+                    <button id="btn-help" class="btn-theme-toggle" title="Abrir Manual de Ajuda" style="margin-left: 8px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- ======================== TAB: NOVA CONSULTA ======================== -->
+            <div id="tab-consulta" class="tab-pane active">
+                <div class="card patient-form-card">
+                    <div class="card-header">
+                        <div class="header-main-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <h3>Dados da Consulta e Paciente</h3>
+                        </div>
+                    </div>
+                    <div class="patient-grid">
+                        <!-- Campo Nome com Autocomplete de Pacientes Cadastrados -->
+                        <div class="form-group">
+                            <label for="patientName">Nome do Paciente</label>
+                            <div class="autocomplete-wrapper">
+                                <input type="text" id="patientName" placeholder="Digite para buscar ou criar paciente..." autocomplete="off">
+                                <div id="patientAutocomplete" class="autocomplete-dropdown hidden"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="patientAge">Idade / Data de Nascimento</label>
+                            <input type="text" id="patientAge" placeholder="Ex: 45 anos ou 12/04/1981">
+                        </div>
+                        <div class="form-group">
+                            <label for="doctorSpecialty">Especialidade / Tipo de Atendimento</label>
+                            <input type="text" id="doctorSpecialty" placeholder="Ex: Clínica Médica, Cardiologia, etc.">
+                        </div>
+                        <div class="form-group">
+                            <label for="transcriptionLang">Idioma do Áudio</label>
+                            <select id="transcriptionLang">
+                                <option value="pt" selected>Português (Brasil)</option>
+                                <option value="en">Inglês</option>
+                                <option value="es">Espanhol</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="console-grid">
+                    <div class="card audio-capture-card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                                <h3>Captação da Consulta</h3>
+                            </div>
+                        </div>
+                        <div class="capture-tabs">
+                            <button id="btn-mode-record" class="capture-tab-btn active">Gravar Áudio</button>
+                            <button id="btn-mode-upload" class="capture-tab-btn">Enviar Arquivo</button>
+                        </div>
+                        <div id="capture-panel-record" class="capture-panel-content active">
+                            <div class="recording-visualizer">
+                                <canvas id="waveformCanvas" width="300" height="80"></canvas>
+                                <div class="timer" id="recordingTimer">00:00</div>
+                            </div>
+                            <div class="controls-row">
+                                <button id="btn-record-start" class="btn btn-record shadow-pulse" title="Gravar apenas o microfone">
+                                    <span class="pulse-ring"></span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+                                    <span>Presencial</span>
+                                </button>
+                                <button id="btn-record-telemed" class="btn btn-secondary shadow-pulse" style="border-color: var(--primary); color: var(--primary);" title="Gravar microfone e áudio do paciente (Telemedicina)">
+                                    <span class="pulse-ring" style="border-color: var(--primary);"></span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                    <span>Telemedicina</span>
+                                </button>
+                                <button id="btn-record-stop" class="btn btn-stop" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><rect x="9" y="9" width="6" height="6" fill="currentColor"/></svg>
+                                    <span>Parar / Processar</span>
+                                </button>
+                            </div>
+                            <p class="helper-text">Pressione iniciar para gravar a conversa entre médico e paciente.</p>
+                        </div>
+                        <div id="capture-panel-upload" class="capture-panel-content">
+                            <div class="drop-zone" id="audioDropZone">
+                                <input type="file" id="audioFileInput" accept="audio/*,video/*" style="display:none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                                <p class="drop-zone-text">Arraste um arquivo de áudio ou clique para selecionar</p>
+                                <span class="drop-zone-sub">Suporta MP3, WAV, M4A, WEBM, MP4 (máx 25MB)</span>
+                            </div>
+                            <div id="file-info-container" class="file-info-card hidden">
+                                <div class="file-details">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    <div>
+                                        <p id="uploaded-file-name" class="file-name">arquivo.wav</p>
+                                        <p id="uploaded-file-size" class="file-size">1.2 MB</p>
+                                    </div>
+                                </div>
+                                <button id="btn-clear-file" class="btn-icon" title="Remover arquivo">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                                </button>
+                            </div>
+                            <button id="btn-process-upload" class="btn btn-primary w-full" disabled>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                <span>Transcrever Arquivo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card transcription-card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+                                <h3>Transcrição Original Bruta</h3>
+                            </div>
+                            <span class="legal-badge">Validação Médica Obrigatória</span>
+                        </div>
+                        <div class="card-content flex-grow">
+                            <div id="transcription-loader" class="loader-overlay hidden">
+                                <div class="spinner"></div>
+                                <p id="transcription-loader-text">Convertendo voz em texto...</p>
+                            </div>
+                            <textarea id="rawTranscript" placeholder="A transcrição aparecerá aqui. Edite o texto antes de estruturar o prontuário para corrigir terminologias médicas ou ruídos." class="transcript-textarea"></textarea>
+                        </div>
+                        <div class="transcription-actions">
+                            <div class="actions-group">
+                                <div class="select-group">
+                                    <label for="clinicalTemplate">Modelo Clínico</label>
+                                    <select id="clinicalTemplate">
+                                        <option value="soap" selected>SOAP (Subj, Obj, Aval, Plano)</option>
+                                        <option value="anamnese">Anamnese Completa</option>
+                                        <option value="evolucao">Evolução Clínica Diária</option>
+                                        <option value="orientacao">Orientação Rápida ao Paciente</option>
+                                        <option value="custom">Modelo Personalizado (Configurado)</option>
+                                    </select>
+                                </div>
+                                <div class="select-group">
+                                    <label for="aiModel">Modelo LLM</label>
+                                    <select id="aiModel">
+                                        <option value="llama-3.3-70b-versatile" selected>Llama 3.3 70B (Recomendado)</option>
+                                        <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                                        <option value="llama-3.1-8b-instant">Llama 3.1 8B (Mais rápido)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button id="btn-generate-documents" class="btn btn-primary" disabled>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                                <span>Estruturar com IA</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resultados Gerados -->
+                <div id="results-section" class="results-layout hidden">
+                    <div class="card result-card">
+                        <div class="card-header">
+                            <div class="header-main-title" style="color: var(--primary);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                <h3>Prontuário (Aguardando Validação)</h3>
+                            </div>
+                            <div class="header-actions">
+                                <button id="btn-copy-record" class="btn-action-small">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <span>Copiar</span>
+                                </button>
+                                <button id="btn-download-pdf" class="btn-action-small btn-pdf-action">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
+                                    <span>Exportar PDF</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content flex-grow relative">
+                            <div id="prontuario-loader" class="loader-overlay hidden">
+                                <div class="spinner"></div>
+                                <p>Estruturando prontuário com IA...</p>
+                            </div>
+                            <textarea id="outputRecord" class="result-textarea" placeholder="O prontuário gerado aparecerá aqui..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="card result-card patient-msg-card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                <h3>Mensagem para o Paciente</h3>
+                            </div>
+                            <div class="header-actions">
+                                <button id="btn-copy-patient" class="btn-action-small">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <span>Copiar</span>
+                                </button>
+                                <button id="btn-share-whatsapp" class="btn-action-small whatsapp-btn">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                                    <span>WhatsApp</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content flex-grow relative">
+                            <div id="paciente-loader" class="loader-overlay hidden">
+                                <div class="spinner"></div>
+                                <p>Escrevendo orientações para o paciente...</p>
+                            </div>
+                            <textarea id="outputPatientMsg" class="result-textarea" placeholder="As orientações simplificadas para o paciente aparecerão aqui..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="actions-save-row" class="save-actions-footer hidden">
+                    <p class="footer-alert-msg">⚠️ Revise todas as informações antes de salvar no prontuário.</p>
+                    <button id="btn-save-consult" class="btn btn-success">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        <span>Salvar no Histórico Local</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ======================== TAB: REUNIÕES ======================== -->
+            <div id="tab-reunioes" class="tab-pane">
+                <div class="card patient-form-card">
+                    <div class="card-header">
+                        <div class="header-main-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+                            <h3>Dados da Reunião</h3>
+                        </div>
+                    </div>
+                    <div class="patient-grid">
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label for="meetingTitle">Título ou Pauta da Reunião</label>
+                            <input type="text" id="meetingTitle" placeholder="Ex: Planejamento Estratégico Q3">
+                        </div>
+                        <div class="form-group">
+                            <label for="meetingType">Tipo de Reunião</label>
+                            <select id="meetingType">
+                                <option value="geral" selected>Reunião Geral</option>
+                                <option value="assembleia">Assembleia</option>
+                                <option value="diretoria">Reunião de Diretoria</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="meetingModality">Modalidade</label>
+                            <select id="meetingModality">
+                                <option value="presencial" selected>Presencial</option>
+                                <option value="online">Online</option>
+                                <option value="hibrida">Híbrida</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="meetingLang">Idioma do Áudio</label>
+                            <select id="meetingLang">
+                                <option value="pt" selected>Português (Brasil)</option>
+                                <option value="en">Inglês</option>
+                                <option value="es">Espanhol</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="console-grid">
+                    <div class="card audio-capture-card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                                <h3>Captação da Reunião</h3>
+                            </div>
+                        </div>
+                        <div class="capture-tabs">
+                            <button id="btn-meeting-mode-record" class="capture-tab-btn active">Gravar Áudio</button>
+                            <button id="btn-meeting-mode-upload" class="capture-tab-btn">Enviar Arquivo</button>
+                        </div>
+                        <div id="capture-meeting-panel-record" class="capture-panel-content active">
+                            <div class="recording-visualizer">
+                                <canvas id="waveformMeetingCanvas" width="300" height="80"></canvas>
+                                <div class="timer" id="recordingMeetingTimer">00:00</div>
+                            </div>
+                            <div class="controls-row">
+                                <button id="btn-meeting-record-start" class="btn btn-record shadow-pulse" title="Gravar microfone (Presencial)">
+                                    <span class="pulse-ring"></span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>
+                                    <span>Gravar Microfone</span>
+                                </button>
+                                <button id="btn-meeting-record-online" class="btn btn-secondary shadow-pulse" style="border-color: var(--primary); color: var(--primary);" title="Gravar microfone e áudio do sistema (Online/Híbrida)">
+                                    <span class="pulse-ring" style="border-color: var(--primary);"></span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                    <span>Gravar com Sistema</span>
+                                </button>
+                                <button id="btn-meeting-record-stop" class="btn btn-stop" disabled>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><rect x="9" y="9" width="6" height="6" fill="currentColor"/></svg>
+                                    <span>Parar / Processar</span>
+                                </button>
+                            </div>
+                            <p class="helper-text">Pressione iniciar para gravar a reunião.</p>
+                        </div>
+                        <div id="capture-meeting-panel-upload" class="capture-panel-content">
+                            <div class="drop-zone" id="audioMeetingDropZone">
+                                <input type="file" id="audioMeetingFileInput" accept="audio/*,video/*" style="display:none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                                <p class="drop-zone-text">Arraste um arquivo de áudio ou clique para selecionar</p>
+                                <span class="drop-zone-sub">Suporta MP3, WAV, M4A, WEBM, MP4 (máx 25MB)</span>
+                            </div>
+                            <div id="file-meeting-info-container" class="file-info-card hidden">
+                                <div class="file-details">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    <div>
+                                        <p id="uploaded-meeting-file-name" class="file-name">arquivo.wav</p>
+                                        <p id="uploaded-meeting-file-size" class="file-size">1.2 MB</p>
+                                    </div>
+                                </div>
+                                <button id="btn-clear-meeting-file" class="btn-icon" title="Remover arquivo">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                                </button>
+                            </div>
+                            <button id="btn-process-meeting-upload" class="btn btn-primary w-full" disabled>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                <span>Transcrever Arquivo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card transcription-card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+                                <h3>Transcrição Bruta</h3>
+                            </div>
+                        </div>
+                        <div class="card-content flex-grow">
+                            <div id="meeting-transcription-loader" class="loader-overlay hidden">
+                                <div class="spinner"></div>
+                                <p id="meeting-transcription-loader-text">Convertendo voz em texto...</p>
+                            </div>
+                            <textarea id="rawMeetingTranscript" placeholder="A transcrição aparecerá aqui." class="transcript-textarea"></textarea>
+                        </div>
+                        <div class="transcription-actions">
+                            <div class="actions-group">
+                                <div class="select-group">
+                                    <label for="aiMeetingModel">Modelo LLM</label>
+                                    <select id="aiMeetingModel">
+                                        <option value="llama-3.3-70b-versatile" selected>Llama 3.3 70B (Recomendado)</option>
+                                        <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+                                        <option value="llama-3.1-8b-instant">Llama 3.1 8B (Mais rápido)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button id="btn-generate-meeting-docs" class="btn btn-primary" disabled>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                                <span>Gerar Ata</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resultados Gerados -->
+                <div id="meeting-results-section" class="results-layout hidden">
+                    <div class="card result-card" style="grid-column: 1 / -1;">
+                        <div class="card-header">
+                            <div class="header-main-title" style="color: var(--primary);">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                <h3>Ata da Reunião</h3>
+                            </div>
+                            <div class="header-actions">
+                                <button id="btn-copy-meeting-record" class="btn-action-small">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                    <span>Copiar</span>
+                                </button>
+                                <button id="btn-download-meeting-pdf" class="btn-action-small btn-pdf-action">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
+                                    <span>Exportar PDF</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content flex-grow relative">
+                            <div id="ata-loader" class="loader-overlay hidden">
+                                <div class="spinner"></div>
+                                <p>Estruturando ata com IA...</p>
+                            </div>
+                            <textarea id="outputMeetingRecord" class="result-textarea" placeholder="A ata gerada aparecerá aqui..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="actions-meeting-save-row" class="save-actions-footer hidden">
+                    <button id="btn-save-meeting" class="btn btn-success">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                        <span>Salvar Reunião no Histórico Local</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ======================== TAB: PACIENTES ======================== -->
+            <div id="tab-pacientes" class="tab-pane">
+                <div class="card table-card">
+                    <div class="card-header table-header">
+                        <div class="search-bar">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                            <input type="text" id="searchPatients" placeholder="Pesquisar por nome, CPF ou convênio...">
+                        </div>
+                        <button id="btn-new-patient" class="btn btn-primary" style="padding:10px 20px; font-size:0.85rem;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                            <span>Novo Paciente</span>
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome Completo</th>
+                                    <th>Nascimento</th>
+                                    <th>CPF</th>
+                                    <th>Telefone</th>
+                                    <th>Convênio</th>
+                                    <th>Consultas</th>
+                                    <th class="actions-col">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patientsTableBody">
+                                <tr class="empty-row">
+                                    <td colspan="7">
+                                        <div class="empty-state">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                            <p>Nenhum paciente cadastrado. Clique em "Novo Paciente" para começar.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================== TAB: HISTÓRICO ======================== -->
+            <div id="tab-historico" class="tab-pane">
+                <div class="card table-card">
+                    <div class="card-header table-header">
+                        <div class="search-bar">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                            <input type="text" id="searchHistory" placeholder="Pesquisar por paciente, especialidade ou data...">
+                        </div>
+                        <button id="btn-clear-history" class="btn btn-danger-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            <span>Limpar Histórico</span>
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Data / Hora</th>
+                                    <th>Paciente</th>
+                                    <th>Idade</th>
+                                    <th>Especialidade</th>
+                                    <th>Modelo Clínico</th>
+                                    <th class="actions-col">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                                <tr class="empty-row">
+                                    <td colspan="6">
+                                        <div class="empty-state">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                                            <p>Nenhuma consulta registrada até o momento.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================== TAB: HISTÓRICO DE REUNIÕES ======================== -->
+            <div id="tab-historico-reunioes" class="tab-pane">
+                <div class="card table-card">
+                    <div class="card-header table-header">
+                        <div class="search-bar">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+                            <input type="text" id="searchMeetingHistory" placeholder="Pesquisar por pauta, modalidade ou data...">
+                        </div>
+                        <button id="btn-clear-meeting-history" class="btn btn-danger-link">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            <span>Limpar Histórico de Reuniões</span>
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Data / Hora</th>
+                                    <th>Pauta / Título</th>
+                                    <th>Tipo</th>
+                                    <th>Modalidade</th>
+                                    <th class="actions-col">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="meetingHistoryTableBody">
+                                <tr class="empty-row">
+                                    <td colspan="5">
+                                        <div class="empty-state">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+                                            <p>Nenhuma reunião registrada até o momento.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================== TAB: MODELOS ======================== -->
+            <div id="tab-modelos" class="tab-pane">
+                <div class="models-grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                <h3>Customização de Prompts de IA</h3>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <p class="description-text">Aqui você pode alterar a forma como a IA estrutura o prontuário. Selecione um modelo e configure as diretrizes que a IA deve respeitar para a sua especialidade.</p>
+                            <div class="models-selector-tabs">
+                                <button class="model-select-btn active" data-model-id="soap">SOAP</button>
+                                <button class="model-select-btn" data-model-id="anamnese">Anamnese</button>
+                                <button class="model-select-btn" data-model-id="evolucao">Evolução</button>
+                                <button class="model-select-btn" data-model-id="orientacao">Orientação</button>
+                                <button class="model-select-btn" data-model-id="custom">Personalizado</button>
+                            </div>
+                            <div class="prompt-editor-container">
+                                <div class="form-group">
+                                    <label for="promptSystemTitle">Nome do Modelo</label>
+                                    <input type="text" id="promptSystemTitle" readonly value="Modelo SOAP (Padrão)">
+                                </div>
+                                <div class="form-group">
+                                    <label for="promptSystemContent">Prompt de Sistema (Instruções para o LLM)</label>
+                                    <textarea id="promptSystemContent" class="prompt-textarea"></textarea>
+                                </div>
+                                <div class="controls-row flex-end">
+                                    <button id="btn-restore-default-prompt" class="btn btn-secondary-small">Restaurar Padrão</button>
+                                    <button id="btn-save-custom-prompt" class="btn btn-primary-small">Salvar Modelo</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ======================== TAB: CONFIGURAÇÕES ======================== -->
+            <div id="tab-config" class="tab-pane">
+                <div class="config-container">
+                    <!-- Dados do Consultório para Cabeçalho do PDF -->
+                    <div class="card" data-mode="consultas">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                <h3>Dados do Consultório (Cabeçalho dos PDFs)</h3>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <p class="description-text">Estas informações aparecerão automaticamente no cabeçalho de todos os prontuários exportados em PDF.</p>
+                            <div class="patient-grid">
+                                <div class="form-group">
+                                    <label for="clinicName">Nome do Consultório / Clínica</label>
+                                    <input type="text" id="clinicName" placeholder="Ex: Consultório Dr. Silva">
+                                </div>
+                                <div class="form-group">
+                                    <label for="doctorName">Nome do Médico(a)</label>
+                                    <input type="text" id="doctorName" placeholder="Ex: Dr. João Silva">
+                                </div>
+                                <div class="form-group">
+                                    <label for="doctorCRM">CRM</label>
+                                    <input type="text" id="doctorCRM" placeholder="Ex: CRM/SP 123456">
+                                </div>
+                                <div class="form-group">
+                                    <label for="clinicPhone">Telefone do Consultório</label>
+                                    <input type="text" id="clinicPhone" placeholder="Ex: (11) 99999-9999">
+                                </div>
+                            </div>
+                            <div class="controls-row flex-end" style="margin-top: 8px;">
+                                <button id="btn-save-clinic-info" class="btn btn-primary">Salvar Dados do Consultório</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Configurações específicas para Reuniões -->
+                    <div class="card" data-mode="reunioes">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/></svg>
+                                <h3>Dados da Empresa para Reuniões</h3>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <p class="description-text">Estas informações serão usadas nos cabeçalhos das atas de reunião geradas em PDF.</p>
+                            <div class="form-group">
+    <label for="meetingCompanyName">Nome da Empresa</label>
+    <input type="text" id="meetingCompanyName" placeholder="Ex: Acme Corp" />
+</div>
+<div class="form-group">
+    <label for="meetingCompanyAddress">Endereço</label>
+    <input type="text" id="meetingCompanyAddress" placeholder="Ex: Rua 123, São Paulo" />
+</div>
+<div class="form-group">
+    <label for="meetingSubject">Assunto da Reunião</label>
+    <input type="text" id="meetingSubject" placeholder="Ex: Estratégia Q4" />
+</div>
+<div class="form-group">
+    <label for="meetingDate">Data da Reunião</label>
+    <input type="date" id="meetingDate" />
+</div>
+<div class="form-group">
+    <label for="meetingStartTime">Horário de Início</label>
+    <input type="time" id="meetingStartTime" />
+</div>
+<div class="form-group">
+    <label for="meetingEndTime">Horário de Término</label>
+    <input type="time" id="meetingEndTime" />
+</div>
+<div class="form-group">
+    <label for="meetingLocation">Local (se diferente)</label>
+    <input type="text" id="meetingLocation" placeholder="Ex: Sala 3B" />
+</div>
+<div class="form-group">
+    <label>QR Code de Presença <span style="color:var(--success);font-size:0.7rem;font-weight:600;">✅ Funciona sem chave Groq</span></label>
+    <p class="description-text" style="margin-bottom:8px;">Gere um QR Code para os participantes registrarem presença. Expira automaticamente no horário de término da reunião. <strong>Não precisa de chave da API Groq!</strong></p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button id="btn-generate-qr" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h3v-3h-3"/></svg>
+            Gerar QR de Presença
+        </button>
+        <button id="btn-show-attendance" class="btn btn-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Gerenciar Participantes
+        </button>
+    </div>
+    <div id="qrCodeContainer" class="qr-code hidden" style="margin-top:16px;display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div id="qrCodeCanvas" style="background:#fff;padding:16px;border-radius:12px;"></div>
+        <div id="qrExpireInfo" style="font-size:0.8rem;color:var(--text-muted);text-align:center;"></div>
+        <div style="display:flex;gap:8px;">
+            <button id="btn-download-qr" class="btn btn-secondary" style="font-size:0.8rem;padding:8px 14px;">⬇ Baixar QR</button>
+            <button id="btn-copy-qr-link" class="btn btn-secondary" style="font-size:0.8rem;padding:8px 14px;">🔗 Copiar Link</button>
+        </div>
+    </div>
+</div>
+<div class="form-group">
+    <label for="meetingAgenda">Agenda</label>
+    <textarea id="meetingAgenda" placeholder="Pontos da agenda" rows="3"></textarea>
+</div>
+<div class="form-group">
+    <label for="meetingNotes">Observações / Notas</label>
+    <textarea id="meetingNotes" placeholder="Observações adicionais" rows="2"></textarea>
+</div>
+                            <div class="controls-row flex-end" style="margin-top: 8px;">
+                                <button id="btn-save-meeting-company" class="btn btn-primary">Salvar Dados da Empresa</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Aparência do Aplicativo -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                                <h3>Aparência e Tema</h3>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <p class="description-text">Escolha o tema visual do E-Transcriber. O modo automático adapta-se às configurações do seu sistema operacional (Claro/Escuro).</p>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="themeSelect">Preferência de Tema</label>
+                                <select id="themeSelect">
+                                    <option value="auto">Automático (Seguir Sistema)</option>
+                                    <option value="light">Tema Claro</option>
+                                    <option value="dark">Tema Escuro</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configuração da API -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <h3>Configuração da API do Groq</h3>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <p class="description-text">Sua chave de API é salva exclusivamente no navegador deste computador (localStorage) e nunca é enviada para servidores externos.</p>
+                            <div class="form-group">
+                                <label for="groqApiKey">Chave de API do Groq (gsk_...)</label>
+                                <div class="input-password-wrapper">
+                                    <input type="password" id="groqApiKey" placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                                    <button id="btn-toggle-key-visibility" class="btn-icon-input" type="button">
+                                        <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="controls-row flex-space">
+                                <a href="https://console.groq.com/keys" target="_blank" class="text-link">Obter Chave Groq Grátis →</a>
+                                <div class="buttons-row">
+                                    <button id="btn-test-key" class="btn btn-secondary">Testar Conexão</button>
+                                    <button id="btn-save-key" class="btn btn-primary">Salvar Chave</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LGPD -->
+                    <div class="card privacy-card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                <h3>LGPD e Privacidade de Dados Médicos</h3>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="privacy-bullet">
+                                <div class="bullet-icon success">✓</div>
+                                <p><strong>Sem Armazenamento em Nuvem Própria:</strong> Prontuários e cadastros de pacientes são armazenados exclusivamente neste computador (localStorage do navegador).</p>
+                            </div>
+                            <div class="privacy-bullet">
+                                <div class="bullet-icon success">✓</div>
+                                <p><strong>Comunicação Criptografada:</strong> O áudio é enviado diretamente para os servidores do Groq via HTTPS. Nenhum intermediário armazena seus dados.</p>
+                            </div>
+                            <div class="privacy-bullet">
+                                <div class="bullet-icon warning">!</div>
+                                <p><strong>Consentimento (LGPD):</strong> Informe verbalmente ao paciente que a consulta será gravada para fins de geração automática de prontuário e obtenha seu consentimento antes de iniciar.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reset Total -->
+                    <div class="card danger-card">
+                        <div class="card-header">
+                            <div class="header-main-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                                <h3>Ações Destrutivas</h3>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <p class="description-text">Esta ação apagará permanentemente todo o histórico de consultas, cadastro de pacientes, chave de API e configurações salvas localmente.</p>
+                            <button id="btn-reset-all" class="btn btn-danger">Apagar Todos os Dados do Sistema</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ===== MODAL: Visualizar Consulta do Histórico ===== -->
+    <div id="viewConsultModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modalPatientName">Paciente</h3>
+                <button id="btn-modal-close" class="btn-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-metadata">
+                    <p><strong>Data:</strong> <span id="modalDate">-</span></p>
+                    <p><strong>Idade:</strong> <span id="modalAge">-</span></p>
+                    <p><strong>Especialidade:</strong> <span id="modalSpecialty">-</span></p>
+                </div>
+                <div class="modal-tabs">
+                    <button class="modal-tab-btn active" data-modal-tab="modal-tab-prontuario">Prontuário</button>
+                    <button class="modal-tab-btn" data-modal-tab="modal-tab-paciente">Mensagem Paciente</button>
+                    <button class="modal-tab-btn" data-modal-tab="modal-tab-transcricao">Transcrição Bruta</button>
+                </div>
+                <div class="modal-tab-content">
+                    <div id="modal-tab-prontuario" class="modal-pane active">
+                        <textarea id="modalProntuarioText" readonly class="modal-textarea"></textarea>
+                    </div>
+                    <div id="modal-tab-paciente" class="modal-pane">
+                        <textarea id="modalPacienteText" readonly class="modal-textarea"></textarea>
+                    </div>
+                    <div id="modal-tab-transcricao" class="modal-pane">
+                        <textarea id="modalTranscricaoText" readonly class="modal-textarea"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-modal-copy-prontuario" class="btn btn-secondary">Copiar Prontuário</button>
+                <button id="btn-modal-copy-paciente" class="btn btn-primary">Copiar Mensagem Paciente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: Cadastro / Edição de Paciente ===== -->
+    <div id="patientModal" class="modal-overlay hidden">
+        <div class="modal-card modal-card-md">
+            <div class="modal-header">
+                <h3 id="patientModalTitle">Novo Paciente</h3>
+                <button id="btn-patient-modal-close" class="btn-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="patientModalId">
+                <div class="patient-grid">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="pmName">Nome Completo *</label>
+                        <input type="text" id="pmName" placeholder="Nome completo do paciente">
+                    </div>
+                    <div class="form-group">
+                        <label for="pmBirthdate">Data de Nascimento / Idade</label>
+                        <input type="text" id="pmBirthdate" placeholder="DD/MM/AAAA ou 45 anos">
+                    </div>
+                    <div class="form-group">
+                        <label for="pmGender">Sexo</label>
+                        <select id="pmGender">
+                            <option value="">Não informado</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="pmCPF">CPF</label>
+                        <input type="text" id="pmCPF" placeholder="000.000.000-00">
+                    </div>
+                    <div class="form-group">
+                        <label for="pmPhone">Telefone / WhatsApp</label>
+                        <input type="text" id="pmPhone" placeholder="(00) 00000-0000">
+                    </div>
+                    <div class="form-group">
+                        <label for="pmInsurance">Convênio</label>
+                        <input type="text" id="pmInsurance" placeholder="Ex: Unimed, Amil ou Particular">
+                    </div>
+                    <div class="form-group">
+                        <label for="pmEmail">E-mail (opcional)</label>
+                        <input type="text" id="pmEmail" placeholder="email@exemplo.com">
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="pmNotes">Observações Gerais (Alergias, Comorbidades)</label>
+                        <textarea id="pmNotes" placeholder="Ex: Alérgico à Penicilina, Hipertenso, Diabético Tipo 2..." style="min-height: 80px; resize: vertical;"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-patient-modal-cancel" class="btn btn-secondary">Cancelar</button>
+                <button id="btn-patient-modal-save" class="btn btn-primary">Salvar Paciente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: Gerenciar Participantes / Presenças ===== -->
+    <div id="attendanceModal" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width:760px;width:95%;">
+            <div class="modal-header">
+                <h3>👥 Participantes &amp; Presenças</h3>
+                <button id="btn-attendance-modal-close" class="btn-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Add participant form -->
+                <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;">
+                    <h4 style="margin:0 0 12px;font-size:0.9rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">Cadastrar Participante</h4>
+                    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end;">
+                        <div class="form-group" style="margin:0;">
+                            <label for="ap-name">Nome *</label>
+                            <input type="text" id="ap-name" placeholder="Nome completo">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label for="ap-role">Cargo / Função</label>
+                            <input type="text" id="ap-role" placeholder="Ex: Diretor, Analista...">
+                        </div>
+                        <button id="btn-add-participant" class="btn btn-primary" style="height:42px;white-space:nowrap;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                            Adicionar
+                        </button>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <label for="ap-email" style="font-size:0.82rem;color:var(--text-muted);">E-mail (opcional)</label>
+                        <input type="email" id="ap-email" placeholder="email@empresa.com" style="margin-top:4px;">
+                    </div>
+                </div>
+
+                <!-- Stats bar -->
+                <div id="attendance-stats" style="display:flex;gap:16px;margin-bottom:12px;font-size:0.85rem;color:var(--text-muted);">
+                    <span>Total: <strong id="stat-total">0</strong></span>
+                    <span style="color:#22c55e;">✅ Confirmados: <strong id="stat-confirmed">0</strong></span>
+                    <span style="color:#f59e0b;">⏳ Pendentes: <strong id="stat-pending">0</strong></span>
+                </div>
+
+                <!-- Participants table -->
+                <div class="table-container" style="max-height:300px;overflow-y:auto;">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Cargo</th>
+                                <th>E-mail</th>
+                                <th style="text-align:center;">Presença</th>
+                                <th class="actions-col">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="participantsTableBody">
+                            <tr class="empty-row">
+                                <td colspan="5">
+                                    <div class="empty-state">Nenhum participante cadastrado.</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer" style="gap:10px;flex-wrap:wrap;">
+                <button id="btn-export-attendance-excel" class="btn btn-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" x2="16" y1="13" y2="13"/><line x1="8" x2="16" y1="17" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    Exportar Excel
+                </button>
+                <button id="btn-export-attendance-pdf" class="btn btn-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></svg>
+                    Exportar PDF
+                </button>
+                <button id="btn-clear-attendance" class="btn btn-danger-link" style="margin-left:auto;">
+                    🗑 Limpar Lista
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: Check-in via QR ===== -->
+    <div id="qrCheckinModal" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width:420px;text-align:center;">
+            <div class="modal-header">
+                <h3>✅ Confirmar Presença</h3>
+                <button id="btn-qr-checkin-close" class="btn-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                </button>
+            </div>
+            <div class="modal-body" style="padding:24px;">
+                <div id="qr-checkin-content">
+                    <div class="form-group">
+                        <label for="checkin-name">Seu Nome *</label>
+                        <input type="text" id="checkin-name" placeholder="Nome completo">
+                    </div>
+                    <div class="form-group">
+                        <label for="checkin-role">Cargo / Função</label>
+                        <input type="text" id="checkin-role" placeholder="Ex: Analista, Gerente...">
+                    </div>
+                    <div class="form-group">
+                        <label for="checkin-email">E-mail (opcional)</label>
+                        <input type="email" id="checkin-email" placeholder="email@empresa.com">
+                    </div>
+                    <button id="btn-confirm-checkin" class="btn btn-success" style="width:100%;margin-top:8px;">
+                        ✅ Confirmar Minha Presença
+                    </button>
+                </div>
+                <div id="qr-checkin-success" class="hidden" style="padding:20px 0;">
+                    <div style="font-size:3rem;">🎉</div>
+                    <h3 style="margin:12px 0 8px;">Presença Confirmada!</h3>
+                    <p id="qr-checkin-success-name" style="color:var(--text-muted);"></p>
+                </div>
+                <div id="qr-checkin-expired" class="hidden" style="padding:20px 0;">
+                    <div style="font-size:3rem;">⏰</div>
+                    <h3 style="margin:12px 0 8px;color:#ef4444;">QR Code Expirado</h3>
+                    <p style="color:var(--text-muted);">O período de check-in encerrou. Entre em contato com o organizador.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: Manual de Ajuda ===== -->
+    <div id="helpModal" class="modal-overlay hidden">
+        <div class="modal-card modal-card-xl">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    <h3>📘 Manual de Ajuda - E-Transcriber</h3>
+                </div>
+                <button id="btn-help-modal-close" class="btn-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+                </button>
+            </div>
+            
+            <div class="help-modal-container">
+                <!-- Sidebar de Navegação -->
+                <div class="help-sidebar">
+                    <div class="help-search">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                        <input type="text" id="helpSearch" placeholder="Buscar no manual...">
+                    </div>
+                    <nav class="help-nav">
+                        <button class="help-nav-item active" data-section="intro">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                            Introdução
+                        </button>
+                        <button class="help-nav-item" data-section="primeiros-passos">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                            Primeiros Passos
+                        </button>
+                        <button class="help-nav-item" data-section="configuracao">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6"/></svg>
+                            Configuração Inicial
+                        </button>
+                        <button class="help-nav-item" data-section="consultas">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            Consultas Médicas
+                        </button>
+                        <button class="help-nav-item" data-section="reunioes">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/></svg>
+                            Reuniões Corporativas
+                        </button>
+                        <button class="help-nav-item" data-section="pacientes">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                            Gerenciamento de Pacientes
+                        </button>
+                        <button class="help-nav-item" data-section="historico">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>
+                            Histórico e Relatórios
+                        </button>
+                        <button class="help-nav-item" data-section="modelos">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+                            Modelos de IA
+                        </button>
+                        <button class="help-nav-item" data-section="avancado">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                            Funcionalidades Avançadas
+                        </button>
+                        <button class="help-nav-item" data-section="problemas">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                            Solução de Problemas
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Conteúdo do Manual -->
+                <div class="help-content" id="helpContent">
+                    <div class="help-loading">
+                        <div class="spinner"></div>
+                        <p>Carregando manual...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script src="meetings.js"></script>
+</body>
+</html>
