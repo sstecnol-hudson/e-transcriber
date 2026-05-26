@@ -252,7 +252,6 @@ const DOM = {
     
     // BVS Dynamic Button
     bvsDynamicContainer: document.getElementById('bvs-dynamic-container'),
-    btnDynamicBvs: document.getElementById('btn-dynamic-bvs'),
     bvsDynamicText: document.getElementById('bvs-dynamic-text'),
 
     // Resultados
@@ -2398,7 +2397,7 @@ function setupEventListeners() {
     const inputBvsSearch = document.getElementById('bvs-search-input');
 
     if (btnToggleBvs) btnToggleBvs.addEventListener('click', toggleBvsSidebar);
-    if (DOM.btnDynamicBvs) DOM.btnDynamicBvs.addEventListener('click', toggleBvsSidebar);
+    if (DOM.bvsDynamicContainer) DOM.bvsDynamicContainer.addEventListener('click', toggleBvsSidebar);
     if (btnCloseBvs) btnCloseBvs.addEventListener('click', closeBvsSidebar);
     if (bvsOverlay) bvsOverlay.addEventListener('click', closeBvsSidebar);
     
