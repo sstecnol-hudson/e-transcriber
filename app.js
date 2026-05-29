@@ -111,60 +111,85 @@ Estruture sua resposta EXCLUSIVAMENTE nas seguintes seções:
 ### 1. SUBJETIVO (S)
 - **Queixa Principal (QP)**: O motivo principal da consulta na voz do paciente.
 - **História da Doença Atual (HDA)**: Cronologia dos sintomas, localização, intensidade, fatores de melhora/piora.
-- **Histórico Relevante**: Comorbidades, alergias e medicações mencionadas.
+- **Histórico Relevante**: Comorbidades, alergias e medicações em uso MENCIONADAS EXPLICITAMENTE na transcrição.
 
 ### 2. OBJETIVO (O)
-- **Sinais Vitais e Exame Físico**: Registre dados mencionados. Caso ausentes, escreva "Não avaliado/Não relatado".
-- **Exames Complementares**: Resultados de exames trazidos ou mencionados pelo paciente.
+- **Sinais Vitais e Exame Físico**: Registre APENAS dados explicitamente mencionados. Caso ausentes, escreva "Não avaliado / Não relatado".
+- **Exames Complementares**: Resultados de exames trazidos ou citados na consulta. Se não houver, escreva "Nenhum relatado".
 
 ### 3. AVALIAÇÃO (A)
-- **Hipótese Diagnóstica / Diagnósticos**: Conclusões clínicas geradas. Indique o código CID-10 quando possível (ex: I10 - Hipertensão Essencial).
-- **Raciocínio Clínico**: Breve resumo do quadro clínico.
+- **Hipótese Diagnóstica / Diagnósticos**: Baseie-se SOMENTE nas informações da transcrição. Indique o código CID-10 quando possível (ex: I10 - Hipertensão Essencial). Se a transcrição for insuficiente para uma hipótese segura, escreva "Dados insuficientes para hipótese diagnóstica".
+- **Raciocínio Clínico**: Breve resumo do quadro clínico, sem extrapolar o que foi dito.
 
 ### 4. PLANO (P)
-- **Terapêutica / Medicamentos**: Prescrições com dosagens e frequência descritas na consulta.
-- **Exames Solicitados**: Exames laboratoriais ou de imagem pedidos.
-- **Recomendações e Retorno**: Orientações gerais e data de retorno.
+- **Terapêutica / Medicamentos**: Liste APENAS medicamentos, dosagens e frequências que foram EXPLICITAMENTE prescritos pelo médico na transcrição. ⚠️ NUNCA sugira, complete ou infira nomes de medicamentos, dosagens ou posologias que não tenham sido ditos literalmente. Se nenhuma prescrição foi mencionada, escreva "Nenhuma prescrição registrada nesta transcrição".
+- **Exames Solicitados**: Liste apenas exames pedidos explicitamente. Se nenhum, escreva "Nenhum solicitado".
+- **Recomendações e Retorno**: Orientações gerais e data de retorno mencionadas. Se não houver, escreva "Não informado".
 
-DIRETRIZES IMPORTANTES:
+DIRETRIZES DE SEGURANÇA CLÍNICA:
 - Mantenha terminologia médica formal e precisa em português do Brasil.
-- Não invente dados clínicos não mencionados no áudio.
+- ⛔ PROIBIDO inventar ou inferir dados clínicos não mencionados explicitamente na transcrição.
+- ⛔ PROIBIDO citar nomes de medicamentos, doses ou esquemas terapêuticos que não tenham sido ditos pelo médico.
+- Em caso de dúvida sobre um dado, prefira "Não mencionado" a qualquer suposição.
 - Responda apenas com o prontuário em Markdown.`,
 
     anamnese: `Você é um redator médico especializado em prontuários clínicos. Converta a transcrição em uma Anamnese Tradicional completa.
 
 # ANAMNESE CLÍNICA E CONDUTA
 
-**1. QUEIXA PRINCIPAL (QP)**
-**2. HISTÓRIA DA DOENÇA ATUAL (HDA)**
-**3. HISTÓRICO PATOLÓGICO PESSOAL E FAMILIAR (HPP / HF)**
-**4. EXAME FÍSICO / EXAMES COMPLEMENTARES**
-**5. CONDUTA TERAPÊUTICA E PLANO DE AÇÃO**
+**1. QUEIXA PRINCIPAL (QP)**: Registre o motivo da consulta nas palavras do paciente.
+**2. HISTÓRIA DA DOENÇA ATUAL (HDA)**: Cronologia, caracterização e evolução dos sintomas mencionados.
+**3. HISTÓRICO PATOLÓGICO PESSOAL E FAMILIAR (HPP / HF)**: Comorbidades, cirurgias, medicamentos em uso e histórico familiar MENCIONADOS na consulta.
+**4. EXAME FÍSICO / EXAMES COMPLEMENTARES**: Registre apenas achados e resultados explicitamente citados. Se ausentes, escreva "Não avaliado / Não relatado".
+**5. CONDUTA TERAPÊUTICA E PLANO DE AÇÃO**: Inclua SOMENTE prescrições, exames e orientações ditas pelo médico na transcrição. ⚠️ Não complete nem sugira condutas não mencionadas.
 
-DIRETRIZES: Não invente informações. Use tom estritamente clínico e formal. Responda apenas com a estrutura em Markdown.`,
+DIRETRIZES DE SEGURANÇA:
+- Use tom estritamente clínico e formal.
+- ⛔ PROIBIDO inventar informações, completar dados ausentes ou inferir medicamentos não citados.
+- Sempre que um dado não estiver disponível na transcrição, escreva "Não informado".
+- Responda apenas com a estrutura em Markdown.`,
 
-    evolucao: `Você é um assistente de IA médica. Converta a consulta em uma Evolução Clínica de acompanhamento diário/periódico em texto corrido profissional, contendo: estado geral do paciente, adesão ao tratamento, achados de exame físico e mudanças de conduta. Seja conciso. Responda apenas com a evolução clínica em Markdown.`,
+    evolucao: `Você é um assistente de IA médica. Converta a consulta em uma Evolução Clínica de acompanhamento diário/periódico em texto corrido profissional, contendo: estado geral do paciente, adesão ao tratamento mencionada, achados de exame físico registrados e mudanças de conduta descritas pelo médico.
 
-    orientacao: `Você é um médico empático. Redija um resumo de orientações fácil de ler destinado diretamente ao paciente.
+DIRETRIZES DE SEGURANÇA:
+- Seja conciso e baseie-se EXCLUSIVAMENTE no que foi dito na transcrição.
+- ⛔ PROIBIDO citar ou ajustar medicamentos, doses ou esquemas que não tenham sido explicitamente mencionados.
+- Se dados de exame físico ou conduta não foram registrados, escreva "Não avaliado nesta evolução".
+- Responda apenas com a evolução clínica em Markdown.`,
+
+    orientacao: `Você é um assistente de saúde empático. Redija um resumo de orientações fácil de ler destinado diretamente ao paciente, baseado EXCLUSIVAMENTE na transcrição da consulta.
 
 Use linguagem simples, amigável e sem termos médicos complexos. Organize com tópicos e emojis:
-💊 **Como Tomar seus Remédios**
-🩺 **Exames para Fazer**
-🥗 **Cuidados no Dia a Dia**
-📅 **Seu Retorno**
+💊 **Seus Medicamentos** *(liste APENAS os remédios que o médico prescreveu explicitamente na consulta — nome, dose e horário exatamente como foram ditos. Se nenhum remédio foi prescrito, escreva: "Nenhum medicamento foi prescrito nesta consulta.")*
+🩺 **Exames para Fazer** *(apenas os exames solicitados explicitamente)*
+🥗 **Cuidados no Dia a Dia** *(apenas orientações mencionadas pelo médico)*
+📅 **Seu Retorno** *(data ou prazo mencionado, ou "A combinar com seu médico" se não informado)*
 
-Adicione uma mensagem de incentivo e simpatia. Responda exclusivamente com este texto acolhedor.`,
+⚠️ REGRAS CRÍTICAS:
+- ⛔ NUNCA cite nomes de medicamentos, dosagens ou esquemas posológicos que não tenham sido ditos pelo médico na transcrição.
+- ⛔ NUNCA sugira tratamentos, remédios ou cuidados além do que foi explicitamente prescrito.
+- Se uma informação não foi mencionada, omita aquele tópico ou escreva "Não informado pelo médico".
+- Adicione uma mensagem de incentivo e cuidado ao final. Responda exclusivamente com este texto acolhedor.`,
 
-    custom: `Você é um assistente médico de alto desempenho. Organize a transcrição da consulta de acordo com as preferências do médico de forma profissional e objetiva. Responda em Markdown.`
+    custom: `Você é um assistente médico de alto desempenho. Organize a transcrição da consulta de acordo com as preferências do médico de forma profissional e objetiva.
+
+DIRETRIZES: Baseie-se APENAS nas informações da transcrição. Não invente dados clínicos, não sugira medicamentos e não complete informações ausentes. Responda em Markdown.`
 };
 
-const PATIENT_INSTRUCTIONS_PROMPT = `Você é um médico atencioso e empático. Crie uma mensagem direta de orientações de saúde para o paciente com base na transcrição fornecida. 
+const PATIENT_INSTRUCTIONS_PROMPT = `Você é um assistente de saúde empático. Crie uma mensagem de orientações de saúde para o paciente com base EXCLUSIVAMENTE na transcrição fornecida.
+
+REGRAS DE SEGURANÇA (OBRIGATÓRIAS):
+- ⛔ PROIBIDO citar nomes de medicamentos, dosagens ou posologias que NÃO tenham sido explicitamente prescritos pelo médico na transcrição. Se nenhum medicamento foi mencionado, escreva "Nenhum medicamento foi prescrito nesta consulta. Siga as orientações do seu médico".
+- ⛔ PROIBIDO sugerir, complementar ou inferir qualquer tipo de tratamento, remédio ou conduta não dita na transcrição.
+- Baseie-se APENAS nas informações da consulta. Não invente dados.
+
+FORMATO:
 - Use linguagem muito acessível, sem jargões médicos.
 - Organize as instruções com tópicos limpos e emojis (💊 📅 🩺 🥗).
-- Destaque claramente dosagem e horários dos medicamentos.
-- Diga quais exames ele precisa fazer e quando deve retornar.
+- Se medicamento foi prescrito: destaque nome, dose e horário EXATAMENTE como dito pelo médico.
+- Diga quais exames ele precisa fazer e quando deve retornar (somente os mencionados).
 - Crie um visual agradável pronto para ser copiado e enviado diretamente no WhatsApp.
-- Baseie-se APENAS nas informações da consulta. Não invente dados.`;
+- Ao final, adicione sempre este aviso: "⚕️ _Este resumo é apenas um lembrete das orientações do seu médico. Em caso de dúvidas, entre em contato com o consultório._"`;
 
 // ---- ESTADO DA APLICAÇÃO ----
 const AppState = {
@@ -390,7 +415,11 @@ const DOM = {
     meetingCompanyAddress: document.getElementById('meetingCompanyAddress'),
 
     // Toast
-    toast: document.getElementById('toast')
+    toast: document.getElementById('toast'),
+
+    // Banner de Segurança Clínica
+    clinicalSafetyBanner: document.getElementById('clinical-safety-banner'),
+    btnSafetyBannerClose: document.getElementById('btn-safety-banner-close')
 };
 
 // ==========================================================================
@@ -721,6 +750,15 @@ function resetConsultationFields() {
 
     if (DOM.actionsSaveRow) DOM.actionsSaveRow.classList.add('hidden');
     if (DOM.bvsDynamicContainer) DOM.bvsDynamicContainer.classList.add('hidden');
+
+    // Ocultar banner de segurança clínica e remover avisos de medicamentos
+    if (DOM.clinicalSafetyBanner) DOM.clinicalSafetyBanner.classList.add('hidden');
+    ['med-hallucination-warning', 'med-hallucination-warning-patient'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+    });
+
+
     
     if (DOM.btnSaveConsult) {
         DOM.btnSaveConsult.disabled = false;
@@ -1657,13 +1695,56 @@ async function sendAudioToWhisper(file) {
     }
 }
 
+/**
+ * Detecta se o texto gerado contém medicamentos que provavelmente
+ * não foram mencionados na transcrição original.
+ * Retorna array de termos suspeitos ou array vazio.
+ */
+function detectMedicationHallucinations(generatedText, originalTranscript) {
+    // Padrões comuns de medicamentos em português:
+    // - Palavras terminadas em sufixos farmacêuticos comuns
+    // - Padrões de dosagem como "500mg", "2x ao dia"
+    const medPatterns = [
+        /\b\w+(?:cilina|micina|oxacina|prazol|sartan|statina|dipina|tidina|mab|nib|pride|glip|formin|xetina|triptan|zosin|olol|dopa|pril|artan|drona|triptan|fenac|pirin|profen|codona|tramol|diazem)\b/gi,
+        /\b(?:amoxicilina|azitromicina|dipirona|paracetamol|ibuprofeno|omeprazol|metformina|atorvastatina|losartana|enalapril|amlodipina|levotiroxina|fluoxetina|sertralina|clonazepam|alprazolam|metoprolol|sinvastatina|prednisona|dexametasona|ciprofloxacino|cefalexina|claritromicina|metronidazol|fluconazol|ranitidina|esomeprazol|pantoprazol|clopidogrel|aspirina|ácido acetilsalicílico|sulfato ferroso|carbonato de cálcio|vitamina d|complexo b|bromoprida|ondansetrona|domperidona|loperamida|buscopan|escopolamina|captopril|hidroclorotiazida|furosemida|espironolactona|carvedilol|digoxina|varfarina|rivaroxabana|apixabana|insulina|glibenclamida|glicazida|sitagliptina|empagliflozina|dapagliflozina|dulaglutida|semaglutida|tadalafila|sildenafila|finasterida|tamsulosina)\b/gi
+    ];
+
+    const transcriptLower = originalTranscript.toLowerCase();
+    const suspicious = [];
+
+    for (const pattern of medPatterns) {
+        const matches = generatedText.match(pattern) || [];
+        for (const match of matches) {
+            // Verifica se o termo aparece na transcrição original
+            if (!transcriptLower.includes(match.toLowerCase()) && !suspicious.includes(match.toLowerCase())) {
+                suspicious.push(match);
+            }
+        }
+    }
+    return suspicious;
+}
+
 async function generateClinicalDocuments() {
     const rawText = DOM.rawTranscript.value.trim();
     if (!rawText) { showToast('Transcreva ou escreva um texto antes!'); return; }
     if (!AppState.apiKey) { showToast('Configure sua chave Groq nas Configurações!'); return; }
 
+    // Validação de transcrição mínima
+    const wordCount = rawText.split(/\s+/).filter(w => w.length > 0).length;
+    if (wordCount < 15) {
+        showToast('⚠️ Transcrição muito curta (menos de 15 palavras). Verifique o áudio ou edite o texto antes de continuar.', 5000);
+        return;
+    }
+    if (wordCount < 40) {
+        // Aviso mas permite continuar
+        showToast('⚠️ Transcrição curta. O documento gerado pode ser incompleto. Revise com atenção.', 5000);
+    }
+
     // Guard against double-click / race condition
     DOM.btnGenerateDocs.disabled = true;
+
+    // Mostrar banner de segurança clínica
+    if (DOM.clinicalSafetyBanner) DOM.clinicalSafetyBanner.classList.remove('hidden');
 
     DOM.resultsSection.classList.remove('hidden');
     DOM.prontuarioLoader.classList.remove('hidden');
@@ -1671,7 +1752,10 @@ async function generateClinicalDocuments() {
     DOM.actionsSaveRow.classList.add('hidden');
     DOM.outputRecord.value = '';
     DOM.outputPatientMsg.value = '';
-    setTimeout(() => DOM.resultsSection.scrollIntoView({ behavior: 'smooth' }), 100);
+    setTimeout(() => {
+        DOM.clinicalSafetyBanner?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        DOM.resultsSection.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
 
     const pName = DOM.patientName.value.trim() || 'Não Identificado';
     const pAge = DOM.patientAge.value.trim() || 'Não Informado';
@@ -1727,9 +1811,29 @@ async function generateClinicalDocuments() {
         // Passo 1: Gera o Prontuário Clínico (com suporte da BVS se existir)
         const sysPromptProntuario = getSystemPrompt(DOM.clinicalTemplate.value) + bvsContextText;
         const prontuario = await callGroq(sysPromptProntuario, 0.1);
-        DOM.outputRecord.value = prontuario.choices[0].message.content || '';
-        AppState.currentRecordOutput = DOM.outputRecord.value;
+        const prontuarioContent = prontuario.choices[0].message.content || '';
+        DOM.outputRecord.value = prontuarioContent;
+        AppState.currentRecordOutput = prontuarioContent;
         prontuarioOk = true;
+
+        // Pós-geração: detectar medicamentos possivelmente inventados
+        const suspectedMeds = detectMedicationHallucinations(prontuarioContent, rawText);
+        if (suspectedMeds.length > 0) {
+            // Injeta aviso visual acima do textarea de prontuário
+            const warningId = 'med-hallucination-warning';
+            const existing = document.getElementById(warningId);
+            if (existing) existing.remove();
+            const strip = document.createElement('div');
+            strip.id = warningId;
+            strip.className = 'med-warning-strip';
+            strip.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+            <span>⚠️ <strong>Verificação necessária:</strong> O prontuário menciona medicamento(s) possivelmente não citado(s) na transcrição: <em>${suspectedMeds.slice(0,5).join(', ')}</em>. Confirme se foram prescritos.</span>`;
+            DOM.outputRecord.parentNode.insertBefore(strip, DOM.outputRecord);
+        } else {
+            // Limpar aviso anterior se agora está ok
+            const existing = document.getElementById('med-hallucination-warning');
+            if (existing) existing.remove();
+        }
     } catch (err) {
         DOM.outputRecord.value = `⚠️ Erro ao gerar prontuário: ${err.message}`;
         showToast(`Erro no prontuário: ${err.message}`);
@@ -1741,8 +1845,26 @@ async function generateClinicalDocuments() {
         // Passo 2: Gera as Orientações
         const sysPromptOrientacoes = PATIENT_INSTRUCTIONS_PROMPT + bvsContextText;
         const orientacoes = await callGroq(sysPromptOrientacoes, 0.3, 'llama-3.1-8b-instant');
-        DOM.outputPatientMsg.value = orientacoes.choices[0].message.content || '';
-        AppState.currentPatientMsgOutput = DOM.outputPatientMsg.value;
+        const orientacoesContent = orientacoes.choices[0].message.content || '';
+        DOM.outputPatientMsg.value = orientacoesContent;
+        AppState.currentPatientMsgOutput = orientacoesContent;
+
+        // Pós-geração: verificar medicamentos nas orientações ao paciente
+        const suspectedMedsOrient = detectMedicationHallucinations(orientacoesContent, rawText);
+        if (suspectedMedsOrient.length > 0) {
+            const warningIdO = 'med-hallucination-warning-patient';
+            const existingO = document.getElementById(warningIdO);
+            if (existingO) existingO.remove();
+            const stripO = document.createElement('div');
+            stripO.id = warningIdO;
+            stripO.className = 'med-warning-strip';
+            stripO.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+            <span>⚠️ <strong>Revise os medicamentos:</strong> Podem conter nome(s) não citado(s) na consulta: <em>${suspectedMedsOrient.slice(0,5).join(', ')}</em>.</span>`;
+            DOM.outputPatientMsg.parentNode.insertBefore(stripO, DOM.outputPatientMsg);
+        } else {
+            const existingO = document.getElementById('med-hallucination-warning-patient');
+            if (existingO) existingO.remove();
+        }
     } catch (err) {
         DOM.outputPatientMsg.value = `⚠️ Erro ao gerar orientações: ${err.message}`;
         if (prontuarioOk) showToast(`Erro nas orientações: ${err.message}`);
@@ -1752,7 +1874,7 @@ async function generateClinicalDocuments() {
 
     if (prontuarioOk) {
         DOM.actionsSaveRow.classList.remove('hidden');
-        showToast('Documentos gerados com suporte de evidências!');
+        showToast('Documentos gerados com suporte de evidências! Revise antes de usar.');
         
         // BVS APS Dinâmico na UI
         if (extractedKeyword && typeof bvsService !== 'undefined') {
@@ -2627,6 +2749,14 @@ function setupEventListeners() {
         AppState.aiModel = DOM.aiModel.value;
         localStorage.setItem('etranscriber_ai_model', DOM.aiModel.value);
     });
+
+    // Banner de Segurança Clínica — fechar ao clicar no ✕
+    if (DOM.btnSafetyBannerClose) {
+        DOM.btnSafetyBannerClose.addEventListener('click', () => {
+            if (DOM.clinicalSafetyBanner) DOM.clinicalSafetyBanner.classList.add('hidden');
+        });
+    }
+
 
     // Captura de Áudio
     DOM.btnModeRecord.addEventListener('click', () => setAudioMode('record'));

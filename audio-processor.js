@@ -16,6 +16,7 @@ class AudioProcessor {
     this.qualityMonitor = null;
     this.recordingStartTime = null;
     this.recordingDuration = 0;
+    this.onDisplayStreamEnded = null;
   }
 
   // ========================================================================
@@ -175,7 +176,11 @@ class AudioProcessor {
         if (this.displayStream && this.displayStream.getVideoTracks().length > 0) {
           this.displayStream.getVideoTracks()[0].onended = () => {
             if (this.isRecording) {
-              this.stopRecording();
+              if (typeof this.onDisplayStreamEnded === 'function') {
+                this.onDisplayStreamEnded();
+              } else {
+                this.stopRecording();
+              }
             }
           };
         }
@@ -256,23 +261,22 @@ class AudioProcessor {
   }
 
   /**
-   * Parar gravação
+   * Parar gravação.
+   * Retorna uma Promise que resolve SOMENTE após o evento 'stop' do MediaRecorder
+   * disparar, garantindo que todos os chunks (incluindo o flush final de
+   * dataavailable) já estejam em this.audioChunks antes de prosseguir.
+   *
    * NOTA: NÃO fecha o AudioContext aqui — ele ainda é necessário para
    * compressAudio() e preprocessAudio() que rodam APÓS esta chamada.
    * Use cleanup() para liberar recursos depois do processamento.
    */
   stopRecording() {
-    if (!this.isRecording) return null;
+    if (!this.isRecording) return Promise.resolve(null);
 
     this.isRecording = false;
     this.recordingDuration = Date.now() - this.recordingStartTime;
 
-    // Parar MediaRecorder
-    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
-      this.mediaRecorder.stop();
-    }
-
-    // Parar apenas os tracks de mídia (microfone/tela)
+    // Parar apenas os tracks de mídia (microfone/tela) imediatamente
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());
     }
@@ -284,11 +288,28 @@ class AudioProcessor {
     // O contexto é necessário para compressAudio() e preprocessAudio().
     // Chame cleanup() após o processamento estar concluído.
 
-    return {
-      success: true,
-      duration: this.recordingDuration,
-      chunks: this.audioChunks
-    };
+    // Aguardar o evento 'stop' do MediaRecorder para garantir que o último
+    // chunk de dataavailable já foi coletado antes de retornar.
+    return new Promise((resolve) => {
+      if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
+        resolve({
+          success: true,
+          duration: this.recordingDuration,
+          chunks: this.audioChunks
+        });
+        return;
+      }
+
+      const duration = this.recordingDuration;
+      this.mediaRecorder.onstop = () => {
+        resolve({
+          success: true,
+          duration,
+          chunks: this.audioChunks
+        });
+      };
+      this.mediaRecorder.stop();
+    });
   }
 
   /**
@@ -304,6 +325,7 @@ class AudioProcessor {
     this.displayStream = null;
     this.analyser = null;
     this.audioChunks = [];
+    this.onDisplayStreamEnded = null;
   }
 
   /**
