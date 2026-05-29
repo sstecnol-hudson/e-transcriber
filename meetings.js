@@ -349,6 +349,12 @@ async function startMeetingRecording(isOnline = false) {
         } else {
             // Gravação online - usar audioProcessor
             result = await MeetingState.audioProcessor.startOnlineRecording();
+            if (result.success) {
+                MeetingState.audioProcessor.onDisplayStreamEnded = () => {
+                    console.log('[Meetings] Screen sharing stopped by user, ending recording...');
+                    stopMeetingRecording();
+                };
+            }
         }
 
         if (!result.success) {
@@ -439,8 +445,10 @@ async function stopMeetingRecording() {
 
     try {
         // 1. Parar gravação (AudioContext permanece aberto para processamento)
-        const result = MeetingState.audioProcessor.stopRecording();
-        if (!result.success) {
+        // stopRecording() retorna uma Promise que resolve após o evento 'stop'
+        // do MediaRecorder, garantindo que todos os chunks estejam disponíveis.
+        const result = await MeetingState.audioProcessor.stopRecording();
+        if (!result || !result.success) {
             showToast('Erro ao parar gravação');
             return;
         }
@@ -605,7 +613,8 @@ async function transcribeWithCache(blob, language = 'pt') {
     return cached;
   }
   const formData = new FormData();
-  formData.append('file', blob);
+  const filename = blob.name || (blob.type && blob.type.includes('wav') ? 'audio.wav' : 'audio.webm');
+  formData.append('file', blob, filename);
   formData.append('model', GROQ_TRANSCRIBE_MODEL);
   formData.append('language', language);
   formData.append('response_format', 'json');
@@ -768,10 +777,13 @@ function generateMeetingPDF() {
     doc.rect(0, 0, pageWidth, 28, 'F');
 
     const companyName = AppState.meetingCompanyInfo?.name || AppState.clinicInfo?.name || 'Empresa';
+    const mType = (MeetingDOM.meetingType && MeetingDOM.meetingType.options && MeetingDOM.meetingType.selectedIndex !== -1)
+        ? MeetingDOM.meetingType.options[MeetingDOM.meetingType.selectedIndex].text
+        : 'Reunião';
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.setTextColor(255, 255, 255);
-    doc.text('ATA DE REUNIÃO CORPORATIVA - ' + companyName, marginX, 17);
+    doc.text('ATA DE REUNIÃO - ' + companyName, marginX, 17);
 
     y = 36;
 
@@ -789,7 +801,6 @@ function generateMeetingPDF() {
     doc.setTextColor(71, 85, 105);
 
     const mTitle = MeetingDOM.meetingTitle.value || 'Reunião Geral';
-    const mType = MeetingDOM.meetingType.options[MeetingDOM.meetingType.selectedIndex].text;
     const mMod = MeetingDOM.meetingModality.options[MeetingDOM.meetingModality.selectedIndex].text;
     const mDate = new Date().toLocaleString('pt-BR');
 
@@ -881,6 +892,14 @@ function generateMeetingPDF() {
 }
 
 function saveMeetingHistory() {
+    if (MeetingDOM.btnSaveMeeting) {
+        MeetingDOM.btnSaveMeeting.disabled = true;
+        MeetingDOM.btnSaveMeeting.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span>Salvo!</span>
+        `;
+    }
+
     const record = {
         id: 'm_' + Date.now(),
         dateString: new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
@@ -895,6 +914,68 @@ function saveMeetingHistory() {
     showToast('Reunião salva no histórico independente!');
     renderMeetingHistory();
 }
+
+/** Reseta todos os campos da tela de reunião, limpando o estado */
+function resetMeetingFields() {
+    if (MeetingDOM.meetingTitle) MeetingDOM.meetingTitle.value = '';
+    if (MeetingDOM.meetingType) MeetingDOM.meetingType.selectedIndex = 0;
+    if (MeetingDOM.meetingModality) MeetingDOM.meetingModality.selectedIndex = 0;
+    
+    if (MeetingDOM.rawTranscript) MeetingDOM.rawTranscript.value = '';
+    MeetingState.currentTranscription = '';
+    
+    if (MeetingDOM.outputRecord) MeetingDOM.outputRecord.value = '';
+    MeetingState.currentRecordOutput = '';
+    
+    clearMeetingUploadedFile();
+    
+    if (MeetingDOM.resultsSection) MeetingDOM.resultsSection.classList.add('hidden');
+    if (MeetingDOM.actionsSaveRow) MeetingDOM.actionsSaveRow.classList.add('hidden');
+    
+    if (MeetingDOM.btnSaveMeeting) {
+        MeetingDOM.btnSaveMeeting.disabled = false;
+        MeetingDOM.btnSaveMeeting.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span>Salvar Reunião no Histórico Local</span>
+        `;
+    }
+    
+    // Parar gravações de reuniões ativas (fire-and-forget — função síncrona)
+    if (MeetingState.audioProcessor && MeetingState.audioProcessor.isRecording) {
+        MeetingState.audioProcessor.stopRecording().catch(() => {});
+        if (MeetingState.recordingTimerInterval) clearInterval(MeetingState.recordingTimerInterval);
+        if (MeetingState.recordingState.qualityInterval) clearInterval(MeetingState.recordingState.qualityInterval);
+        if (MeetingState.recordingState.visualizer) MeetingState.recordingState.visualizer.stop();
+        MeetingState.audioProcessor.cleanup().catch(() => {});
+    }
+
+    // Resetar UI de gravação
+    if (MeetingDOM.btnRecordStart) MeetingDOM.btnRecordStart.disabled = false;
+    if (MeetingDOM.btnRecordOnline) MeetingDOM.btnRecordOnline.disabled = false;
+    if (MeetingDOM.btnRecordStop) MeetingDOM.btnRecordStop.disabled = true;
+    if (MeetingDOM.recordingTimer) MeetingDOM.recordingTimer.textContent = '00:00';
+}
+
+/** Verifica se há dados não salvos e solicita confirmação do usuário */
+window.handleNewMeetingClick = function() {
+    const hasUnsavedData = (
+        (MeetingDOM.meetingTitle && MeetingDOM.meetingTitle.value.trim() !== '') ||
+        (MeetingDOM.rawTranscript && MeetingDOM.rawTranscript.value.trim() !== '') ||
+        (MeetingDOM.outputRecord && MeetingDOM.outputRecord.value.trim() !== '') ||
+        MeetingState.uploadedFile !== null
+    );
+
+    const isSaved = MeetingDOM.btnSaveMeeting ? MeetingDOM.btnSaveMeeting.disabled : false;
+    
+    if (hasUnsavedData && !isSaved) {
+        if (!confirm('Deseja iniciar uma nova reunião? A reunião atual não foi salva e seus dados serão perdidos.')) {
+            return false;
+        }
+    }
+
+    resetMeetingFields();
+    return true;
+};
 
 function renderMeetingHistory(filter = '') {
     if (!MeetingDOM.historyTableBody) return;
@@ -1102,7 +1183,10 @@ function generateAttendanceQR() {
     
     console.log('⏰ QR Code expira em:', new Date(expiresAt).toLocaleString('pt-BR'));
 
-    const token = 'qr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    // Token criptograficamente seguro (não usa Math.random() que não é seguro)
+    const tokenBytes = new Uint8Array(16);
+    crypto.getRandomValues(tokenBytes);
+    const token = 'qr_' + Array.from(tokenBytes).map(b => b.toString(16).padStart(2, '0')).join('');
     AttendanceState.currentQRToken = { token, expiresAt, meetingTitle };
 
     // Persist token so checkin page can validate
@@ -1819,9 +1903,22 @@ function setupMeetingEventListeners() {
         }
     });
 
+    const enableSaveMeeting = () => {
+        if (MeetingDOM.btnSaveMeeting && MeetingDOM.btnSaveMeeting.disabled) {
+            MeetingDOM.btnSaveMeeting.disabled = false;
+            MeetingDOM.btnSaveMeeting.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                <span>Salvar Reunião no Histórico Local</span>
+            `;
+        }
+    };
+    MeetingDOM.meetingTitle?.addEventListener('input', enableSaveMeeting);
     MeetingDOM.rawTranscript?.addEventListener('input', () => {
         if (typeof toggleAiButtonsState === 'function') toggleAiButtonsState();
+        enableSaveMeeting();
     });
+    MeetingDOM.outputRecord?.addEventListener('input', enableSaveMeeting);
+
     MeetingDOM.btnGenerateDocs?.addEventListener('click', generateMeetingMinutes);
 
     MeetingDOM.btnCopyRecord?.addEventListener('click', () => {

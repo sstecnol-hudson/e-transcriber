@@ -225,7 +225,8 @@ async function transcribeWithCache(fileBlob, language = 'pt') {
     }
     // Caso não esteja em cache, envia para a API
     const formData = new FormData();
-    formData.append('file', fileBlob);
+    const filename = fileBlob.name || (fileBlob.type && fileBlob.type.includes('wav') ? 'audio.wav' : 'audio.webm');
+    formData.append('file', fileBlob, filename);
     formData.append('model', GROQ_TRANSCRIBE_MODEL);
     formData.append('language', language);
     formData.append('response_format', 'json');
@@ -577,6 +578,12 @@ function setupNavigation() {
                     e.preventDefault();
                     return;
                 }
+            } else if (targetTab === 'tab-reunioes') {
+                const proceed = typeof handleNewMeetingClick === 'function' ? handleNewMeetingClick() : true;
+                if (!proceed) {
+                    e.preventDefault();
+                    return;
+                }
             }
             switchTab(targetTab, item);
         });
@@ -593,6 +600,15 @@ function setupNavigation() {
 }
 
 function switchMode(mode) {
+    // Verificar dados não salvos no modo atual antes de alternar
+    if (AppState.activeMode === 'consultas' && mode === 'reunioes') {
+        const proceed = handleNewConsultClick();
+        if (!proceed) return;
+    } else if (AppState.activeMode === 'reunioes' && mode === 'consultas') {
+        const proceed = typeof handleNewMeetingClick === 'function' ? handleNewMeetingClick() : true;
+        if (!proceed) return;
+    }
+
     AppState.activeMode = mode;
     localStorage.setItem('etranscriber_active_mode', mode);
 
@@ -714,9 +730,9 @@ function resetConsultationFields() {
         `;
     }
     
-    // Parar gravações ativas
+    // Parar gravações ativas (fire-and-forget — função síncrona)
     if (AppState.audioProcessor && AppState.audioProcessor.isRecording) {
-        AppState.audioProcessor.stopRecording();
+        AppState.audioProcessor.stopRecording().catch(() => {});
         if (AppState.recordingTimerInterval) clearInterval(AppState.recordingTimerInterval);
         if (AppState.recordingState?.qualityInterval) clearInterval(AppState.recordingState.qualityInterval);
         AppState.recordingState?.visualizer?.stop();
@@ -889,21 +905,31 @@ function deletePatient(id) {
 function startConsultForPatient(patientId) {
     const p = AppState.patients.find(x => x.id === patientId);
     if (!p) return;
+
+    // Verificar se há dados não salvos
+    const hasUnsavedData = (
+        (DOM.patientName && DOM.patientName.value.trim() !== '') ||
+        (DOM.patientAge && DOM.patientAge.value.trim() !== '') ||
+        (DOM.doctorSpecialty && DOM.doctorSpecialty.value.trim() !== '') ||
+        (DOM.rawTranscript && DOM.rawTranscript.value.trim() !== '') ||
+        (DOM.outputRecord && DOM.outputRecord.value.trim() !== '') ||
+        AppState.uploadedFile !== null
+    );
+
+    const isSaved = DOM.btnSaveConsult ? DOM.btnSaveConsult.disabled : false;
+    
+    if (hasUnsavedData && !isSaved) {
+        if (!confirm('Deseja iniciar uma nova consulta? A consulta atual não foi salva e seus dados serão perdidos.')) {
+            return;
+        }
+    }
+
+    resetConsultationFields();
+
     // Preencher dados do paciente
     DOM.patientName.value = p.name;
     DOM.patientAge.value = p.birthdate || '';
-    // Limpar sessão anterior
-    DOM.rawTranscript.value = '';
-    DOM.outputRecord.value = '';
-    DOM.outputPatientMsg.value = '';
-    toggleAiButtonsState();
-    DOM.btnSaveConsult.disabled = false;
-    DOM.btnSaveConsult.textContent = 'Salvar no Histórico Local';
-    DOM.resultsSection.classList.add('hidden');
-    DOM.actionsSaveRow.classList.add('hidden');
-    AppState.currentTranscription = '';
-    AppState.currentRecordOutput = '';
-    AppState.currentPatientMsgOutput = '';
+    
     switchTab('tab-consulta');
     showToast(`Consulta iniciada para ${p.name}`);
 }
@@ -1262,6 +1288,11 @@ async function startTelemedicineRecording() {
             return;
         }
 
+        AppState.audioProcessor.onDisplayStreamEnded = () => {
+            console.log('[Telemedicine] Screen sharing stopped by user, ending recording...');
+            stopRecording();
+        };
+
         // Configurar visualizador
         const canvas = DOM.waveformCanvas;
         const visualizer = AppState.audioProcessor.setupVisualizer(canvas, result.stream);
@@ -1417,7 +1448,9 @@ async function stopRecording() {
 
     try {
         // Parar gravação (AudioContext permanece aberto para processamento)
-        const result = AppState.audioProcessor.stopRecording();
+        // stopRecording() retorna uma Promise que resolve após o evento 'stop'
+        // do MediaRecorder, garantindo que todos os chunks estejam disponíveis.
+        const result = await AppState.audioProcessor.stopRecording();
         if (!result.success) {
             showToast('Erro ao parar gravação');
             return;
@@ -1615,6 +1648,7 @@ async function sendAudioToWhisper(file) {
 
         AppState.currentTranscription = transcription;
         DOM.rawTranscript.value = transcription;
+        toggleAiButtonsState(); // habilita botão Estruturar com IA automaticamente
     } catch (err) {
         showToast(err.message || 'Erro ao transcrever áudio.');
         console.error(err);
@@ -1725,7 +1759,8 @@ async function generateClinicalDocuments() {
             DOM.bvsDynamicContainer.classList.remove('hidden');
             DOM.bvsDynamicText.textContent = `Evidências BVS APS: ${extractedKeyword}`;
             // Salva a keyword no input de busca para quando abrir
-            document.getElementById('bvs-search-input').value = extractedKeyword;
+            const bvsInput = document.getElementById('bvs-search-input');
+            if (bvsInput) bvsInput.value = extractedKeyword;
         } else {
             DOM.bvsDynamicContainer.classList.add('hidden');
         }
@@ -1953,10 +1988,11 @@ function exportBackup() {
         }
     };
 
-    // Coletar todas as chaves etranscriber_*
+    // Coletar todas as chaves etranscriber_* (EXCETO chave de API — segurança)
+    const BACKUP_SENSITIVE_KEYS = ['etranscriber_groq_key'];
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && key.startsWith('etranscriber_')) {
+        if (key && key.startsWith('etranscriber_') && !BACKUP_SENSITIVE_KEYS.includes(key)) {
             try {
                 backupData[key] = JSON.parse(localStorage.getItem(key));
             } catch {
@@ -2501,21 +2537,40 @@ function renderBvsResults(results, query) {
     results.forEach(item => {
         const card = document.createElement('div');
         card.className = 'bvs-card';
-        card.innerHTML = `
-            <div class="bvs-card-title">${item.title}</div>
-            <div class="bvs-card-content" id="bvs-content-${item.id}">
-                ${item.content}
-            </div>
-            <div class="bvs-card-actions">
-                <button class="bvs-btn-read" onclick="document.getElementById('bvs-content-${item.id}').classList.toggle('expanded')">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                    Ler mais
-                </button>
-                <a href="${item.link}" target="_blank" class="bvs-link" title="Ver na íntegra (Abre nova guia)">
-                    Fonte Oficial <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
-                </a>
-            </div>
-        `;
+        // Segurança: validar protocolo do link antes de usar como href (previne javascript: URLs)
+        const safeLink = /^https?:\/\//.test(item.link) ? item.link : '#';
+
+        const cardTitle = document.createElement('div');
+        cardTitle.className = 'bvs-card-title';
+        cardTitle.textContent = item.title; // textContent previne XSS
+
+        const cardContent = document.createElement('div');
+        cardContent.className = 'bvs-card-content';
+        cardContent.id = `bvs-content-${item.id}`;
+        // O conteúdo da BVS é HTML confiável (fonte oficial), mas removemos scripts e estilos inline no BVSService.formatResults()
+        cardContent.innerHTML = item.content;
+
+        const readBtn = document.createElement('button');
+        readBtn.className = 'bvs-btn-read';
+        readBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg> Ler mais';
+        readBtn.addEventListener('click', () => cardContent.classList.toggle('expanded'));
+
+        const sourceLink = document.createElement('a');
+        sourceLink.href = safeLink;
+        sourceLink.target = '_blank';
+        sourceLink.rel = 'noopener noreferrer';
+        sourceLink.className = 'bvs-link';
+        sourceLink.title = 'Ver na íntegra (Abre nova guia)';
+        sourceLink.innerHTML = 'Fonte Oficial <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>';
+
+        const cardActions = document.createElement('div');
+        cardActions.className = 'bvs-card-actions';
+        cardActions.appendChild(readBtn);
+        cardActions.appendChild(sourceLink);
+
+        card.appendChild(cardTitle);
+        card.appendChild(cardContent);
+        card.appendChild(cardActions);
         container.appendChild(card);
     });
 }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'etranscriber-cache-v8';
+const CACHE_NAME = 'etranscriber-cache-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -56,13 +56,12 @@ self.addEventListener('activate', e => {
         })
       );
     }).then(() => {
-      // Take control of all clients immediately
+      // Take control of all clients immediately (dentro do waitUntil — correto)
       return self.clients.claim();
+    }).then(() => {
+      return self.skipWaiting();
     })
   );
-  
-  // Skip waiting to activate immediately
-  self.skipWaiting();
 });
 
 // Estratégia Network-First falling back to Cache para os assets locais
