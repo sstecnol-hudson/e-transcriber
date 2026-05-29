@@ -502,8 +502,12 @@ async function stopMeetingRecording() {
         }
 
         // 8. Enviar para Groq Whisper
+        // Garantir que finalBlob seja um File nomeado corretamente
         const fileExt = finalBlob.type.includes('wav') ? 'wav' : 'webm';
-        await sendMeetingAudioToWhisper(new File([finalBlob], `reuniao_${Date.now()}.${fileExt}`, { type: finalBlob.type }));
+        const audioFile = finalBlob instanceof File
+            ? finalBlob
+            : new File([finalBlob], `reuniao_${Date.now()}.${fileExt}`, { type: finalBlob.type });
+        await sendMeetingAudioToWhisper(audioFile);
 
         // 9. Resetar UI
         MeetingDOM.btnRecordStart.disabled = false;
@@ -613,15 +617,20 @@ async function transcribeWithCache(blob, language = 'pt') {
     return cached;
   }
   const formData = new FormData();
-  const filename = blob.name || (blob.type && blob.type.includes('wav') ? 'audio.wav' : 'audio.webm');
+  // Garante nome de arquivo correto para o Whisper aceitar
+  const filename = (blob instanceof File && blob.name)
+      ? blob.name
+      : (blob.type && blob.type.includes('wav') ? 'audio.wav' : 'audio.webm');
   formData.append('file', blob, filename);
   formData.append('model', GROQ_TRANSCRIBE_MODEL);
   formData.append('language', language);
   formData.append('response_format', 'json');
+  // Usar timeout de 90s para transcrição (arquivos podem ser grandes)
   const res = await fetchWithRetry('https://api.groq.com/openai/v1/audio/transcriptions', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${AppState.apiKey}` },
-    body: formData
+    body: formData,
+    timeout: 90000
   });
   if (!res.ok) {
     const errText = await res.text();

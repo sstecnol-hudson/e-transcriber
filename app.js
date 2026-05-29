@@ -250,15 +250,20 @@ async function transcribeWithCache(fileBlob, language = 'pt') {
     }
     // Caso não esteja em cache, envia para a API
     const formData = new FormData();
-    const filename = fileBlob.name || (fileBlob.type && fileBlob.type.includes('wav') ? 'audio.wav' : 'audio.webm');
+    // Garante nome de arquivo correto para o Whisper aceitar
+    const filename = (fileBlob instanceof File && fileBlob.name)
+        ? fileBlob.name
+        : (fileBlob.type && fileBlob.type.includes('wav') ? 'audio.wav' : 'audio.webm');
     formData.append('file', fileBlob, filename);
     formData.append('model', GROQ_TRANSCRIBE_MODEL);
     formData.append('language', language);
     formData.append('response_format', 'json');
+    // Usar timeout de 90s para transcrição (arquivos podem ser grandes)
     const res = await fetchWithRetry('https://api.groq.com/openai/v1/audio/transcriptions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${AppState.apiKey}` },
-        body: formData
+        body: formData,
+        timeout: 90000
     });
     if (!res.ok) {
         const errText = await res.text();
@@ -1537,7 +1542,12 @@ async function stopRecording() {
         await AppState.audioProcessor.cleanup();
 
         // 3ª etapa: enviar para Groq Whisper
-        await sendAudioToWhisper(finalBlob);
+        // Garantir que finalBlob seja um File com nome e tipo corretos
+        const blobExt = finalBlob.type.includes('wav') ? 'wav' : 'webm';
+        const audioFile = finalBlob instanceof File
+            ? finalBlob
+            : new File([finalBlob], `consulta_${Date.now()}.${blobExt}`, { type: finalBlob.type });
+        await sendAudioToWhisper(audioFile);
 
         // Ocultar VU Meter ao finalizar gravação
         const vuConsulta2 = document.getElementById('vu-meter-consulta');
@@ -1660,6 +1670,9 @@ async function sendAudioToWhisper(file) {
         DOM.transcriptionLoader.classList.remove('hidden');
         DOM.transcriptionLoaderText.textContent = '⏳ Verificando áudio...';
 
+        // Ler idioma selecionado na UI
+        const lang = DOM.transcriptionLang?.value || 'pt';
+
         // Chunking automático: se o arquivo exceder 24MB, dividir em partes
         const MAX_CHUNK_MB = 20;
         const MAX_SIZE_BYTES = 24 * 1024 * 1024;
@@ -1673,14 +1686,14 @@ async function sendAudioToWhisper(file) {
                 DOM.transcriptionLoaderText.textContent = `⏳ Transcrevendo parte ${i + 1} de ${chunks.length}...`;
                 const ext = chunks[i].type.includes('wav') ? 'wav' : 'webm';
                 const chunkFile = new File([chunks[i]], `consulta_parte${i + 1}.${ext}`, { type: chunks[i].type });
-                const text = await transcribeWithCache(chunkFile);
+                const text = await transcribeWithCache(chunkFile, lang);
                 texts.push(text);
             }
             transcription = texts.join('\n\n');
             showToast(`✅ Transcrição concluída (${chunks.length} partes).`);
         } else {
             DOM.transcriptionLoaderText.textContent = '⏳ Transcrevendo áudio...';
-            transcription = await transcribeWithCache(file);
+            transcription = await transcribeWithCache(file, lang);
             showToast('✅ Transcrição concluída.');
         }
 
