@@ -389,7 +389,7 @@ class AudioProcessor {
         compressionRatio: ((1 - wavBlob.size / blob.size) * 100).toFixed(2) + '%'
       };
     } catch (err) {
-      console.error('Erro ao comprimir áudio:', err);
+      console.warn('Suave: erro ao comprimir áudio (usando fallback de áudio original):', err);
       return {
         success: false,
         error: err.message
@@ -428,7 +428,7 @@ class AudioProcessor {
         processedSize: wavBlob.size
       };
     } catch (err) {
-      console.error('Erro ao pré-processar áudio:', err);
+      console.warn('Suave: erro ao pré-processar áudio (usando fallback de áudio original):', err);
       return {
         success: false,
         error: err.message

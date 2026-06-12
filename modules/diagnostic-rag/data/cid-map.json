@@ -1,0 +1,105 @@
+{
+  "Diabetes Mellitus Tipo 2": {
+    "icd10": "E11",
+    "icd11": "5A11",
+    "description": "Diabetes mellitus tipo 2",
+    "variants": [
+      { "code": "E11.9", "description": "Sem complicações" },
+      { "code": "E11.2", "description": "Com complicações renais" },
+      { "code": "E11.3", "description": "Com complicações oftálmicas" },
+      { "code": "E11.5", "description": "Com complicações circulatórias periféricas" }
+    ],
+    "contextualRules": {
+      "minAge": 18,
+      "warning": "Diabetes tipo 2 é mais comum em adultos. Considerar Tipo 1 (E10) em menores de 18 anos."
+    }
+  },
+  "Hipertensão Arterial": {
+    "icd10": "I10",
+    "icd11": "BA00",
+    "description": "Hipertensão essencial (primária)",
+    "variants": [
+      { "code": "I10", "description": "Hipertensão essencial (primária)" },
+      { "code": "I15", "description": "Hipertensão secundária" }
+    ],
+    "contextualRules": {
+      "minAge": 0,
+      "warning": "Suspeita de hipertensão secundária em jovens (< 30 anos) com início súbito ou grave."
+    }
+  },
+  "Artrite Reumatoide": {
+    "icd10": "M06",
+    "icd11": "FA10",
+    "description": "Artrite reumatoide",
+    "variants": [
+      { "code": "M05.9", "description": "Artrite reumatoide soropositiva não especificada" },
+      { "code": "M06.0", "description": "Artrite reumatoide soronegativa" }
+    ],
+    "contextualRules": {
+      "warning": "Solicitar Fator Reumatoide e Anti-CCP para classificar sorologia (M05 vs M06)."
+    }
+  },
+  "Insuficiência Cardíaca": {
+    "icd10": "I50",
+    "icd11": "BD40",
+    "description": "Insuficiência cardíaca",
+    "variants": [
+      { "code": "I50.0", "description": "Insuficiência cardíaca congestiva" },
+      { "code": "I50.1", "description": "Insuficiência ventricular esquerda" },
+      { "code": "I50.9", "description": "Insuficiência cardíaca não especificada" }
+    ]
+  },
+  "Asma": {
+    "icd10": "J45",
+    "icd11": "CA23",
+    "description": "Asma",
+    "variants": [
+      { "code": "J45.9", "description": "Asma não especificada" }
+    ]
+  },
+  "DPOC": {
+    "icd10": "J44",
+    "icd11": "CA22",
+    "description": "Doença pulmonar obstrutiva crônica",
+    "variants": [
+      { "code": "J44.9", "description": "Doença pulmonar obstrutiva crônica não especificada" }
+    ],
+    "contextualRules": {
+      "warning": "Geralmente associada a tabagismo histórico ou exposição a biomassa."
+    }
+  },
+  "Transtorno Depressivo": {
+    "icd10": "F32",
+    "icd11": "6A70",
+    "description": "Episódio depressivo",
+    "variants": [
+      { "code": "F32.9", "description": "Episódio depressivo não especificado" },
+      { "code": "F33", "description": "Transtorno depressivo recorrente" }
+    ]
+  },
+  "Hipotireoidismo": {
+    "icd10": "E03",
+    "icd11": "5A00",
+    "description": "Outros hipotireoidismos",
+    "variants": [
+      { "code": "E03.9", "description": "Hipotireoidismo não especificado" }
+    ]
+  },
+  "Dislipidemia": {
+    "icd10": "E78",
+    "icd11": "5C80",
+    "description": "Distúrbios do metabolismo de lipoproteínas",
+    "variants": [
+      { "code": "E78.0", "description": "Hipercolesterolemia pura" },
+      { "code": "E78.2", "description": "Hiperlipidemia mista" }
+    ]
+  },
+  "Obesidade": {
+    "icd10": "E66",
+    "icd11": "5B81",
+    "description": "Obesidade",
+    "variants": [
+      { "code": "E66.9", "description": "Obesidade não especificada" }
+    ]
+  }
+}

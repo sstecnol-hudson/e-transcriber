@@ -1,0 +1,72 @@
+{
+  "rename_list": [
+    "metformina",
+    "glibenclamida",
+    "insulina nph",
+    "insulina regular",
+    "captopril",
+    "enalapril",
+    "losartana",
+    "carvedilol",
+    "atenolol",
+    "hidroclorotiazida",
+    "anlodipino",
+    "ibuprofeno",
+    "dipirona",
+    "paracetamol",
+    "omeprazol",
+    "sinvastatina",
+    "atorvastatina",
+    "fluoxetina",
+    "sertralina",
+    "amitriptilina",
+    "diazepam",
+    "salbutamol",
+    "prednisona",
+    "amoxicilina",
+    "azitromicina",
+    "cefalexina"
+  ],
+  "alternatives": {
+    "valsartana": {
+      "rename_alternative": "Losartana",
+      "notes": "Losartana potássica 50mg está disponível gratuitamente no SUS (Farmácia Popular)."
+    },
+    "olmesartana": {
+      "rename_alternative": "Losartana",
+      "notes": "Losartana potássica está disponível no SUS."
+    },
+    "ramipril": {
+      "rename_alternative": "Enalapril",
+      "notes": "Enalapril 10mg/20mg está disponível na RENAME."
+    },
+    "lisinopril": {
+      "rename_alternative": "Enalapril",
+      "notes": "Enalapril está disponível na RENAME."
+    },
+    "rosuvastatina": {
+      "rename_alternative": "Sinvastatina ou Atorvastatina",
+      "notes": "Atorvastatina (10, 20, 40, 80mg) e Sinvastatina (20, 40mg) estão na RENAME."
+    },
+    "esomeprazol": {
+      "rename_alternative": "Omeprazol",
+      "notes": "Omeprazol 20mg está amplamente disponível nas UBS e Farmácia Popular."
+    },
+    "pantoprazol": {
+      "rename_alternative": "Omeprazol",
+      "notes": "Omeprazol está disponível na RENAME."
+    },
+    "duloxetina": {
+      "rename_alternative": "Sertralina ou Amitriptilina",
+      "notes": "Sertralina e Amitriptilina estão na RENAME para transtornos depressivos."
+    },
+    "escitalopram": {
+      "rename_alternative": "Fluoxetina ou Sertralina",
+      "notes": "Fluoxetina e Sertralina são os ISRS disponíveis na RENAME."
+    },
+    "clopidogrel": {
+      "rename_alternative": "AAS (Ácido Acetilsalicílico)",
+      "notes": "AAS 100mg está na RENAME. Clopidogrel pode estar disponível no Componente Especializado para casos específicos (pós-stent)."
+    }
+  }
+}

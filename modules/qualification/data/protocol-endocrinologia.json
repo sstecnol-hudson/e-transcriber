@@ -1,0 +1,253 @@
+{
+  "id": "endocrinologia",
+  "name": "Endocrinologia - Diabetes Mellitus tipo 2",
+  "description": "Protocolo para qualificação de pacientes com Diabetes Mellitus tipo 2 para encaminhamento a Endocrinologia",
+  "version": "1.0",
+  "lastUpdated": "2024-01-01",
+  "specialty": "Endocrinologia",
+  "focus": "Diabetes Mellitus tipo 2",
+  
+  "questionnaire": {
+    "sections": [
+      {
+        "id": "elegibilidade",
+        "title": "Filtros de Elegibilidade",
+        "description": "Responda as perguntas abaixo para determinar se o paciente é elegível",
+        "questions": [
+          {
+            "id": "filter_1",
+            "text": "O paciente é gestante?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.pregnancy_status",
+            "hint": "Se SIM, marca como Urgência (Pré-natal alto risco)"
+          },
+          {
+            "id": "filter_2",
+            "text": "O paciente tem menos de 15 anos?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.age",
+            "hint": "Se SIM, marca como Urgência (Provável DM Tipo 1)"
+          },
+          {
+            "id": "filter_3",
+            "text": "HbA1c > 9% mesmo com insulina ou múltiplos medicamentos?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.hba1c_value",
+            "hint": "Se SIM, atende critério de elegibilidade"
+          },
+          {
+            "id": "filter_4",
+            "text": "Paciente apresenta complicações graves ativas (pé diabético, perda de visão, IRC avançada)?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.complications",
+            "hint": "Se SIM, atende critério de elegibilidade"
+          },
+          {
+            "id": "filter_5",
+            "text": "Paciente em uso de insulina há mais de 6 meses com controle inadequado?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.insulin_use",
+            "hint": "Se NÃO, falha elegibilidade"
+          }
+        ]
+      },
+      {
+        "id": "sinais_alerta",
+        "title": "Sinais de Alerta (Urgência)",
+        "description": "Marque se o paciente apresenta algum dos sinais de alerta abaixo",
+        "questions": [
+          {
+            "id": "alert_1",
+            "text": "Glicemia > 300 mg/dL com vômitos, hálito cetônico e confusão?",
+            "type": "boolean",
+            "required": true,
+            "hint": "Cetoacidose Diabética - Encaminhar para UPA"
+          },
+          {
+            "id": "alert_2",
+            "text": "Glicemia < 70 mg/dL com sintomas neurológicos graves?",
+            "type": "boolean",
+            "required": true,
+            "hint": "Hipoglicemia Severa - Encaminhar para UPA"
+          },
+          {
+            "id": "alert_3",
+            "text": "Pé diabético com úlcera infectada ou necrose?",
+            "type": "boolean",
+            "required": true,
+            "hint": "Risco de Amputação - Encaminhar para cirurgia"
+          },
+          {
+            "id": "alert_4",
+            "text": "Outro sinal de alerta não listado acima?",
+            "type": "text",
+            "required": false,
+            "hint": "Descreva brevemente"
+          }
+        ]
+      },
+      {
+        "id": "exames",
+        "title": "Checklist de Exames Obrigatórios",
+        "description": "Confirme o status de cada exame obrigatório",
+        "questions": [
+          {
+            "id": "exam_hba1c",
+            "text": "Hemoglobina Glicada (HbA1c) - últimos 3-6 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_creatinina",
+            "text": "Creatinina sérica - últimos 6 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_eas",
+            "text": "Exame de Urina (EAS/Microalbuminúria) - últimos 6 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_fundo_olho",
+            "text": "Fundo de Olho / Avaliação Oftalmológica - últimos 12 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_lipidograma",
+            "text": "Lipidograma - últimos 6 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_ecg",
+            "text": "Eletrocardiograma - últimos 12 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          }
+        ]
+      }
+    ]
+  },
+
+  "eligibilityFilters": [
+    {
+      "id": "filter_1",
+      "question": "O paciente é gestante?",
+      "type": "alert_trigger",
+      "logic": "if_yes_then_urgency",
+      "urgencyReason": "Pré-natal alto risco"
+    },
+    {
+      "id": "filter_2",
+      "question": "O paciente tem menos de 15 anos?",
+      "type": "alert_trigger",
+      "logic": "if_yes_then_urgency",
+      "urgencyReason": "Provável DM Tipo 1"
+    },
+    {
+      "id": "filter_3",
+      "question": "HbA1c > 9% mesmo com insulina ou múltiplos medicamentos?",
+      "type": "qualification_criteria",
+      "logic": "if_yes_then_qualified"
+    },
+    {
+      "id": "filter_4",
+      "question": "Paciente apresenta complicações graves ativas?",
+      "type": "qualification_criteria",
+      "logic": "if_yes_then_qualified"
+    },
+    {
+      "id": "filter_5",
+      "question": "Paciente em uso de insulina há > 6 meses com controle inadequado?",
+      "type": "qualification_criteria",
+      "logic": "if_no_then_not_qualified"
+    }
+  ],
+
+  "alerts": [
+    {
+      "id": "alert_1",
+      "name": "Cetoacidose Diabética",
+      "conditions": ["glicemia > 300", "vômitos", "hálito cetônico", "confusão"],
+      "recommendation": "Encaminhar para UPA imediatamente",
+      "severity": "CRITICAL"
+    },
+    {
+      "id": "alert_2",
+      "name": "Hipoglicemia Severa",
+      "conditions": ["glicemia < 70", "sintomas neurológicos graves"],
+      "recommendation": "Encaminhar para UPA imediatamente",
+      "severity": "CRITICAL"
+    },
+    {
+      "id": "alert_3",
+      "name": "Risco de Amputação",
+      "conditions": ["pé diabético", "úlcera infectada", "necrose"],
+      "recommendation": "Encaminhar para cirurgia urgentemente",
+      "severity": "CRITICAL"
+    }
+  ],
+
+  "requiredExams": [
+    {
+      "id": "exam_hba1c",
+      "name": "Hemoglobina Glicada (HbA1c)",
+      "maxAgeDays": 180,
+      "mandatory": true
+    },
+    {
+      "id": "exam_creatinina",
+      "name": "Creatinina sérica",
+      "maxAgeDays": 180,
+      "mandatory": true
+    },
+    {
+      "id": "exam_eas",
+      "name": "Exame de Urina (EAS/Microalbuminúria)",
+      "maxAgeDays": 180,
+      "mandatory": true
+    },
+    {
+      "id": "exam_fundo_olho",
+      "name": "Fundo de Olho / Avaliação Oftalmológica",
+      "maxAgeDays": 365,
+      "mandatory": true
+    },
+    {
+      "id": "exam_lipidograma",
+      "name": "Lipidograma",
+      "maxAgeDays": 180,
+      "mandatory": true
+    },
+    {
+      "id": "exam_ecg",
+      "name": "Eletrocardiograma",
+      "maxAgeDays": 365,
+      "mandatory": true
+    }
+  ],
+
+  "decisionLogic": {
+    "step1": "Avaliar Filtros de Elegibilidade",
+    "step2": "Se algum filtro falha → Não Qualificado",
+    "step3": "Se todos passam → Detectar Sinais de Alerta",
+    "step4": "Se algum alerta detectado → Urgência",
+    "step5": "Se nenhum alerta → Validar Exames Obrigatórios",
+    "step6": "Se todos exames presentes → Qualificado",
+    "step7": "Se alguns exames faltam → Qualificado com Ressalvas"
+  }
+}

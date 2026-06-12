@@ -1,0 +1,108 @@
+{
+  "cardiologia": [
+    {
+      "id": "sca",
+      "name": "Síndrome Coronária Aguda",
+      "signs": [
+        { "key": "chest_pain", "operator": "==", "value": true },
+        { "key": "diaphoresis", "operator": "==", "value": true }
+      ],
+      "urgency": "Emergência",
+      "action": "Encaminhamento SAMU (192) - Pronto-Socorro com ECG imediato",
+      "protocol": "Protocolo SUS: Síndromes Coronárias Agudas, 2023",
+      "time_window": "Imediato"
+    },
+    {
+      "id": "emergencia_hipertensiva",
+      "name": "Emergência Hipertensiva",
+      "signs": [
+        { "key": "pa_systolic", "operator": ">=", "value": 180 },
+        { "key": "pa_diastolic", "operator": ">=", "value": 120 },
+        { "key": "chest_pain", "operator": "==", "value": true }
+      ],
+      "urgency": "Emergência",
+      "action": "Encaminhamento para Pronto-Socorro imediatamente",
+      "protocol": "Protocolo SUS: Hipertensão Arterial Sistêmica",
+      "time_window": "Imediato"
+    },
+    {
+      "id": "ic_aguda",
+      "name": "Insuficiência Cardíaca Aguda / Edema de Pulmão",
+      "signs": [
+        { "key": "pulmonary_edema", "operator": "==", "value": true }
+      ],
+      "urgency": "Emergência",
+      "action": "Chamada SAMU (192), monitorização contínua e oxigênio",
+      "protocol": "Protocolo SUS: Insuficiência Cardíaca",
+      "time_window": "Imediato"
+    }
+  ],
+  "endocrinologia": [
+    {
+      "id": "cad",
+      "name": "Cetoacidose Diabética",
+      "signs": [
+        { "key": "glucose", "operator": ">=", "value": 250 },
+        { "key": "vomiting", "operator": "==", "value": true },
+        { "key": "ketone_breath", "operator": "==", "value": true }
+      ],
+      "urgency": "Emergência",
+      "action": "Encaminhamento para Pronto-Socorro/UPA imediatamente com hidratação venosa e insulina",
+      "protocol": "Protocolo SUS: Diabetes Mellitus Complicações Agudas",
+      "time_window": "Imediato"
+    },
+    {
+      "id": "hipoglicemia_severa",
+      "name": "Hipoglicemia Severa",
+      "signs": [
+        { "key": "glucose", "operator": "<", "value": 70 },
+        { "key": "neurological_symptoms", "operator": "==", "value": true }
+      ],
+      "urgency": "Emergência",
+      "action": "Administração de glicose oral/IV e encaminhamento para UPA",
+      "protocol": "Protocolo SUS: Diabetes Mellitus Complicações Agudas",
+      "time_window": "Imediato"
+    },
+    {
+      "id": "pe_diabetico_infectado",
+      "name": "Pé Diabético Infectado / Risco de Amputação",
+      "signs": [
+        { "key": "diabetic_foot_ulcer", "operator": "==", "value": true },
+        { "key": "infection_or_necrosis", "operator": "==", "value": true }
+      ],
+      "urgency": "Urgente",
+      "action": "Encaminhamento para cirurgia vascular ou pronto-socorro ortopédico em até 24h",
+      "protocol": "Diretrizes de Pé Diabético - Ministério da Saúde",
+      "time_window": "24-48h"
+    }
+  ],
+  "reumatologia": [
+    {
+      "id": "artrite_septica",
+      "name": "Artrite Séptica",
+      "signs": [
+        { "key": "joint_pain_severe", "operator": "==", "value": true },
+        { "key": "joint_fever", "operator": "==", "value": true },
+        { "key": "joint_effusion_or_warmth", "operator": "==", "value": true }
+      ],
+      "urgency": "Urgente",
+      "action": "Encaminhamento para Pronto-Socorro com Ortopedia para artrocentese de urgência",
+      "protocol": "Consenso de Artrite Séptica - Sociedade Brasileira de Reumatologia",
+      "time_window": "24h"
+    }
+  ],
+  "geral": [
+    {
+      "id": "perda_peso_febre",
+      "name": "Perda de Peso Involuntária com Febre Sem Foco",
+      "signs": [
+        { "key": "weight_loss_10_percent", "operator": "==", "value": true },
+        { "key": "fever_prolonged", "operator": "==", "value": true }
+      ],
+      "urgency": "Investigação",
+      "action": "Solicitar exames laboratoriais amplos e agendar retorno/encaminhamento em até 30 dias",
+      "protocol": "Protocolo de Investigação de Síndrome Consumptiva",
+      "time_window": "30 dias"
+    }
+  ]
+}

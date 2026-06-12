@@ -194,6 +194,7 @@ FORMATO:
 // ---- ESTADO DA APLICAÇÃO ----
 const AppState = {
     apiKey: '',
+    tavilyApiKey: '',
     activeTab: 'tab-consulta',
     activeMode: 'consultas',
     meetingCompanyInfo: { name: '', address: '' },
@@ -201,6 +202,7 @@ const AppState = {
     history: [],
     patients: [],
     customPrompts: {},
+    activeEmergencies: [],
     currentSelectedPromptId: 'soap',
     clinicInfo: { name: '', doctor: '', crm: '', phone: '' },
 
@@ -274,6 +276,75 @@ async function transcribeWithCache(fileBlob, language = 'pt') {
     return data.text;
 }
 
+// Controle de edição manual do usuário nos campos do paciente
+const manualEdits = {
+    patientAge: false,
+    pmGender: false,
+    patientHeight: false,
+    patientWeight: false,
+    patientBP: false
+};
+
+// Reseta o controle de edições manuais
+function resetManualEdits() {
+    for (const key in manualEdits) {
+        manualEdits[key] = false;
+    }
+}
+
+// Extrai e popula campos de dados do paciente a partir da transcrição (se não editados manualmente)
+function autoPopulatePatientFieldsFromTranscript(transcription) {
+    if (!transcription || typeof DataExtractor === 'undefined') return;
+
+    const data = DataExtractor.extractConsultationData({ transcript: transcription });
+
+    // Idade
+    if (data.demographics?.age?.value && DOM.patientAge && !manualEdits.patientAge) {
+        const newVal = data.demographics.age.value + ' anos';
+        if (DOM.patientAge.value !== newVal) {
+            DOM.patientAge.value = newVal;
+            DOM.patientAge.dispatchEvent(new Event('input'));
+        }
+    }
+
+    // Sexo
+    if (data.demographics?.gender?.value && DOM.pmGender && !manualEdits.pmGender) {
+        const newVal = data.demographics.gender.value;
+        if (DOM.pmGender.value !== newVal) {
+            DOM.pmGender.value = newVal;
+            DOM.pmGender.dispatchEvent(new Event('change'));
+        }
+    }
+
+    // Altura
+    const heightStr = DataExtractor.extractHeight(transcription);
+    if (heightStr && DOM.patientHeight && !manualEdits.patientHeight) {
+        if (DOM.patientHeight.value !== heightStr) {
+            DOM.patientHeight.value = heightStr;
+            DOM.patientHeight.dispatchEvent(new Event('input'));
+        }
+    }
+
+    // Peso
+    const weightStr = DataExtractor.extractWeight(transcription);
+    if (weightStr && DOM.patientWeight && !manualEdits.patientWeight) {
+        if (DOM.patientWeight.value !== weightStr) {
+            DOM.patientWeight.value = weightStr;
+            DOM.patientWeight.dispatchEvent(new Event('input'));
+        }
+    }
+
+    // Pressão Arterial
+    const bpObj = DataExtractor.extractBP(transcription);
+    if (bpObj && DOM.patientBP && !manualEdits.patientBP) {
+        const newVal = `${bpObj.systolic}/${bpObj.diastolic} mmHg`;
+        if (DOM.patientBP.value !== newVal) {
+            DOM.patientBP.value = newVal;
+            DOM.patientBP.dispatchEvent(new Event('input'));
+        }
+    }
+}
+
 // ---- ELEMENTOS DO DOM ----
 const DOM = {
     // Navegação
@@ -283,6 +354,8 @@ const DOM = {
     headerSubtitle: document.getElementById('header-subtitle'),
     apiStatusDot: document.getElementById('api-status-dot'),
     apiStatusText: document.getElementById('api-status-text'),
+    tavilyStatusDot: document.getElementById('tavily-status-dot'),
+    tavilyStatusText: document.getElementById('tavily-status-text'),
     apiKeyAlert: document.getElementById('apiKeyAlert'),
 
     // Tema
@@ -316,6 +389,10 @@ const DOM = {
     patientName: document.getElementById('patientName'),
     patientAutocomplete: document.getElementById('patientAutocomplete'),
     patientAge: document.getElementById('patientAge'),
+    pmGender: document.getElementById('pmGender'),
+    patientHeight: document.getElementById('patientHeight'),
+    patientWeight: document.getElementById('patientWeight'),
+    patientBP: document.getElementById('patientBP'),
     doctorSpecialty: document.getElementById('doctorSpecialty'),
     transcriptionLang: document.getElementById('transcriptionLang'),
 
@@ -343,6 +420,8 @@ const DOM = {
 
     // Transcrição
     rawTranscript: document.getElementById('rawTranscript'),
+    btnGuideTemplate: document.getElementById('btn-guide-template'),
+    transcriptionWordCounter: document.getElementById('transcription-word-counter'),
     transcriptionLoader: document.getElementById('transcription-loader'),
     transcriptionLoaderText: document.getElementById('transcription-loader-text'),
     clinicalTemplate: document.getElementById('clinicalTemplate'),
@@ -419,6 +498,19 @@ const DOM = {
     meetingCompanyName: document.getElementById('meetingCompanyName'),
     meetingCompanyAddress: document.getElementById('meetingCompanyAddress'),
 
+    // Tavily Search
+    tavilyApiKeyInput: document.getElementById('tavilyApiKey'),
+    btnToggleTavilyKey: document.getElementById('btn-toggle-tavily-key-visibility'),
+    btnSaveTavilyKey: document.getElementById('btn-save-tavily-key'),
+    tavilyQuery: document.getElementById('tavilyQuery'),
+    tavilyDepth: document.getElementById('tavilyDepth'),
+    tavilyIncludeAnswer: document.getElementById('tavilyIncludeAnswer'),
+    btnTavilySearch: document.getElementById('btn-tavily-search'),
+    tavilySearchLoader: document.getElementById('tavily-search-loader'),
+    tavilyResultsSection: document.getElementById('tavily-results-section'),
+    tavilyAiAnswer: document.getElementById('tavily-ai-answer'),
+    tavilySourcesList: document.getElementById('tavily-sources-list'),
+
     // Toast
     toast: document.getElementById('toast'),
 
@@ -434,19 +526,26 @@ function init() {
     // Carregar dados do localStorage
     AppState.apiKey = localStorage.getItem('etranscriber_groq_key') || '';
     DOM.groqApiKeyInput.value = AppState.apiKey;
+    AppState.tavilyApiKey = localStorage.getItem('etranscriber_tavily_key') || '';
+    if (DOM.tavilyApiKeyInput) DOM.tavilyApiKeyInput.value = AppState.tavilyApiKey;
     AppState.activeMode = localStorage.getItem('etranscriber_active_mode') || 'consultas';
     // Carregar informações da empresa para reuniões
     try { AppState.meetingCompanyInfo = JSON.parse(localStorage.getItem('etranscriber_meeting_company')) || { name: '', address: '' }; } catch { AppState.meetingCompanyInfo = { name: '', address: '' }; }
     AppState.aiModel = localStorage.getItem('etranscriber_ai_model') || 'llama-3.3-70b-versatile';
+    if (AppState.aiModel === 'mixtral-8x7b-32768' || AppState.aiModel === 'mixtral-8x7b') {
+        AppState.aiModel = 'llama-3.3-70b-versatile';
+        localStorage.setItem('etranscriber_ai_model', AppState.aiModel);
+    }
 
     try { AppState.customPrompts = JSON.parse(localStorage.getItem('etranscriber_custom_prompts')) || {}; } catch { AppState.customPrompts = {}; }
     try { AppState.history = JSON.parse(localStorage.getItem('etranscriber_history')) || []; } catch { AppState.history = []; }
     try { AppState.patients = JSON.parse(localStorage.getItem('etranscriber_patients')) || []; } catch { AppState.patients = []; }
-    try { AppState.clinicInfo = JSON.parse(localStorage.getItem('etranscriber_clinic_info')) || { name: '', doctor: '', crm: '', phone: '' }; } catch { AppState.clinicInfo = { name: '', doctor: '', crm: '', phone: '' }; }
+    try { AppState.clinicInfo = JSON.parse(localStorage.getItem('etranscriber_clinic_info')) || { name: '', doctor: '', specialty: '', crm: '', phone: '' }; } catch { AppState.clinicInfo = { name: '', doctor: '', specialty: '', crm: '', phone: '' }; }
 
     // Preencher campos de configurações
     DOM.clinicName.value = AppState.clinicInfo.name || '';
     DOM.doctorName.value = AppState.clinicInfo.doctor || '';
+    if (DOM.doctorSpecialty) DOM.doctorSpecialty.value = AppState.clinicInfo.specialty || '';
     DOM.doctorCRM.value = AppState.clinicInfo.crm || '';
     DOM.clinicPhone.value = AppState.clinicInfo.phone || '';
     // Preencher campos de empresa para reuniões
@@ -580,7 +679,18 @@ function updateApiStatusUI() {
     } else {
         DOM.apiStatusDot.className = 'status-dot red';
         DOM.apiStatusText.textContent = 'Groq Desconectado';
-        DOM.apiKeyAlert.classList.add('hidden');
+        DOM.apiKeyAlert.classList.remove('hidden');
+    }
+
+    const hasTavilyKey = !!AppState.tavilyApiKey;
+    if (DOM.tavilyStatusDot && DOM.tavilyStatusText) {
+        if (hasTavilyKey) {
+            DOM.tavilyStatusDot.className = 'status-dot green';
+            DOM.tavilyStatusText.textContent = 'Tavily Configurado';
+        } else {
+            DOM.tavilyStatusDot.className = 'status-dot red';
+            DOM.tavilyStatusText.textContent = 'Tavily Desconectado';
+        }
     }
     
     // Atualizar estado de botões que dependem da API
@@ -704,6 +814,7 @@ function updateHeader(tabId) {
         'tab-historico-reunioes': ['Histórico de Reuniões', 'Acesse e exporte atas geradas anteriormente'],
         'tab-modelos':    ['Modelos de Prompt', 'Ajuste as diretrizes da IA para cada tipo de prontuário'],
         'tab-reunioes':   ['Reuniões', 'Grave e gere atas de reuniões corporativas automaticamente'],
+        'tab-pesquisa':   ['Pesquisa Médica', 'Busque diretrizes e evidências clínicas com IA (Tavily + Groq)'],
         'tab-config':     ['Configurações', 'Gerencie sua chave do Groq e dados do consultório']
     };
     const [title, subtitle] = map[tabId] || ['E-Transcriber', ''];
@@ -716,7 +827,6 @@ function handleNewConsultClick() {
     const hasUnsavedData = (
         (DOM.patientName && DOM.patientName.value.trim() !== '') ||
         (DOM.patientAge && DOM.patientAge.value.trim() !== '') ||
-        (DOM.doctorSpecialty && DOM.doctorSpecialty.value.trim() !== '') ||
         (DOM.rawTranscript && DOM.rawTranscript.value.trim() !== '') ||
         (DOM.outputRecord && DOM.outputRecord.value.trim() !== '') ||
         AppState.uploadedFile !== null
@@ -736,12 +846,21 @@ function handleNewConsultClick() {
 
 /** Reseta todos os campos da tela de consulta, limpando o estado */
 function resetConsultationFields() {
-    if (DOM.patientName) DOM.patientName.value = '';
-    if (DOM.patientAge) DOM.patientAge.value = '';
-    if (DOM.doctorSpecialty) DOM.doctorSpecialty.value = '';
+    if (DOM.patientName)   DOM.patientName.value   = '';
+    if (DOM.patientAge)    DOM.patientAge.value    = '';
+    if (DOM.pmGender)      DOM.pmGender.value      = '';
+    if (DOM.patientHeight) DOM.patientHeight.value = '';
+    if (DOM.patientWeight) DOM.patientWeight.value = '';
+    if (DOM.patientBP)     DOM.patientBP.value     = '';
     
-    if (DOM.rawTranscript) DOM.rawTranscript.value = '';
+    resetManualEdits();
+    
+    if (DOM.rawTranscript) {
+        DOM.rawTranscript.value = '';
+        DOM.rawTranscript.dispatchEvent(new Event('input'));
+    }
     AppState.currentTranscription = '';
+    AppState.activeEmergencies = [];
     
     if (DOM.outputRecord) DOM.outputRecord.value = '';
     AppState.currentRecordOutput = '';
@@ -755,6 +874,16 @@ function resetConsultationFields() {
 
     if (DOM.actionsSaveRow) DOM.actionsSaveRow.classList.add('hidden');
     if (DOM.bvsDynamicContainer) DOM.bvsDynamicContainer.classList.add('hidden');
+
+    // Hide RAG card and reset session cache
+    if (typeof window.resetRagSessionCache === 'function') {
+        window.resetRagSessionCache();
+    }
+    const ragCard = document.getElementById('rag-analysis-card');
+    if (ragCard) {
+        ragCard.classList.add('hidden');
+        ragCard.style.display = 'none';
+    }
 
     // Ocultar banner de segurança clínica e remover avisos de medicamentos
     if (DOM.clinicalSafetyBanner) DOM.clinicalSafetyBanner.classList.add('hidden');
@@ -953,7 +1082,6 @@ function startConsultForPatient(patientId) {
     const hasUnsavedData = (
         (DOM.patientName && DOM.patientName.value.trim() !== '') ||
         (DOM.patientAge && DOM.patientAge.value.trim() !== '') ||
-        (DOM.doctorSpecialty && DOM.doctorSpecialty.value.trim() !== '') ||
         (DOM.rawTranscript && DOM.rawTranscript.value.trim() !== '') ||
         (DOM.outputRecord && DOM.outputRecord.value.trim() !== '') ||
         AppState.uploadedFile !== null
@@ -1114,16 +1242,26 @@ function generatePDF() {
     doc.setFontSize(9);
     doc.setTextColor(71, 85, 105);
 
-    const pName = DOM.patientName.value || 'Não Identificado';
-    const pAge = DOM.patientAge.value || 'Não Informado';
-    const pSpec = DOM.doctorSpecialty.value || 'Clínica Geral';
-    const pDate = new Date().toLocaleString('pt-BR');
+    const pName      = DOM.patientName.value   || 'Não Identificado';
+    const pAge       = DOM.patientAge.value    || 'Não Informado';
+    const pGenderPdf = DOM.pmGender?.value     || '';
+    const pHeightPdf = DOM.patientHeight?.value || '';
+    const pWeightPdf = DOM.patientWeight?.value || '';
+    const pBPPdf     = DOM.patientBP?.value     || '';
+    const pSpec      = DOM.doctorSpecialty.value || 'Clínica Geral';
+    const pDate      = new Date().toLocaleString('pt-BR');
 
     doc.text(`Paciente: ${pName}`, marginX + 5, y + 16);
-    doc.text(`Idade: ${pAge}   |   Especialidade: ${pSpec}`, marginX + 5, y + 22);
+    doc.text(`Idade: ${pAge}${pGenderPdf ? '   |   Sexo: ' + pGenderPdf : ''}   |   Especialidade: ${pSpec}`, marginX + 5, y + 22);
+
+    const vitaisPdf = [pHeightPdf && `Altura: ${pHeightPdf}`, pWeightPdf && `Peso: ${pWeightPdf}`, pBPPdf && `PA: ${pBPPdf}`]
+        .filter(Boolean).join('   |   ');
+    if (vitaisPdf) {
+        doc.text(`Sinais Vitais: ${vitaisPdf}`, marginX + 5, y + 28);
+    }
     doc.text(`Data/Hora: ${pDate}`, pageWidth - marginX - 5, y + 16, { align: 'right' });
 
-    y += 36;
+    y += vitaisPdf ? 42 : 36;
 
     // ---- LINHA SEPARADORA ----
     doc.setDrawColor(99, 102, 241);
@@ -1542,11 +1680,10 @@ async function stopRecording() {
         await AppState.audioProcessor.cleanup();
 
         // 3ª etapa: enviar para Groq Whisper
-        // Garantir que finalBlob seja um File com nome e tipo corretos
+        // Garantir que finalBlob seja um File com nome e tipo corretos (tipo limpo sem codecs para evitar erro 400 da Groq)
         const blobExt = finalBlob.type.includes('wav') ? 'wav' : 'webm';
-        const audioFile = finalBlob instanceof File
-            ? finalBlob
-            : new File([finalBlob], `consulta_${Date.now()}.${blobExt}`, { type: finalBlob.type });
+        const cleanType = finalBlob.type.includes('wav') ? 'audio/wav' : 'audio/webm';
+        const audioFile = new File([finalBlob], `consulta_${Date.now()}.${blobExt}`, { type: cleanType });
         await sendAudioToWhisper(audioFile);
 
         // Ocultar VU Meter ao finalizar gravação
@@ -1699,7 +1836,10 @@ async function sendAudioToWhisper(file) {
 
         AppState.currentTranscription = transcription;
         DOM.rawTranscript.value = transcription;
-        toggleAiButtonsState(); // habilita botão Estruturar com IA automaticamente
+        if (typeof autoPopulatePatientFieldsFromTranscript === 'function') {
+            autoPopulatePatientFieldsFromTranscript(transcription);
+        }
+        DOM.rawTranscript.dispatchEvent(new Event('input'));
     } catch (err) {
         showToast(err.message || 'Erro ao transcrever áudio.');
         console.error(err);
@@ -1765,16 +1905,42 @@ async function generateClinicalDocuments() {
     DOM.actionsSaveRow.classList.add('hidden');
     DOM.outputRecord.value = '';
     DOM.outputPatientMsg.value = '';
+
+    // Hide RAG card and reset session cache when generating a new document
+    if (typeof window.resetRagSessionCache === 'function') {
+        window.resetRagSessionCache();
+    }
+    AppState.activeEmergencies = [];
+    const ragCard = document.getElementById('rag-analysis-card');
+    if (ragCard) {
+        ragCard.classList.add('hidden');
+        ragCard.style.display = 'none';
+    }
     setTimeout(() => {
         DOM.clinicalSafetyBanner?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         DOM.resultsSection.scrollIntoView({ behavior: 'smooth' });
     }, 100);
 
-    const pName = DOM.patientName.value.trim() || 'Não Identificado';
-    const pAge = DOM.patientAge.value.trim() || 'Não Informado';
-    const spec = DOM.doctorSpecialty.value.trim() || 'Clínica Geral';
-    const model = DOM.aiModel.value;
-    const userContent = `DADOS DO ATENDIMENTO:\nPaciente: ${pName}\nIdade: ${pAge}\nEspecialidade: ${spec}\n\nTRANSCRIÇÃO DA CONSULTA:\n${rawText}`;
+    const pName   = DOM.patientName.value.trim() || 'Não Identificado';
+    const pAge    = DOM.patientAge.value.trim()  || 'Não Informado';
+    const pGender = DOM.pmGender?.value           || 'Não Informado';
+    const pHeight = DOM.patientHeight?.value.trim() || '';
+    const pWeight = DOM.patientWeight?.value.trim() || '';
+    const pBP     = DOM.patientBP?.value.trim()     || '';
+    const spec    = DOM.doctorSpecialty.value.trim() || 'Clínica Geral';
+    const model   = DOM.aiModel.value;
+
+    const vitaisLine = [pHeight && `Altura: ${pHeight}`, pWeight && `Peso: ${pWeight}`, pBP && `PA: ${pBP}`]
+        .filter(Boolean).join('   |   ');
+
+    const userContent = `DADOS DO ATENDIMENTO:
+Paciente: ${pName}
+Idade: ${pAge}   |   Sexo: ${pGender}
+${vitaisLine ? `Sinais Vitais: ${vitaisLine}
+` : ''}Especialidade: ${spec}
+
+TRANSCRIÇÃO DA CONSULTA:
+${rawText}`;
 
     const callGroq = (systemPrompt, temperature = 0.1, overrideModel = null) => fetchWithRetry('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -1972,6 +2138,15 @@ function renderHistoryTable() {
 }
 
 function saveCurrentConsult() {
+    // Validação de Segurança Clínica de Red Flags
+    if (AppState.activeEmergencies && AppState.activeEmergencies.length > 0) {
+        const listNames = AppState.activeEmergencies.map(rf => `• [${rf.urgency.toUpperCase()}] ${rf.name}: ${rf.action}`).join('\n\n');
+        const confirmMsg = `⚠️ ALERTA DE SEGURANÇA CLÍNICA!\n\nFoi detectado sinal de alarme crítico (Red Flag) para este paciente:\n\n${listNames}\n\nConfirma que a conduta clínica e o encaminhamento adequados já foram tomados e deseja prosseguir com o arquivamento da consulta?`;
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+    }
+
     // Guard against duplicate saves
     DOM.btnSaveConsult.disabled = true;
     DOM.btnSaveConsult.textContent = 'Salvo!';
@@ -2069,6 +2244,7 @@ function saveClinicInfo() {
     AppState.clinicInfo = {
         name: DOM.clinicName.value.trim(),
         doctor: DOM.doctorName.value.trim(),
+        specialty: DOM.doctorSpecialty ? DOM.doctorSpecialty.value.trim() : '',
         crm: DOM.doctorCRM.value.trim(),
         phone: DOM.clinicPhone.value.trim()
     };
@@ -2815,8 +2991,41 @@ function setupEventListeners() {
     });
 
     // Transcrição
+    const debouncedPopulate = debounce(() => {
+        const text = DOM.rawTranscript.value;
+        autoPopulatePatientFieldsFromTranscript(text);
+    }, 1000);
+
     DOM.rawTranscript.addEventListener('input', () => {
         toggleAiButtonsState();
+        updateWordCount();
+        debouncedPopulate();
+    });
+
+    // Rastrear edições manuais nos campos do paciente
+    const patientFields = ['patientAge', 'pmGender', 'patientHeight', 'patientWeight', 'patientBP'];
+    patientFields.forEach(id => {
+        const el = DOM[id] || document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', () => {
+                manualEdits[id] = true;
+            });
+            el.addEventListener('change', () => {
+                manualEdits[id] = true;
+            });
+        }
+    });
+
+    if (DOM.btnGuideTemplate) {
+        DOM.btnGuideTemplate.addEventListener('click', handleGuideTemplate);
+    }
+    DOM.rawTranscript.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            if (!DOM.btnGenerateDocs.disabled) {
+                generateClinicalDocuments();
+            }
+        }
     });
     DOM.btnGenerateDocs.addEventListener('click', generateClinicalDocuments);
 
@@ -2938,3 +3147,296 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+
+// ==========================================================================
+// INTEGRAÇÃO TAVILY SEARCH (PESQUISA MÉDICA)
+// ==========================================================================
+
+function saveTavilyKey() {
+    const key = DOM.tavilyApiKeyInput?.value.trim() || '';
+    if (key && !key.startsWith('tvly-')) {
+        showToast('⚠️ Chave inválida. Chaves Tavily começam com "tvly-".');
+        return;
+    }
+    localStorage.setItem('etranscriber_tavily_key', key);
+    AppState.tavilyApiKey = key;
+    showToast(key ? '✓ Chave Tavily salva com sucesso!' : 'Chave Tavily removida.');
+}
+
+function toggleTavilyKeyVisibility() {
+    if (!DOM.tavilyApiKeyInput) return;
+    const t = DOM.tavilyApiKeyInput.type === 'password' ? 'text' : 'password';
+    DOM.tavilyApiKeyInput.type = t;
+    const icon = document.getElementById('eye-icon-tavily');
+    if (icon) {
+        icon.innerHTML = t === 'text'
+            ? `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" x2="23" y1="1" y2="23"/>`
+            : `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+    }
+}
+
+async function searchTavily() {
+    const query = DOM.tavilyQuery?.value.trim() || '';
+    if (!query) {
+        showToast('Digite um termo de pesquisa.');
+        return;
+    }
+    const key = AppState.tavilyApiKey || localStorage.getItem('etranscriber_tavily_key') || '';
+    if (!key) {
+        showToast('⚠️ Configure a chave Tavily em Configurações primeiro.');
+        switchTab('tab-config');
+        return;
+    }
+
+    const depth = DOM.tavilyDepth?.value || 'basic';
+    const includeAnswer = DOM.tavilyIncludeAnswer?.checked !== false;
+
+    if (DOM.tavilySearchLoader) {
+        DOM.tavilySearchLoader.classList.remove('hidden');
+        DOM.tavilySearchLoader.style.display = 'flex';
+    }
+    if (DOM.tavilyResultsSection) {
+        DOM.tavilyResultsSection.classList.add('hidden');
+        DOM.tavilyResultsSection.style.display = 'none';
+    }
+    if (DOM.btnTavilySearch) DOM.btnTavilySearch.disabled = true;
+
+    try {
+        const tavilyUrl = 'https://api.tavily.com/search';
+
+        const body = {
+            api_key: key,
+            query,
+            search_depth: depth,
+            include_answer: includeAnswer,
+            max_results: 8,
+            include_domains: [],
+            exclude_domains: []
+        };
+
+        const res = await fetch(tavilyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+            const errText = await res.text();
+            if (res.status === 401) {
+                showToast('❌ Chave Tavily inválida. Verifique em Configurações.');
+            } else {
+                showToast(`Erro na pesquisa: ${res.status}`);
+            }
+            console.error('Tavily error:', errText);
+            return;
+        }
+
+        const data = await res.json();
+        renderTavilyResults(data, query);
+
+    } catch (err) {
+        console.error('Tavily fetch error:', err);
+        showToast('Erro de conexão ao pesquisar. Verifique sua internet.');
+    } finally {
+        if (DOM.tavilySearchLoader) {
+            DOM.tavilySearchLoader.classList.add('hidden');
+            DOM.tavilySearchLoader.style.display = 'none';
+        }
+        if (DOM.btnTavilySearch) DOM.btnTavilySearch.disabled = false;
+    }
+}
+
+function renderTavilyResults(data, query) {
+    if (DOM.tavilyResultsSection) {
+        DOM.tavilyResultsSection.classList.remove('hidden');
+        DOM.tavilyResultsSection.style.display = 'flex';
+    }
+
+    const answerCard = document.getElementById('tavily-answer-card');
+    const aiAnswer = DOM.tavilyAiAnswer;
+    if (aiAnswer) {
+        if (data.answer) {
+            translateTavilyAnswer(data.answer, aiAnswer, answerCard);
+        } else {
+            if (answerCard) answerCard.style.display = 'none';
+        }
+    }
+
+    const sourcesList = DOM.tavilySourcesList;
+    if (sourcesList && data.results && data.results.length > 0) {
+        sourcesList.innerHTML = '';
+        data.results.forEach(src => {
+            const score = src.score ? Math.round(src.score * 100) : null;
+            const hostname = (() => { try { return new URL(src.url).hostname; } catch { return src.url; } })();
+            const item = document.createElement('div');
+            item.className = 'source-item';
+            item.innerHTML = `
+                <div class="source-title">
+                    <a href="${escapeHtml(src.url)}" target="_blank" rel="noopener noreferrer">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+                        ${escapeHtml(src.title || hostname)}
+                    </a>
+                </div>
+                ${src.content ? `<p class="source-snippet">${escapeHtml(src.content.substring(0, 260))}${src.content.length > 260 ? '...' : ''}</p>` : ''}
+                <div class="source-meta">
+                    <span class="source-url">${escapeHtml(hostname)}</span>
+                    ${score !== null ? `<span class="source-score">⭐ ${score}%</span>` : ''}
+                </div>
+            `;
+            sourcesList.appendChild(item);
+        });
+    } else if (sourcesList) {
+        sourcesList.innerHTML = '<p style="color:var(--text-muted);padding:12px 0;">Nenhuma fonte encontrada para esta pesquisa.</p>';
+    }
+
+    showToast(`${data.results?.length || 0} fontes encontradas!`);
+}
+
+async function translateTavilyAnswer(englishText, targetElement, cardElement) {
+    targetElement.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <div class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></div>
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">Traduzindo para português...</span>
+        </div>
+        <div style="opacity: 0.5;">${escapeHtml(englishText)}</div>
+    `;
+    if (cardElement) cardElement.style.display = '';
+
+    try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${AppState.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'llama-3.1-8b-instant',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'Você é um tradutor médico especializado. Traduza o texto a seguir do inglês para português do Brasil (PT-BR), mantendo terminologia médica precisa e tom profissional. Responda APENAS com a tradução, sem explicações adicionais.'
+                    },
+                    { role: 'user', content: englishText }
+                ],
+                temperature: 0.1
+            })
+        });
+
+        if (!res.ok) throw new Error(`Erro na tradução: ${res.status}`);
+
+        const data = await res.json();
+        const translatedText = data.choices[0].message.content || englishText;
+
+        targetElement.innerHTML = `
+            <div style="margin-bottom: 12px;">
+                <span style="display: inline-block; padding: 4px 10px; background: rgba(34, 197, 94, 0.1); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                    🇧🇷 Traduzido para PT-BR
+                </span>
+            </div>
+            <div style="line-height: 1.7;">${escapeHtml(translatedText)}</div>
+            <details style="margin-top: 16px; opacity: 0.6;">
+                <summary style="cursor: pointer; font-size: 0.85rem; color: var(--text-secondary); user-select: none;">
+                    Ver texto original em inglês
+                </summary>
+                <div style="margin-top: 8px; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; border-left: 3px solid var(--border-color); font-size: 0.9rem;">
+                    ${escapeHtml(englishText)}
+                </div>
+            </details>
+        `;
+    } catch (err) {
+        console.error('Erro ao traduzir resposta Tavily:', err);
+        targetElement.innerHTML = `
+            <div style="margin-bottom: 12px;">
+                <span style="display: inline-block; padding: 4px 10px; background: rgba(234, 179, 8, 0.1); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                    ⚠️ Tradução indisponível - Texto original
+                </span>
+            </div>
+            <div style="line-height: 1.7;">${escapeHtml(englishText)}</div>
+        `;
+    }
+}
+
+// --- Botões de Copiar e Inserir (Tavily) ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Salvar chave Tavily
+    if (DOM.btnSaveTavilyKey) {
+        DOM.btnSaveTavilyKey.addEventListener('click', saveTavilyKey);
+    }
+    // Toggle visibilidade da chave Tavily
+    if (DOM.btnToggleTavilyKey) {
+        DOM.btnToggleTavilyKey.addEventListener('click', toggleTavilyKeyVisibility);
+    }
+    // Botão Pesquisar (Tavily)
+    if (DOM.btnTavilySearch) {
+        DOM.btnTavilySearch.addEventListener('click', searchTavily);
+    }
+    // Enter no campo de query
+    if (DOM.tavilyQuery) {
+        DOM.tavilyQuery.addEventListener('keydown', e => {
+            if (e.key === 'Enter') searchTavily();
+        });
+    }
+    // Copiar resumo
+    const btnCopy = document.getElementById('btn-tavily-copy');
+    const btnInsert = document.getElementById('btn-tavily-insert');
+    const aiAnswer = document.getElementById('tavily-ai-answer');
+    const rawTranscript = document.getElementById('rawTranscript');
+
+    if (btnCopy && aiAnswer) {
+        btnCopy.addEventListener('click', () => {
+            const text = (aiAnswer.innerText || aiAnswer.textContent).replace(/Traduzido para PT-BR/g, '').trim();
+            if (!text) { showToast('⚠️ Nenhum resumo disponível para copiar!'); return; }
+            navigator.clipboard.writeText(text)
+                .then(() => showToast('✅ Resumo copiado!'))
+                .catch(err => console.error('Erro ao copiar:', err));
+        });
+    }
+
+    if (btnInsert && aiAnswer && rawTranscript) {
+        btnInsert.addEventListener('click', () => {
+            const text = (aiAnswer.innerText || aiAnswer.textContent).replace(/Traduzido para PT-BR/g, '').trim();
+            if (!text) { showToast('⚠️ Nenhum resumo disponível para inserir!'); return; }
+            const currentVal = rawTranscript.value.trim();
+            const separator = '\n\n--- INFORMAÇÕES CLÍNICAS (PESQUISA WEB) ---\n';
+            rawTranscript.value = currentVal ? (currentVal + separator + text) : text;
+            rawTranscript.dispatchEvent(new Event('input'));
+            showToast('✅ Resumo inserido na transcrição da consulta!');
+            switchTab('tab-consulta');
+            setTimeout(() => { rawTranscript.scrollIntoView({ behavior: 'smooth' }); rawTranscript.focus(); }, 200);
+        });
+    }
+});
+
+// Funções de Usabilidade e Acessibilidade
+function updateWordCount() {
+    const text = DOM.rawTranscript ? (DOM.rawTranscript.value || '') : '';
+    const charCount = text.length;
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+    const wordCount = words.length;
+    
+    if (DOM.transcriptionWordCounter) {
+        DOM.transcriptionWordCounter.textContent = `${wordCount} palavras | ${charCount} caracteres`;
+    }
+}
+
+function handleGuideTemplate() {
+    const templateText = `[QUEIXA PRINCIPAL]: \n\n[HISTÓRICO DA DOENÇA ATUAL]: \n\n[HISTÓRICO FAMILIAR/SOCIODEMOGRÁFICO]: \n\n[EXAME FÍSICO / DADOS VITAIS]: \n\n[EXAMES COMPLEMENTARES]: \n\n[SUSPEITAS DIAGNÓSTICAS / CONDUTA PROPOSTA]: `;
+
+    const currentText = DOM.rawTranscript ? DOM.rawTranscript.value.trim() : '';
+    if (currentText && currentText !== templateText.trim() && currentText !== '') {
+        if (!confirm('Deseja substituir a transcrição atual por um template guiado para preenchimento manual?')) {
+            return;
+        }
+    }
+    
+    if (DOM.rawTranscript) {
+        DOM.rawTranscript.value = templateText;
+        DOM.rawTranscript.focus();
+        DOM.rawTranscript.dispatchEvent(new Event('input'));
+        showToast('✅ Guia de consulta estruturada inserido.');
+    }
+}
+
+// Expor showToast para módulos externos
+window._appShowToast = showToast;
+window.switchTab = switchTab;

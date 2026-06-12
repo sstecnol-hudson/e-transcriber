@@ -1,0 +1,363 @@
+{
+  "id": "reumatologia",
+  "name": "Reumatologia - Lúpus, Artrite e Artrose",
+  "description": "Protocolo para qualificação de pacientes com Lúpus Eritematoso Sistêmico, Artrite Reumatóide e Artrose para encaminhamento a Reumatologia",
+  "version": "1.0",
+  "lastUpdated": "2024-01-01",
+  "specialty": "Reumatologia",
+  "focus": "Lúpus, Artrite Reumatóide, Artrose",
+
+  "questionnaire": {
+    "sections": [
+      {
+        "id": "elegibilidade",
+        "title": "Filtros de Elegibilidade",
+        "description": "Responda as perguntas abaixo para determinar se o paciente é elegível",
+        "questions": [
+          {
+            "id": "filter_1",
+            "text": "Rigidez articular ao acordar com duração > 30-60 minutos?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.joint_symptoms",
+            "hint": "Sinal clássico de inflamação articular"
+          },
+          {
+            "id": "filter_2",
+            "text": "Inchaço + calor + vermelhidão em 3 ou mais articulações por mais de 6 semanas?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.swelling",
+            "hint": "Critério de artrite inflamatória"
+          },
+          {
+            "id": "filter_3",
+            "text": "Suspeita de Lúpus Eritematoso Sistêmico (manchas em borboleta + dor articular + queda de cabelo)?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.lupus_symptoms",
+            "hint": "Manifestações clássicas de LES"
+          },
+          {
+            "id": "filter_4",
+            "text": "Apenas artrose leve/moderada (dor mecânica, sem sinais de inflamação)?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.osteoarthritis",
+            "hint": "Se SIM, não qualificado - manejo na Atenção Primária"
+          },
+          {
+            "id": "filter_5",
+            "text": "Sintomas sistêmicos (febre, fadiga, perda de peso) associados com artralgia?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.systemic_symptoms",
+            "hint": "Indicativo de doença reumática sistêmica"
+          },
+          {
+            "id": "filter_6",
+            "text": "Envolvimento articular em múltiplas articulações (poliartrite)?",
+            "type": "boolean",
+            "required": true,
+            "prefilledFrom": "transcript.polyarthritis",
+            "hint": "Padrão de envolvimento articular"
+          }
+        ]
+      },
+      {
+        "id": "sinais_alerta",
+        "title": "Sinais de Alerta (Urgência)",
+        "description": "Marque se o paciente apresenta algum dos sinais de alerta abaixo",
+        "questions": [
+          {
+            "id": "alert_1",
+            "text": "Febre alta + uma articulação extremamente inchada, quente e imóvel?",
+            "type": "boolean",
+            "required": true,
+            "hint": "Artrite Séptica - Encaminhar para Pronto Socorro"
+          },
+          {
+            "id": "alert_2",
+            "text": "Edema facial em borboleta + dor articular + febre + rash cutâneo?",
+            "type": "boolean",
+            "required": true,
+            "hint": "Possível Lúpus Ativo - Encaminhar para especialista urgentemente"
+          },
+          {
+            "id": "alert_3",
+            "text": "Artrite com deformidade rápida + sintomas sistêmicos progressivos?",
+            "type": "boolean",
+            "required": true,
+            "hint": "Artrite Reumatóide Agressiva - Encaminhar urgentemente"
+          },
+          {
+            "id": "alert_4",
+            "text": "Envolvimento renal suspeito (edema, hipertensão, hematúria)?",
+            "type": "boolean",
+            "required": true,
+            "hint": "Nefrite Lúpica - Encaminhar urgentemente"
+          },
+          {
+            "id": "alert_5",
+            "text": "Envolvimento neurológico (cefaleia intensa, convulsões, psicose)?",
+            "type": "boolean",
+            "required": true,
+            "hint": "Manifestação neurológica de LES - Encaminhar urgentemente"
+          },
+          {
+            "id": "alert_6",
+            "text": "Outro sinal de alerta não listado acima?",
+            "type": "text",
+            "required": false,
+            "hint": "Descreva brevemente"
+          }
+        ]
+      },
+      {
+        "id": "exames",
+        "title": "Checklist de Exames Obrigatórios",
+        "description": "Confirme o status de cada exame obrigatório",
+        "questions": [
+          {
+            "id": "exam_hemograma",
+            "text": "Hemograma Completo com Plaquetas - últimos 3 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_vhs",
+            "text": "VHS (Velocidade de Hemossedimentação) - últimos 3 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_pcr",
+            "text": "PCR (Proteína C Reativa) - últimos 3 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_fr",
+            "text": "Fator Reumatóide (FR) - últimos 6 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_fan",
+            "text": "FAN (Fator Antinuclear) - últimos 6 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_anti_ccp",
+            "text": "Anti-CCP (Anti-Peptídeo Cíclico Citrulinado) - últimos 6 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_rx_articulacoes",
+            "text": "Raio-X das articulações afetadas - últimos 6 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_creatinina",
+            "text": "Função renal (Creatinina) - últimos 3 meses",
+            "type": "exam_status",
+            "required": true,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          },
+          {
+            "id": "exam_complemento",
+            "text": "Níveis de Complemento (C3, C4) se LES suspeito - últimos 6 meses",
+            "type": "exam_status",
+            "required": false,
+            "options": ["Não Realizado", "Realizado", "Resultado Disponível"]
+          }
+        ]
+      }
+    ]
+  },
+
+  "eligibilityFilters": [
+    {
+      "id": "filter_1",
+      "question": "Rigidez articular ao acordar > 30-60 minutos?",
+      "type": "qualification_criteria",
+      "logic": "if_yes_then_qualified",
+      "description": "Sinal clássico de inflamação articular"
+    },
+    {
+      "id": "filter_2",
+      "question": "Inchaço + calor + vermelhidão em 3+ articulações > 6 semanas?",
+      "type": "qualification_criteria",
+      "logic": "if_yes_then_qualified",
+      "description": "Critério de artrite inflamatória"
+    },
+    {
+      "id": "filter_3",
+      "question": "Suspeita de Lúpus (manchas em borboleta + dor articular + queda cabelo)?",
+      "type": "qualification_criteria",
+      "logic": "if_yes_then_qualified",
+      "description": "Manifestações clássicas de LES"
+    },
+    {
+      "id": "filter_4",
+      "question": "Apenas artrose leve/moderada (dor mecânica, sem inflamação)?",
+      "type": "alert_trigger",
+      "logic": "if_yes_then_not_qualified",
+      "description": "Manejo na Atenção Primária"
+    },
+    {
+      "id": "filter_5",
+      "question": "Sintomas sistêmicos (febre, fadiga, perda peso) + artralgia?",
+      "type": "qualification_criteria",
+      "logic": "if_yes_then_qualified",
+      "description": "Indicativo de doença reumática sistêmica"
+    },
+    {
+      "id": "filter_6",
+      "question": "Envolvimento articular em múltiplas articulações (poliartrite)?",
+      "type": "qualification_criteria",
+      "logic": "if_yes_then_qualified",
+      "description": "Padrão de envolvimento articular"
+    }
+  ],
+
+  "alerts": [
+    {
+      "id": "alert_1",
+      "name": "Artrite Séptica",
+      "conditions": ["febre alta", "articulação extremamente inchada", "calor local", "imobilidade"],
+      "recommendation": "Encaminhar para Pronto Socorro imediatamente para punção articular e cultura",
+      "severity": "CRITICAL"
+    },
+    {
+      "id": "alert_2",
+      "name": "Lúpus Eritematoso Sistêmico Ativo",
+      "conditions": ["edema facial em borboleta", "dor articular", "febre", "rash cutâneo"],
+      "recommendation": "Encaminhar para Reumatologia urgentemente para avaliação e tratamento imunossupressor",
+      "severity": "CRITICAL"
+    },
+    {
+      "id": "alert_3",
+      "name": "Artrite Reumatóide Agressiva",
+      "conditions": ["deformidade articular rápida", "sintomas sistêmicos progressivos", "inflamação intensa"],
+      "recommendation": "Encaminhar para Reumatologia urgentemente para iniciar terapia DMARD",
+      "severity": "CRITICAL"
+    },
+    {
+      "id": "alert_4",
+      "name": "Nefrite Lúpica",
+      "conditions": ["edema", "hipertensão", "hematúria", "proteinúria"],
+      "recommendation": "Encaminhar para Reumatologia e Nefrologia urgentemente",
+      "severity": "CRITICAL"
+    },
+    {
+      "id": "alert_5",
+      "name": "Manifestação Neurológica de LES",
+      "conditions": ["cefaleia intensa", "convulsões", "psicose", "confusão mental"],
+      "recommendation": "Encaminhar para Reumatologia e Neurologia urgentemente",
+      "severity": "CRITICAL"
+    }
+  ],
+
+  "requiredExams": [
+    {
+      "id": "exam_hemograma",
+      "name": "Hemograma Completo com Plaquetas",
+      "maxAgeDays": 90,
+      "mandatory": true,
+      "description": "Para avaliar citopenias (anemia, leucopenia, trombocitopenia)"
+    },
+    {
+      "id": "exam_vhs",
+      "name": "VHS (Velocidade de Hemossedimentação)",
+      "maxAgeDays": 90,
+      "mandatory": true,
+      "description": "Marcador de inflamação sistêmica"
+    },
+    {
+      "id": "exam_pcr",
+      "name": "PCR (Proteína C Reativa)",
+      "maxAgeDays": 90,
+      "mandatory": true,
+      "description": "Marcador de inflamação aguda"
+    },
+    {
+      "id": "exam_fr",
+      "name": "Fator Reumatóide (FR)",
+      "maxAgeDays": 180,
+      "mandatory": true,
+      "description": "Marcador de autoimunidade para artrite reumatóide"
+    },
+    {
+      "id": "exam_fan",
+      "name": "FAN (Fator Antinuclear)",
+      "maxAgeDays": 180,
+      "mandatory": true,
+      "description": "Marcador de autoimunidade para LES e outras doenças autoimunes"
+    },
+    {
+      "id": "exam_anti_ccp",
+      "name": "Anti-CCP (Anti-Peptídeo Cíclico Citrulinado)",
+      "maxAgeDays": 180,
+      "mandatory": true,
+      "description": "Marcador específico para artrite reumatóide"
+    },
+    {
+      "id": "exam_rx_articulacoes",
+      "name": "Raio-X das articulações afetadas",
+      "maxAgeDays": 180,
+      "mandatory": true,
+      "description": "Avaliação de erosões e dano articular"
+    },
+    {
+      "id": "exam_creatinina",
+      "name": "Função renal (Creatinina)",
+      "maxAgeDays": 90,
+      "mandatory": true,
+      "description": "Avaliação de envolvimento renal em LES"
+    },
+    {
+      "id": "exam_complemento",
+      "name": "Níveis de Complemento (C3, C4)",
+      "maxAgeDays": 180,
+      "mandatory": false,
+      "description": "Marcador de atividade de LES (desejável se LES suspeito)"
+    }
+  ],
+
+  "decisionLogic": {
+    "step1": "Avaliar Filtros de Elegibilidade",
+    "step1a": "Se filter_4 (apenas artrose leve) = SIM → Não Qualificado",
+    "step2": "Se algum filtro de elegibilidade falha → Não Qualificado",
+    "step3": "Se todos passam → Detectar Sinais de Alerta",
+    "step4": "Se algum alerta detectado → Urgência",
+    "step5": "Se nenhum alerta → Validar Exames Obrigatórios",
+    "step6": "Se todos exames obrigatórios presentes → Qualificado",
+    "step7": "Se alguns exames faltam → Qualificado com Ressalvas"
+  },
+
+  "recommendations": {
+    "qualified": "Paciente atende aos critérios de elegibilidade para encaminhamento a Reumatologia. Recomenda-se encaminhamento para avaliação especializada, confirmação diagnóstica e início de tratamento adequado.",
+    "qualified_with_caveats": "Paciente atende aos critérios de elegibilidade, porém alguns exames obrigatórios estão faltando. Recomenda-se completar os exames faltantes antes do encaminhamento para melhor avaliação especializada.",
+    "not_qualified": "Paciente não atende aos critérios de elegibilidade para encaminhamento a Reumatologia. Recomenda-se manejo na Atenção Primária com acompanhamento clínico e reavaliação periódica.",
+    "urgency": "URGÊNCIA DETECTADA. Paciente apresenta sinais de alerta que requerem avaliação especializada imediata. Recomenda-se encaminhamento urgente para Reumatologia e/ou Pronto Socorro conforme indicado."
+  },
+
+  "clinicalNotes": {
+    "lupus": "Lúpus Eritematoso Sistêmico (LES) é uma doença autoimune sistêmica que pode afetar múltiplos órgãos. Manifestações articulares são comuns. Critérios diagnósticos incluem FAN positivo, manifestações clínicas e achados laboratoriais.",
+    "rheumatoid_arthritis": "Artrite Reumatóide (AR) é uma doença inflamatória crônica que afeta principalmente articulações pequenas. Marcadores como FR e Anti-CCP são importantes para diagnóstico. Tratamento precoce com DMARDs melhora prognóstico.",
+    "osteoarthritis": "Artrose é uma doença degenerativa articular, geralmente sem inflamação sistêmica. Pacientes com apenas artrose leve/moderada podem ser manejados na Atenção Primária com fisioterapia e analgesia.",
+    "inflammatory_markers": "Marcadores inflamatórios (VHS, PCR) elevados sugerem doença inflamatória ativa. Devem ser correlacionados com manifestações clínicas.",
+    "autoimmune_markers": "Marcadores autoimunes (FAN, FR, Anti-CCP) ajudam a confirmar diagnóstico de doença reumática autoimune. FAN positivo é critério para LES. FR e Anti-CCP são mais específicos para AR."
+  }
+}

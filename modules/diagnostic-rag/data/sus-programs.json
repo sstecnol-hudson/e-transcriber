@@ -1,0 +1,31 @@
+{
+  "programs": [
+    {
+      "id": "hiperdia",
+      "name": "Hiperdia (Controle de Hipertensão e Diabetes)",
+      "target_conditions": ["E11", "I10", "E11.9", "E11.2", "E11.3", "E11.5", "I15"],
+      "criteria": "Diagnóstico confirmado de Diabetes Mellitus tipo 2 ou Hipertensão Arterial Sistêmica.",
+      "frequency": "Acompanhamento a cada 3 meses (UBS) com equipe de enfermagem e médica.",
+      "covered_medications": ["Metformina", "Glibenclamida", "Losartana", "Enalapril", "Captopril", "Anlodipino", "Hidroclorotiazida", "Atenolol", "Sinvastatina", "Atorvastatina"],
+      "documents": ["Cartão SUS", "Documento de Identidade (RG)", "Comprovante de residência", "Receita médica atualizada", "Exames comprobatórios (Glicemia, HbA1c, etc.)"]
+    },
+    {
+      "id": "saude_mental",
+      "name": "Programa de Saúde Mental na Atenção Básica",
+      "target_conditions": ["F32", "F33", "F32.9"],
+      "criteria": "Sintomas moderados a graves de depressão, ansiedade, ou outros transtornos mentais.",
+      "frequency": "Acompanhamento mensal ou bimestral com equipe NASF (Psicólogo/Psiquiatra apoiador) ou clínico geral da UBS.",
+      "covered_medications": ["Fluoxetina", "Sertralina", "Amitriptilina", "Diazepam", "Clonazepam"],
+      "documents": ["Cartão SUS", "RG", "Encaminhamento interno do clínico geral", "Avaliação inicial da equipe de enfermagem"]
+    },
+    {
+      "id": "pre_natal_alto_risco",
+      "name": "Pré-Natal de Alto Risco",
+      "target_conditions": ["pregnancy_status_active"],
+      "criteria": "Gestante com comorbidades graves prévias (Diabetes, Hipertensão, Cardiopatias) ou complicações obstétricas.",
+      "frequency": "Consultas quinzenais ou semanais compartilhadas entre a UBS e o ambulatório de especialidades.",
+      "covered_medications": ["Metildopa", "Sulfato Ferroso", "Ácido Fólico", "Insulina NPH/Regular"],
+      "documents": ["Caderneta da Gestante", "Cartão SUS", "RG", "Laudo médico justificando o alto risco", "Exames de imagem (Ultrassonografia) e laboratoriais"]
+    }
+  ]
+}

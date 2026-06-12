@@ -502,11 +502,10 @@ async function stopMeetingRecording() {
         }
 
         // 8. Enviar para Groq Whisper
-        // Garantir que finalBlob seja um File nomeado corretamente
+        // Garantir que finalBlob seja um File nomeado corretamente (tipo limpo sem codecs para evitar erro 400 da Groq)
         const fileExt = finalBlob.type.includes('wav') ? 'wav' : 'webm';
-        const audioFile = finalBlob instanceof File
-            ? finalBlob
-            : new File([finalBlob], `reuniao_${Date.now()}.${fileExt}`, { type: finalBlob.type });
+        const cleanType = finalBlob.type.includes('wav') ? 'audio/wav' : 'audio/webm';
+        const audioFile = new File([finalBlob], `reuniao_${Date.now()}.${fileExt}`, { type: cleanType });
         await sendMeetingAudioToWhisper(audioFile);
 
         // 9. Resetar UI
@@ -686,8 +685,8 @@ async function sendMeetingAudioToWhisper(file) {
         }
 
         MeetingDOM.rawTranscript.value = transcriptText;
+        MeetingDOM.rawTranscript.dispatchEvent(new Event('input'));
         MeetingState.currentTranscription = transcriptText;
-        if (typeof toggleAiButtonsState === 'function') toggleAiButtonsState();
     } catch (err) {
         MeetingDOM.rawTranscript.value = `Erro: ${err.message}`;
         showToast(err.message || 'Erro ao transcrever áudio.');
@@ -1925,9 +1924,17 @@ function setupMeetingEventListeners() {
     MeetingDOM.rawTranscript?.addEventListener('input', () => {
         if (typeof toggleAiButtonsState === 'function') toggleAiButtonsState();
         enableSaveMeeting();
+        updateMeetingWordCount();
+    });
+    MeetingDOM.rawTranscript?.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            if (MeetingDOM.btnGenerateDocs && !MeetingDOM.btnGenerateDocs.disabled) {
+                generateMeetingMinutes();
+            }
+        }
     });
     MeetingDOM.outputRecord?.addEventListener('input', enableSaveMeeting);
-
     MeetingDOM.btnGenerateDocs?.addEventListener('click', generateMeetingMinutes);
 
     MeetingDOM.btnCopyRecord?.addEventListener('click', () => {
@@ -2003,6 +2010,18 @@ function setupMeetingEventListeners() {
             showToast('Lista de participantes limpa.');
         }
     });
+}
+
+function updateMeetingWordCount() {
+    const text = MeetingDOM.rawTranscript ? (MeetingDOM.rawTranscript.value || '') : '';
+    const charCount = text.length;
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+    const wordCount = words.length;
+    
+    const counterEl = document.getElementById('meeting-transcription-word-counter');
+    if (counterEl) {
+        counterEl.textContent = `${wordCount} palavras | ${charCount} caracteres`;
+    }
 }
 
 // Inicializar após carregamento completo
