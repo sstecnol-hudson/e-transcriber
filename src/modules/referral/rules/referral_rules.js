@@ -439,6 +439,49 @@ const REGRAS_ENCAMINHAMENTO = [
     ],
     protocolo: 'Protocolo de Encaminhamento para Dermatologia - SBD/CFM 2019',
     justificativa_padrao: 'Paciente apresenta alteração dermatológica significativa ([QUADRO]) que necessita avaliação especializada para diagnóstico diferencial e conduta terapêutica adequada.'
+  },
+
+  // ==========================
+  // UROLOGIA
+  // ==========================
+  {
+    id: 'UROL-001',
+    especialidade: 'Urologia',
+    prioridade: 'Média',
+    confiança_base: 92,
+    criterios: [
+      { termo: 'hiperplasia prostática',         peso: 25 },
+      { termo: 'hiperplasia de próstata',         peso: 25 },
+      { termo: 'hbp',                             peso: 20 },
+      { termo: 'retencao urinaria',               peso: 18 },
+      { termo: 'retenção urinária',               peso: 18 },
+      { termo: 'jato fraco',                      peso: 12 },
+      { termo: 'jato urinário fraco',             peso: 12 },
+      { termo: 'nicturia',                        peso: 10 },
+      { termo: 'nictúria',                        peso: 10 },
+      { termo: 'noctúria',                        peso: 10 },
+      { termo: 'polaciuria',                      peso: 10 },
+      { termo: 'polaciúria',                      peso: 10 },
+      { termo: 'esvaziamento incompleto',         peso: 12 },
+      { termo: 'toque retal alterado',            peso: 22 },
+      { termo: 'psa alto',                        peso: 20 },
+      { termo: 'psa elevado',                     peso: 20 },
+      { termo: 'calculo renal',                   peso: 15 },
+      { termo: 'cálculo renal',                   peso: 15 },
+      { termo: 'litíase urinária',                peso: 15 },
+      { termo: 'hematuria',                       peso: 15 },
+      { termo: 'hematúria',                       peso: 15 }
+    ],
+    cids: ['N40', 'C61', 'N20', 'R31', 'R33', 'R35'],
+    exames_obrigatorios: [
+      'Antígeno Prostático Específico (PSA) Total e Livre',
+      'Ultrassonografia de Vias Urinárias',
+      'Urina Tipo I (EAS)',
+      'Urocultura com Antibiograma',
+      'Creatinina e Ureia'
+    ],
+    protocolo: 'Protocolo de Encaminhamento para Urologia - MS / Hospital Moinhos de Vento 2018',
+    justificativa_padrao: 'Paciente apresenta sintomas obstrutivos/irritativos do trato urinário inferior compatíveis com suspeita de [QUADRO], com indicação de avaliação especializada em Urologia conforme o protocolo clínico.'
   }
 ];
 

@@ -1,5 +1,3 @@
 export default {
-  testEnvironment: "jsdom",
-
-  transform: {}
+  testEnvironment: "jsdom"
 };

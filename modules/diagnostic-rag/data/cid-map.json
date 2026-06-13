@@ -330,5 +330,30 @@
     "contextualRules": {
       "warning": "Investigar trombofilia hereditária/adquirida. Solicitar: Fator V Leiden, mutação protrombina G20210A, Proteína C, S, Antitrombina III, Anticorpos Antifosfolípides. Encaminhar à Hematologia."
     }
+  },
+  "Hiperplasia Prostática": {
+    "icd10": "N40",
+    "icd11": "GA80",
+    "description": "Hiperplasia da próstata",
+    "aliases": [
+      "hiperplasia prostatica",
+      "hiperplasia de prostata",
+      "hbp",
+      "próstata aumentada",
+      "prostata aumentada",
+      "hipertrofia prostatica",
+      "hipertrofia de prostata",
+      "aumento da prostata",
+      "aumento da próstata"
+    ],
+    "variants": [
+      { "code": "N40.9", "description": "Hiperplasia de próstata sem obstrução" },
+      { "code": "N40.1", "description": "Hiperplasia de próstata com obstrução" }
+    ],
+    "contextualRules": {
+      "genderRestrict": "M",
+      "minAge": 40,
+      "warning": "Condição restrita ao sexo biológico masculino, mais prevalente acima de 50 anos."
+    }
   }
 }

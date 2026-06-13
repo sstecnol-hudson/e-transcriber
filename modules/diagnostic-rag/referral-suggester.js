@@ -80,6 +80,12 @@ class ReferralSuggester {
       'tad':                                    'Psiquiatria',
       'esquizofrenia':                          'Psiquiatria',
       'transtorno bipolar':                     'Psiquiatria',
+      // Urologia
+      'hiperplasia prostática':                 'Urologia',
+      'hiperplasia da próstata':                 'Urologia',
+      'hbp':                                    'Urologia',
+      'cálculo renal':                          'Urologia',
+      'litíase urinária':                       'Urologia',
     };
 
     // Mapa de justificativas por especialidade
@@ -98,6 +104,7 @@ class ReferralSuggester {
       'Infectologia':                     'é uma condição infecciosa complexa que requer manejo infectológico especializado',
       'Pneumologia / Infectologia':       'pode ter origem infecciosa respiratória grave, requerendo avaliação pneumo-infectológica',
       'Psiquiatria':                      'afeta a saúde mental com intensidade que indica necessidade de suporte psiquiátrico especializado',
+      'Urologia':                         'afeta o trato urinário ou o sistema reprodutor masculino, requerendo avaliação urológica especializada',
       'Clínica Geral':                    'não indica encaminhamento especializado imediato; acompanhamento pela equipe de Saúde da Família é suficiente',
     };
   }
