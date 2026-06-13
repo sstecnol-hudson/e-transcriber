@@ -85,6 +85,18 @@ class ReferralSuggester {
   }
 
   /**
+   * Remove acentos e normaliza para comparação case-insensitive.
+   * Ex.: "Lúpus Eritematoso Sistêmico" → "lupus eritematoso sistemico"
+   */
+  _normalize(str) {
+    return (str || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')  // remove diacríticos
+      .trim();
+  }
+
+  /**
    * Sugere especialidade e justificativa com base no diagnóstico principal.
    * @param {Object} cotResult - Resultado do Chain of Thought
    * @param {Object} cidResult - Resultado do CID Mapper
@@ -94,15 +106,23 @@ class ReferralSuggester {
     const cotDiag  = cotResult?.conclusion?.primaryDiagnosis || cotResult?.conclusion?.diagnosis || '';
     const cidDiag  = cidResult?.primary?.diagnosis || '';
     const diagName = (cotDiag || cidDiag).trim();
-    const diagKey  = diagName.toLowerCase();
+    const diagNorm = this._normalize(diagName);
 
-    // Busca correspondência exata
-    let specialty = this.map[diagKey];
+    let specialty = null;
 
-    // Busca correspondência parcial se não encontrou exata
+    // 1. Busca correspondência exata (normalizada)
+    for (const [key, spec] of Object.entries(this.map)) {
+      if (this._normalize(key) === diagNorm) {
+        specialty = spec;
+        break;
+      }
+    }
+
+    // 2. Busca correspondência parcial (normalizada)
     if (!specialty) {
       for (const [key, spec] of Object.entries(this.map)) {
-        if (diagKey.includes(key) || key.includes(diagKey)) {
+        const keyNorm = this._normalize(key);
+        if (diagNorm.includes(keyNorm) || keyNorm.includes(diagNorm)) {
           specialty = spec;
           break;
         }
