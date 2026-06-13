@@ -10,8 +10,9 @@
 6. [Gerenciamento de Pacientes](#6-gerenciamento-de-pacientes)
 7. [Histórico e Relatórios](#7-histórico-e-relatórios)
 8. [Modelos de IA](#8-modelos-de-ia)
-9. [Funcionalidades Avançadas](#9-funcionalidades-avançadas)
-10. [Solução de Problemas](#10-solução-de-problemas)
+9. [Módulo RAG de Suporte à Decisão Clínica (SUS)](#9-módulo-rag-de-suporte-à-decisão-clínica-sus)
+10. [Funcionalidades Avançadas](#10-funcionalidades-avançadas)
+11. [Solução de Problemas](#11-solução-de-problemas)
 
 ---
 
@@ -807,9 +808,59 @@ Estruture o prontuário considerando:
 
 ---
 
-## 9. FUNCIONALIDADES AVANÇADAS
+## 9. MÓDULO RAG DE SUPORTE À DECISÃO CLÍNICA (SUS)
 
-### 9.1 Atalhos de Teclado
+O **E-Transcriber** conta com um avançado **Módulo de Suporte à Decisão Clínica RAG-Assistido (Retrieval-Augmented Generation)** integrado com protocolos do Sistema Único de Saúde (SUS) e diretrizes da atenção primária.
+
+Após estruturar o prontuário com IA na tela de Nova Consulta, você verá o botão **🧠 Analisar com RAG (Red Flags + CID + Protocolos)** no rodapé da página.
+
+### 9.1 Rastreabilidade e Protocolos SUS (RAG)
+O sistema realiza buscas inteligentes em bases locais contendo protocolos oficiais da Atenção Primária à Saúde para:
+- Validar as condutas indicadas no prontuário.
+- Apresentar a fonte bibliográfica e rastreabilidade direta do protocolo consultado.
+- Exibir a pontuação de qualidade e conformidade clínica do prontuário (Score de 0 a 100).
+
+### 9.2 Sinais de Alarme (Red Flags)
+Identificação automática de sintomas de gravidade ou critérios de urgência/emergência na consulta (ex: dor no peito irradiada, cefaleia de início súbito e de intensidade máxima, etc.):
+- Exibe alertas destacados com a respectiva gravidade (**Urgência** ou **Emergência**).
+- Sugere a ação imediata recomendada (ex: direcionamento para pronto-atendimento).
+- Cita a origem do protocolo que fundamenta o alerta de segurança.
+
+### 9.3 Mapeamento e Validação de CIDs
+- **Mapeamento de CIDs:** Traduz o diagnóstico principal da consulta para códigos validados do **CID-10** e do **CID-11** (com descrições completas).
+- **Inconsistências:** Alerta o profissional caso haja divergência entre o diagnóstico principal do raciocínio clínico e o código CID selecionado.
+- **Alternativas:** Sugere CIDs alternativos mais específicos caso o termo seja muito genérico.
+
+### 9.4 Validação RENAME (Medicamentos SUS)
+O módulo verifica todas as medicações prescritas no prontuário em relação à **RENAME (Relação Nacional de Medicamentos Essenciais)**:
+- **Medicações RENAME:** Identifica quais fármacos estão cobertos e disponíveis na rede pública (etiqueta verde `RENAME`).
+- **Alternativas de Acesso:** Para medicações fora da lista, sugere alternativas terapêuticas equivalentes disponíveis no SUS (etiqueta vermelha `Fora da RENAME` com alternativas).
+
+### 9.5 Exames por Nível de Atenção no SUS
+Classifica e organiza todos os exames solicitados no prontuário de acordo com a infraestrutura do SUS:
+- 🏥 **UBS (Básico):** Exames disponíveis localmente na Unidade Básica de Saúde.
+- 🔬 **Laboratório Central:** Exames processados na rede municipal/estadual de laboratórios.
+- 📋 **Especializado (Regulação):** Exames de maior complexidade que dependem do sistema de regulação e agendamento especializado.
+
+### 9.6 Programas e Acompanhamento do Paciente
+Identifica programas do SUS aplicáveis ao quadro do paciente (como **Hiperdia**, **Pré-Natal**, etc.) e apresenta:
+- Frequência de acompanhamento recomendada.
+- Lista de exames periódicos necessários e documentos para cadastro e renovação de receitas.
+
+### 9.7 Justificativa de Encaminhamento
+Sempre que uma indicação de consulta especializada for identificada:
+- O sistema sugere a especialidade correta (Endocrinologia, Cardiologia, Reumatologia, etc.).
+- Elabora uma **Justificativa Clínica de Encaminhamento** completa. Ao clicar no ícone de informação (**ℹ**), o médico visualiza a justificativa gerada e pode baixar um arquivo contendo o resumo para encaminhamento.
+
+### 9.8 Material de Apoio (Integração BVS APS)
+- **Integração Dinâmica:** O sistema extrai termos da consulta e busca de forma automatizada por diretrizes baseadas em evidências clínicas do telessaúde (Biblioteca Virtual em Saúde - BVS APS).
+- **Segundas Opiniões Formativas (SOFs):** O médico pode ler resumos completos de evidências científicas diretamente na barra lateral (*Material de Apoio BVS*) para guiar a conduta terapêutica.
+
+---
+
+## 10. FUNCIONALIDADES AVANÇADAS
+
+### 10.1 Atalhos de Teclado
 
 ```
 Ctrl + S     = Salvar consulta/reunião
@@ -820,7 +871,7 @@ Ctrl + Shift + R = Recarregar (limpar cache)
 F12          = Abrir DevTools (debug)
 ```
 
-### 9.2 Trabalhando Offline
+### 10.2 Trabalhando Offline
 
 **O que funciona SEM internet:**
 - ✅ Cadastro de pacientes
@@ -835,7 +886,7 @@ F12          = Abrir DevTools (debug)
 - ❌ Geração de prontuários/atas (Llama)
 - ❌ Teste de conexão Groq
 
-### 9.3 Backup e Restauração
+### 10.3 Backup e Restauração
 
 **Fazer Backup Manual:**
 1. Abra DevTools (F12)
@@ -929,9 +980,9 @@ Qualquer dúvida, entre em contato!
 
 ---
 
-## 10. SOLUÇÃO DE PROBLEMAS
+## 11. SOLUÇÃO DE PROBLEMAS
 
-### 10.1 Problemas Comuns
+### 11.1 Problemas Comuns
 
 **❌ "Groq Desconectado"**
 
@@ -1021,7 +1072,7 @@ Qualquer dúvida, entre em contato!
 
 ---
 
-### 10.2 Logs de Debug
+### 11.2 Logs de Debug
 
 **Abrir Console:**
 1. Pressione F12
@@ -1037,7 +1088,7 @@ Qualquer dúvida, entre em contato!
 🔍 Testando bibliotecas...
 ```
 
-### 10.3 Resetar Sistema
+### 11.3 Resetar Sistema
 
 **Reset Completo:**
 1. Vá em **Configurações**
@@ -1061,7 +1112,7 @@ localStorage.removeItem('etranscriber_meetings_history');
 location.reload();
 ```
 
-### 10.4 Verificar Versão
+### 11.4 Verificar Versão
 
 **No Console (F12):**
 ```javascript
@@ -1074,7 +1125,7 @@ console.log('jsPDF:', typeof window.jspdf);
 console.log('XLSX:', typeof XLSX);
 ```
 
-### 10.5 Suporte e Contato
+### 11.5 Suporte e Contato
 
 **Repositório GitHub:**
 ```
@@ -1190,7 +1241,10 @@ https://github.com/sstecnol-hudson/e-transcriber
 **QR Code**: Código de barras 2D para check-in  
 **SOAP**: Subjetivo, Objetivo, Avaliação, Plano  
 **HDA**: História da Doença Atual  
-**CID-10**: Classificação Internacional de Doenças  
+**CID-10 / CID-11**: Classificação Internacional de Doenças (v10 e v11)  
+**RAG**: Geração Aumentada por Recuperação (Recuperação de Protocolos baseada em contexto)  
+**RENAME**: Relação Nacional de Medicamentos Essenciais do SUS  
+**BVS APS**: Biblioteca Virtual em Saúde - Atenção Primária à Saúde  
 **LLM**: Large Language Model (Modelo de Linguagem Grande)  
 **CDN**: Content Delivery Network (rede de distribuição de conteúdo)
 
@@ -1198,10 +1252,11 @@ https://github.com/sstecnol-hudson/e-transcriber
 
 ## 📅 ATUALIZAÇÕES E VERSÕES
 
-**Versão Atual**: 1.2  
-**Última Atualização**: Maio 2026
+**Versão Atual**: 2.0  
+**Última Atualização**: Junho 2026
 
 **Histórico de Versões:**
+- v2.0: Módulo RAG, Sinais de Alarme (Red Flags), CIDs, Validação RENAME, Exames e Programas SUS, Justificativa de Encaminhamento e Material de Apoio BVS APS.
 - v1.2: Correção QRCode, melhorias de performance
 - v1.1: Modo reuniões, gerenciamento de participantes
 - v1.0: Lançamento inicial com consultas médicas
@@ -1218,9 +1273,9 @@ O **E-Transcriber** é uma ferramenta poderosa que combina IA com praticidade pa
 - ⏱️ Economizar tempo
 
 **Próximos Passos:**
-1. Configure sua chave Groq
+1. Configure sua chave Groq e a API Tavily
 2. Cadastre seus primeiros pacientes
-3. Faça uma consulta de teste
+3. Faça uma consulta de teste e execute a análise RAG
 4. Explore os modelos de IA
 5. Personalize conforme sua necessidade
 
@@ -1234,5 +1289,5 @@ O **E-Transcriber** é uma ferramenta poderosa que combina IA com praticidade pa
 
 **🎉 Bom uso do E-Transcriber!**
 
-*Manual criado em: 20/05/2026*  
-*Versão do Manual: 1.0*
+*Última revisão do Manual: 13/06/2026*  
+*Versão do Manual: 2.0*

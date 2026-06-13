@@ -2,7 +2,17 @@
   "name": "e-transciber",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "npx serve -s . -l 8000",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "jest-environment-jsdom": "^30.4.1"
+  },
+  "jest": {
+    "testEnvironment": "jsdom"
   }
 }
+

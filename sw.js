@@ -1,4 +1,4 @@
-const CACHE_NAME = 'etranscriber-cache-v13';
+const CACHE_NAME = 'etranscriber-cache-v14';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const ASSETS = [
   './audio-processor.js',
   './bvs-service.js',
   './manifest.json',
+  './favicon.ico',
   './icon-192.png',
   './icon-512.png'
 ];

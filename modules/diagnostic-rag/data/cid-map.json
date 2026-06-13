@@ -239,5 +239,96 @@
     "contextualRules": {
       "warning": "Suspeita de hipercortisolismo (Síndrome de Cushing). Solicitar cortisol salivar noturno, cortisol livre urinário de 24h ou teste de supressão com dexametasona. Requer encaminhamento ao endocrinologista."
     }
+  },
+  "Isquemia Digital Aguda": {
+    "icd10": "I73.8",
+    "icd11": "BD4Z",
+    "description": "Isquemia digital aguda — oclusão arterial periférica",
+    "aliases": [
+      "isquemia digital", "isquemia digital aguda", "dedo azul", "dedo cianotido",
+      "dedo cianótico", "dedo arroxeado", "sindrome do dedo azul", "síndrome do dedo azul",
+      "blue toe syndrome", "isquemia periferica", "isquemia periférica",
+      "oclusao arterial", "oclusão arterial", "isquemia aguda de membro",
+      "cianose digital", "cianose distal", "necrose digital", "gangrena digital"
+    ],
+    "variants": [
+      { "code": "I73.8", "description": "Outras doenças vasculares periféricas especificadas (isquemia digital)" },
+      { "code": "I73.9", "description": "Doença vascular periférica não especificada" },
+      { "code": "R02",   "description": "Gangrena não classificada em outra parte" }
+    ],
+    "contextualRules": {
+      "warning": "Isquemia digital aguda é uma emergência vascular. Encaminhar com urgência à Cirurgia Vascular/Angiologia. Investigar causa: embolia (cardíaca, ateromatosa), trombofilia, vasculite, Raynaud. Solicitar Doppler urgente."
+    }
+  },
+  "Trombose Venosa Profunda": {
+    "icd10": "I82.4",
+    "icd11": "BD71",
+    "description": "Trombose venosa profunda dos membros inferiores",
+    "aliases": [
+      "trombose venosa", "tvp", "trombose venosa profunda", "trombose de membro",
+      "trombo venoso", "trombose de veia", "flebite profunda"
+    ],
+    "variants": [
+      { "code": "I82.4", "description": "Trombose venosa profunda dos membros inferiores" },
+      { "code": "I80.2", "description": "Flebite e tromboflebite de outros vasos dos membros inferiores" }
+    ],
+    "contextualRules": {
+      "warning": "Suspeita de TVP. Aplicar Escore de Wells. Solicitar D-dímero e Doppler venoso com urgência. Risco de tromboembolismo pulmonar (TEP)."
+    }
+  },
+  "Doença Arterial Periférica": {
+    "icd10": "I70.2",
+    "icd11": "BD40.0",
+    "description": "Aterosclerose das artérias dos membros",
+    "aliases": [
+      "dap", "doença arterial periférica", "doenca arterial periferica",
+      "aterosclerose periférica", "aterosclerose periferica",
+      "isquemia crônica de membro", "isquemia cronica", "claudicacao intermitente",
+      "claudicação intermitente", "pulso ausente", "pulso diminuído"
+    ],
+    "variants": [
+      { "code": "I70.2", "description": "Aterosclerose das artérias dos membros" },
+      { "code": "I70.20", "description": "Aterosclerose de extremidades sem ulceração ou gangrena" },
+      { "code": "I70.24", "description": "Aterosclerose de extremidades com isquemia crítica" }
+    ],
+    "contextualRules": {
+      "warning": "Medir Índice Tornozelo-Braço (ITB). ITB < 0.9 confirma DAP. Encaminhar à Cirurgia Vascular se ITB < 0.6 ou dor em repouso (isquemia crítica)."
+    }
+  },
+  "Trombose Arterial": {
+    "icd10": "I74.9",
+    "icd11": "BD50",
+    "description": "Embolia e trombose de artérias não especificadas",
+    "aliases": [
+      "trombose arterial", "embolia arterial", "oclusão arterial aguda",
+      "tromboembolismo arterial", "embolo arterial", "êmbolo arterial",
+      "microembolia", "embolia de colesterol", "émbolo de colesterol"
+    ],
+    "variants": [
+      { "code": "I74.3", "description": "Embolia e trombose das artérias dos membros superiores" },
+      { "code": "I74.4", "description": "Embolia e trombose das artérias dos membros inferiores" },
+      { "code": "I74.9", "description": "Embolia e trombose de artérias não especificadas" }
+    ],
+    "contextualRules": {
+      "warning": "Trombose/embolia arterial aguda — emergência vascular. Sinais de isquemia: dor, palidez, parestesia, paralisia, pulso ausente (6 Ps). Encaminhamento urgente à Cirurgia Vascular."
+    }
+  },
+  "Trombofilia": {
+    "icd10": "D68.5",
+    "icd11": "3B13",
+    "description": "Trombofilia primária — estado de hipercoagulabilidade",
+    "aliases": [
+      "trombofilia", "hipercoagulabilidade", "estado protrombótico",
+      "trombose recorrente", "sindrome antifosfolipide", "síndrome antifosfolípide",
+      "saf", "fator v leiden", "mutação protrombina", "deficiência de proteína c",
+      "deficiência de proteína s", "deficiência de antitrombina"
+    ],
+    "variants": [
+      { "code": "D68.5", "description": "Trombofilia primária" },
+      { "code": "D68.6", "description": "Outros estados trombofílicos" }
+    ],
+    "contextualRules": {
+      "warning": "Investigar trombofilia hereditária/adquirida. Solicitar: Fator V Leiden, mutação protrombina G20210A, Proteína C, S, Antitrombina III, Anticorpos Antifosfolípides. Encaminhar à Hematologia."
+    }
   }
 }

@@ -72,8 +72,33 @@ class DiagnosticRAG {
       // 5. Verificação de Consistência COT vs CID
       const consistencyInfo = this.diagnosticCompare.compare(cotResult, cidResult);
 
-      // 6. Sugestão de Encaminhamento
-      const referralInfo = this.referralSuggester.suggest(cotResult, cidResult);
+      // 6. Sugestão de Encaminhamento — usa as Regras SUS oficiais (referral_rules.js)
+      // para que o painel RAG e o botão "Sugerir Encaminhamento SUS" sejam consistentes.
+      let referralInfo = { specialty: 'Clínica Geral', rationale: '' };
+      try {
+        const susRules = window.analisarEncaminhamento;
+        if (typeof susRules === 'function') {
+          // Constrói texto combinando transcrição + diagnóstico COT para melhor match
+          const diagText = [
+            request.transcript || '',
+            cotResult?.conclusion?.primaryDiagnosis || '',
+            cotResult?.conclusion?.diagnosis || '',
+            (cotResult?.conclusion?.differentialDiagnoses || []).join(' ')
+          ].join(' ');
+          const susResult = susRules(diagText);
+          referralInfo = {
+            specialty: susResult.especialidade,
+            rationale: susResult.justificativa,
+            confidence: susResult.confiança
+          };
+        } else {
+          // Fallback: ReferralSuggester próprio se regras SUS não estiverem carregadas
+          referralInfo = this.referralSuggester.suggest(cotResult, cidResult);
+        }
+      } catch (refErr) {
+        console.warn('[RAG] Erro ao chamar regras SUS, usando fallback:', refErr);
+        referralInfo = this.referralSuggester.suggest(cotResult, cidResult);
+      }
 
       // 7. Contextualização para Atenção Primária (SUS)
       const susContext = await this.contextualizer.contextualize(

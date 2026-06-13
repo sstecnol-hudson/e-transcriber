@@ -365,23 +365,71 @@ function renderRagResults(result, container) {
       </div>
     ` : ''}
 
-    <!-- Encaminhamento Sugerido -->
-    ${referralInfo ? `
-      <div id="referral-block" style="margin-top: 20px; background: rgba(99, 102, 241, 0.07); border: 1px solid rgba(99, 102, 241, 0.25); padding: 16px; border-radius: 10px; border-left: 5px solid var(--primary);">
-        <h4 style="margin: 0 0 10px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--primary);">🏥 Encaminhamento Sugerido</h4>
-        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-          <span style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">${referralInfo.specialty || 'Clínica Geral'}</span>
-          <button
-            id="referral-info-btn"
-            title="Ver justificativa do encaminhamento"
-            style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: var(--primary); border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-size: 1rem; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s;"
-            onmouseover="this.style.background='rgba(99,102,241,0.3)'"
-            onmouseout="this.style.background='rgba(99,102,241,0.15)'"
-          >ℹ</button>
+    <!-- ─── Encaminhamento SUS Unificado ─────────────────────────────── -->
+    ${referralInfo ? (() => {
+      const prioColor = {
+        'Alta':     { bg: 'rgba(239,68,68,0.12)',  border: '#ef4444', text: '#f87171' },
+        'Média':    { bg: 'rgba(245,158,11,0.12)', border: '#f59e0b', text: '#fbbf24' },
+        'Variável': { bg: 'rgba(99,102,241,0.12)', border: '#818cf8', text: '#a5b4fc' }
+      }[referralInfo.prioridade] || { bg: 'rgba(99,102,241,0.08)', border: 'rgba(99,102,241,0.3)', text: 'var(--primary)' };
+      const confColor = (referralInfo.confidence || referralInfo.confiança || 0) >= 85 ? '#10b981'
+                      : (referralInfo.confidence || referralInfo.confiança || 0) >= 65 ? '#f59e0b' : '#ef4444';
+      const confVal   = referralInfo.confidence || referralInfo.confiança || 0;
+      const examesHtml = referralInfo.exames_obrigatorios && referralInfo.exames_obrigatorios.length > 0
+        ? referralInfo.exames_obrigatorios.map(e => `<span style="display:inline-block;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);border-radius:4px;padding:2px 8px;font-size:0.75rem;margin:2px;">${e}</span>`).join('')
+        : '<span style="color:var(--text-secondary);font-size:0.85rem;">Nenhum exame obrigatório especificado.</span>';
+      return `
+      <div id="referral-block-unified" style="margin-top:20px;background:${prioColor.bg};border:1px solid ${prioColor.border};border-left:5px solid ${prioColor.border};padding:18px;border-radius:10px;">
+        <!-- Cabeçalho -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:1.3rem;">🏥</span>
+            <h4 style="margin:0;font-size:1rem;text-transform:uppercase;letter-spacing:0.5px;color:${prioColor.text};">Encaminhamento SUS Sugerido</h4>
+          </div>
+          ${referralInfo.prioridade ? `<span style="background:${prioColor.bg};border:1px solid ${prioColor.border};color:${prioColor.text};padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:700;">⚡ Prioridade ${referralInfo.prioridade}</span>` : ''}
         </div>
-        <p style="margin: 6px 0 0; font-size: 0.8rem; color: var(--text-secondary);">Clique no ícone para ver a justificativa clínica desta sugestão.</p>
-      </div>
-    ` : ''}
+
+        <!-- Especialidade + Confiança -->
+        <div style="margin-bottom:12px;">
+          <p style="margin:0 0 6px;font-size:1.15rem;font-weight:700;color:var(--text-primary);">${referralInfo.specialty}</p>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">
+              <div style="width:${confVal}%;height:100%;background:${confColor};border-radius:3px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1);"></div>
+            </div>
+            <span style="font-size:0.8rem;color:${confColor};font-weight:700;white-space:nowrap;">${confVal}% confiança</span>
+          </div>
+        </div>
+
+        <!-- Justificativa -->
+        <p style="margin:0 0 12px;font-size:0.88rem;color:var(--text-primary);line-height:1.6;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">${referralInfo.rationale || ''}</p>
+
+        <!-- Exames Obrigatórios -->
+        ${referralInfo.exames_obrigatorios && referralInfo.exames_obrigatorios.length > 0 ? `
+        <div style="margin-bottom:12px;">
+          <p style="margin:0 0 6px;font-size:0.8rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;">📋 Exames Obrigatórios para Regulação</p>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">${examesHtml}</div>
+        </div>` : ''}
+
+        <!-- Protocolo -->
+        ${referralInfo.protocolo ? `
+        <p style="margin:0 0 14px;font-size:0.75rem;color:var(--text-secondary);font-style:italic;">
+          📜 Protocolo: ${referralInfo.protocolo}
+        </p>` : ''}
+
+        <!-- Decisão Médica -->
+        <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:0.8rem;color:var(--text-secondary);font-weight:600;">Decisão do médico:</span>
+          <button id="referral-btn-aceitar" style="background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#34d399;padding:6px 16px;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:background 0.2s;"
+            onmouseover="this.style.background='rgba(16,185,129,0.3)'" onmouseout="this.style.background='rgba(16,185,129,0.15)'">
+            ✅ Aceitar Encaminhamento
+          </button>
+          <button id="referral-btn-rejeitar" style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#f87171;padding:6px 16px;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:background 0.2s;"
+            onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.1)'">
+            ❌ Rejeitar
+          </button>
+        </div>
+      </div>`;
+    })() : ''}
 
     <!-- Rodapé: Evidências BVS e Botão Re-analisar -->
     <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 16px;">
@@ -402,19 +450,37 @@ function renderRagResults(result, container) {
     </div>
   `;
 
-  // ── Anexar listener do botão ℹ APÓS o innerHTML ─────────────────────────
-  // Browsers NÃO executam <script> injetado via innerHTML — por isso o
-  // listener é adicionado aqui, fora do template string.
+  // ── Anexar listeners dos botões de decisão APÓS o innerHTML ─────────────
+  // Browsers NÃO executam <script> injetado via innerHTML.
   if (referralInfo) {
-    const btn = container.querySelector('#referral-info-btn');
-    if (btn) {
-      btn.addEventListener('click', function () {
-        _showReferralModal(
-          referralInfo.specialty || 'Clínica Geral',
-          referralInfo.rationale || ''
+    const btnAceitar  = container.querySelector('#referral-btn-aceitar');
+    const btnRejeitar = container.querySelector('#referral-btn-rejeitar');
+
+    const _registrar = (tipo) => {
+      // Chamar motor de aprendizado se disponível
+      if (typeof window.registrarDecisao === 'function') {
+        window.registrarDecisao(
+          [{ especialidade: referralInfo.specialty }],
+          { tipo, especialidade: tipo === 'ACEITOU' ? referralInfo.specialty : null },
+          { termos: referralInfo.termos_encontrados || [], cids: [] }
         );
-      });
-    }
+      }
+      // Feedback visual
+      const bloco = container.querySelector('#referral-block-unified');
+      if (bloco) {
+        const msg = tipo === 'ACEITOU'
+          ? '<span style="color:#34d399;font-weight:700;">✅ Encaminhamento aceito e registrado.</span>'
+          : '<span style="color:#f87171;font-weight:700;">❌ Encaminhamento rejeitado e registrado.</span>';
+        const decDiv = bloco.querySelector('div[style*="Decisão"]') || bloco.lastElementChild;
+        if (decDiv) decDiv.innerHTML = msg;
+      }
+      if (typeof showToast === 'function') {
+        showToast(tipo === 'ACEITOU' ? '✅ Encaminhamento aceito!' : '❌ Encaminhamento rejeitado.');
+      }
+    };
+
+    if (btnAceitar)  btnAceitar.addEventListener('click',  () => _registrar('ACEITOU'));
+    if (btnRejeitar) btnRejeitar.addEventListener('click', () => _registrar('REJEITOU'));
   }
 }
 
