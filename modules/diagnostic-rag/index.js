@@ -79,13 +79,28 @@ class DiagnosticRAG {
         const susRules = window.analisarEncaminhamento;
         if (typeof susRules === 'function') {
           // Constrói texto combinando transcrição + diagnóstico COT para melhor match
+          // Inclui hipóteses, CIDs, texto do prontuário E transcrição bruta
+          const allHypotheses = (cotResult?.hypotheses || []).map(h => `${h.diagnosis || ''} ${h.icd10 || ''}`).join(' ');
           const diagText = [
             request.transcript || '',
             cotResult?.conclusion?.primaryDiagnosis || '',
             cotResult?.conclusion?.diagnosis || '',
-            (cotResult?.conclusion?.differentialDiagnoses || []).join(' ')
+            cotResult?.conclusion?.icd10 || '',
+            (cotResult?.conclusion?.differentialDiagnoses || []).join(' '),
+            allHypotheses,
+            cidResult?.primary?.diagnosis || '',
+            cidResult?.primary?.icd10?.code || ''
           ].join(' ');
-          const susResult = susRules(diagText);
+          let susResult = susRules(diagText);
+
+          // Segunda tentativa: se retornou Clínica Geral e há transcrição bruta diferente do diagText, tenta só com ela
+          if (susResult.especialidade === 'Clínica Geral' && request.transcript && request.transcript !== diagText) {
+            const susResult2 = susRules(request.transcript);
+            if (susResult2.especialidade !== 'Clínica Geral') {
+              susResult = susResult2;
+            }
+          }
+
           referralInfo = {
             specialty: susResult.especialidade,
             rationale: susResult.justificativa,

@@ -88,7 +88,9 @@ async function handleRagAnalyze() {
   setTimeout(() => { ragCard.style.opacity = '1'; ragCard.style.transform = 'translateY(0)'; }, 50);
 
   // Preparar requisição
-  const transcript = AppState.currentTranscription || prontuarioVal;
+  // Prioridade: 1) transcrição bruta do áudio  2) rawTranscript digitado  3) prontuário gerado
+  const rawTranscriptVal = DOM.rawTranscript?.value?.trim() || '';
+  const transcript = AppState.currentTranscription || rawTranscriptVal || prontuarioVal;
   const specialty = DOM.doctorSpecialty?.value || 'Clínica Geral';
 
   let extractedData = {};
