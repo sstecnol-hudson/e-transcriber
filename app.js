@@ -2,6 +2,16 @@
 // E-TRANSCRIBER v1.2 - LÓGICA COMPLETA (GROQ API + PACIENTES + TEMA + PDF)
 // ==========================================================================
 
+// Suprime AbortError "play() interrupted by pause()" gerado pelo browser/PWA
+// É um erro cosmético não-bloqueante causado por política de autoplay do navegador
+window.addEventListener('unhandledrejection', function(event) {
+    if (event.reason && event.reason.name === 'AbortError' &&
+        typeof event.reason.message === 'string' &&
+        event.reason.message.includes('play()')) {
+        event.preventDefault();
+    }
+});
+
 // ==========================================================================
 // 0. UTILITÁRIOS GLOBAIS
 // ==========================================================================
