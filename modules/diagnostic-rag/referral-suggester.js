@@ -13,11 +13,18 @@ class ReferralSuggester {
       'hipotireoidismo':                        'Endocrinologia',
       'hipertireoidismo':                       'Endocrinologia',
       'obesidade':                              'Endocrinologia',
+      'dm':                                     'Endocrinologia',
+      'dm2':                                    'Endocrinologia',
+      'dm1':                                    'Endocrinologia',
       // Reumatologia
       'síndrome de sjögren':                    'Reumatologia',
       'lúpus eritematoso sistêmico':            'Reumatologia',
+      'les':                                    'Reumatologia',
+      'lupus':                                  'Reumatologia',
+      'lúpus':                                  'Reumatologia',
       'artrite reumatoide':                     'Reumatologia',
       'artrite reumatóide':                     'Reumatologia',
+      'ar':                                     'Reumatologia',
       'fibromialgia':                           'Reumatologia',
       // Hematologia
       'anemia ferropriva':                      'Hematologia',
@@ -28,7 +35,9 @@ class ReferralSuggester {
       // Cardiologia
       'hipertensão arterial':                   'Cardiologia',
       'hipertensão':                            'Cardiologia',
+      'has':                                    'Cardiologia',
       'insuficiência cardíaca':                 'Cardiologia',
+      'ic':                                     'Cardiologia',
       'fibrilação atrial':                      'Cardiologia',
       'doença coronariana':                     'Cardiologia',
       // Pneumologia
@@ -36,6 +45,8 @@ class ReferralSuggester {
       'dpoc':                                   'Pneumologia',
       'doença pulmonar obstrutiva crônica':     'Pneumologia',
       'pneumonia':                              'Pneumologia',
+      'tep':                                    'Pneumologia / Cardiologia',
+      'tromboembolismo pulmonar':               'Pneumologia / Cardiologia',
       // Gastroenterologia
       'doença de crohn':                        'Gastroenterologia',
       'retocolite ulcerativa':                  'Gastroenterologia',
@@ -51,17 +62,24 @@ class ReferralSuggester {
       // Nefrologia
       'insuficiência renal crônica':            'Nefrologia',
       'doença renal crônica':                   'Nefrologia',
+      'irc':                                    'Nefrologia',
+      'drc':                                    'Nefrologia',
       // Dermatologia
       'psoríase':                               'Dermatologia',
       'dermatite atópica':                      'Dermatologia',
       // Infectologia
       'hiv':                                    'Infectologia',
+      'aids':                                   'Infectologia',
       'tuberculose':                            'Pneumologia / Infectologia',
+      'tb':                                     'Pneumologia / Infectologia',
       // Psiquiatria
       'depressão':                              'Psiquiatria',
       'transtorno depressivo maior':            'Psiquiatria',
+      'tdm':                                    'Psiquiatria',
       'transtorno de ansiedade':                'Psiquiatria',
+      'tad':                                    'Psiquiatria',
       'esquizofrenia':                          'Psiquiatria',
+      'transtorno bipolar':                     'Psiquiatria',
     };
 
     // Mapa de justificativas por especialidade
