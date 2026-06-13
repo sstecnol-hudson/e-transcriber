@@ -50,60 +50,47 @@ async function handleRagAnalyze() {
   if (lastRagAnalysisProntuario === prontuarioVal && lastRagAnalysisResult) {
     console.log('🔄 Reutilizando análise RAG em cache da sessão para este prontuário.');
     showToast('✓ Carregado do cache da sessão.');
-    
+
     // Restaurar emergências/urgências no AppState
     if (typeof AppState !== 'undefined') {
-      AppState.activeEmergencies = lastRagAnalysisResult.redFlags ? lastRagAnalysisResult.redFlags.filter(rf => rf.urgency === 'Emergência' || rf.urgency === 'Urgência') : [];
+      AppState.activeEmergencies = lastRagAnalysisResult.redFlags
+        ? lastRagAnalysisResult.redFlags.filter(rf => rf.urgency === 'Emergência' || rf.urgency === 'Urgência')
+        : [];
     }
-    
+
     if (ragBadge && lastRagAnalysisResult.disclaimer) {
-      let badgeText = lastRagAnalysisResult.disclaimer.includes('Tavily') ? 'Online (Tavily) (Cache)' : 'Offline (Cache/Local) (Cache)';
+      let badgeText = lastRagAnalysisResult.disclaimer.includes('Tavily')
+        ? 'Online (Tavily) (Cache)' : 'Offline (Cache/Local) (Cache)';
       if (window.lastBvsContextTitles && window.lastBvsContextTitles.length > 0) {
         badgeText += ' + Evidências BVS';
       }
       ragBadge.textContent = badgeText;
     }
-    
+
     renderRagResults(lastRagAnalysisResult, ragResults);
-    
-    if (ragLoader) {
-      ragLoader.classList.add('hidden');
-      ragLoader.style.display = 'none';
-    }
-    if (ragResults) {
-      ragResults.classList.remove('hidden');
-      ragResults.style.display = 'block';
-    }
-    
+
+    if (ragLoader) { ragLoader.classList.add('hidden'); ragLoader.style.display = 'none'; }
+    if (ragResults) { ragResults.classList.remove('hidden'); ragResults.style.display = 'block'; }
+
     ragCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
 
   // Exibir loader
-  if (ragLoader) {
-    ragLoader.classList.remove('hidden');
-    ragLoader.style.display = 'flex';
-  }
-  if (ragResults) {
-    ragResults.classList.add('hidden');
-    ragResults.style.display = 'none';
-  }
+  if (ragLoader) { ragLoader.classList.remove('hidden'); ragLoader.style.display = 'flex'; }
+  if (ragResults) { ragResults.classList.add('hidden'); ragResults.style.display = 'none'; }
 
   // Scroll suave para o painel com animação
   ragCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
   ragCard.style.opacity = '0';
   ragCard.style.transform = 'translateY(20px)';
   ragCard.style.transition = 'opacity 0.5s ease-out, transform 0.5s ease-out';
-  
-  setTimeout(() => {
-    ragCard.style.opacity = '1';
-    ragCard.style.transform = 'translateY(0)';
-  }, 50);
+  setTimeout(() => { ragCard.style.opacity = '1'; ragCard.style.transform = 'translateY(0)'; }, 50);
 
   // Preparar requisição
   const transcript = AppState.currentTranscription || prontuarioVal;
   const specialty = DOM.doctorSpecialty?.value || 'Clínica Geral';
-  
+
   let extractedData = {};
   if (typeof DataExtractor !== 'undefined') {
     extractedData = DataExtractor.extractConsultationData({
@@ -118,32 +105,22 @@ async function handleRagAnalyze() {
     });
   }
 
-  const request = {
-    transcript,
-    specialty,
-    extractedData,
-    dataExtractorConfidence: 85
-  };
+  const request = { transcript, specialty, extractedData, dataExtractorConfidence: 85 };
 
   try {
-    // Chamar orquestrador RAG
     const ragOrchestrator = getOrchestrator();
-    if (!ragOrchestrator) {
-      throw new Error('DiagnosticRAG orchestrator unavailable.');
-    }
+    if (!ragOrchestrator) throw new Error('DiagnosticRAG orchestrator unavailable.');
     const result = await ragOrchestrator.analyze(request);
 
-    if (!result.success) {
-      throw new Error(result.error || 'Erro desconhecido na análise RAG.');
-    }
+    if (!result.success) throw new Error(result.error || 'Erro desconhecido na análise RAG.');
 
-    // 1. Atualizar o prontuário no textarea principal com a versão enriquecida do RAG
+    // 1. Atualizar prontuário no textarea principal
     if (DOM.outputRecord) {
       DOM.outputRecord.value = result.soap;
       AppState.currentRecordOutput = result.soap;
     }
 
-    // 2. Renderizar os resultados visuais no painel RAG
+    // 2. Atualizar badge
     if (ragBadge && result.disclaimer) {
       let badgeText = result.disclaimer.includes('Tavily') ? 'Online (Tavily)' : 'Offline (Cache/Local)';
       if (window.lastBvsContextTitles && window.lastBvsContextTitles.length > 0) {
@@ -154,22 +131,23 @@ async function handleRagAnalyze() {
       ragBadge.textContent = badgeText;
     }
 
-    // Gravar no cache de sessão
+    // 3. Gravar no cache de sessão
     lastRagAnalysisProntuario = prontuarioVal;
     lastRagAnalysisResult = result;
 
-    // Gravar emergências/urgências ativas no AppState global
+    // 4. Gravar emergências no AppState global
     if (typeof AppState !== 'undefined') {
-      AppState.activeEmergencies = result.redFlags ? result.redFlags.filter(rf => rf.urgency === 'Emergência' || rf.urgency === 'Urgência') : [];
+      AppState.activeEmergencies = result.redFlags
+        ? result.redFlags.filter(rf => rf.urgency === 'Emergência' || rf.urgency === 'Urgência')
+        : [];
     }
 
     renderRagResults(result, ragResults);
-
     showToast('✓ Análise RAG concluída com sucesso!');
+
   } catch (error) {
     console.error('Erro na análise RAG:', error);
     showToast(`❌ Erro na análise RAG: ${error.message}`);
-    
     if (ragResults) {
       ragResults.innerHTML = `
         <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 16px; border-radius: 8px; color: #f87171;">
@@ -181,19 +159,15 @@ async function handleRagAnalyze() {
       ragResults.style.display = 'block';
     }
   } finally {
-    if (ragLoader) {
-      ragLoader.classList.add('hidden');
-      ragLoader.style.display = 'none';
-    }
-    if (ragResults) {
-      ragResults.classList.remove('hidden');
-      ragResults.style.display = 'block';
-    }
+    if (ragLoader) { ragLoader.classList.add('hidden'); ragLoader.style.display = 'none'; }
+    if (ragResults) { ragResults.classList.remove('hidden'); ragResults.style.display = 'block'; }
   }
 }
 
 /**
- * Renderiza os dados do RAG em elementos HTML dentro do painel
+ * Renderiza os dados do RAG em elementos HTML dentro do painel.
+ * NOTA: scripts dentro de innerHTML não são executados pelo browser —
+ * listeners são adicionados via JS diretamente após o render.
  */
 function renderRagResults(result, container) {
   if (!container) return;
@@ -201,12 +175,9 @@ function renderRagResults(result, container) {
   const { quality, redFlags, susContext, cid, referralInfo } = result;
 
   // Cor do score de qualidade
-  let qualityColor = '#10b981'; // verde
-  if (quality.overall < 50) {
-    qualityColor = '#ef4444'; // vermelho
-  } else if (quality.overall < 70) {
-    qualityColor = '#f59e0b'; // amarelo/laranja
-  }
+  let qualityColor = '#10b981';
+  if (quality.overall < 50) qualityColor = '#ef4444';
+  else if (quality.overall < 70) qualityColor = '#f59e0b';
 
   // HTML de Red Flags
   let redFlagsHtml = '';
@@ -217,7 +188,6 @@ function renderRagResults(result, container) {
       const borderColor = isEmergency ? '#ef4444' : '#f59e0b';
       const color = isEmergency ? '#f87171' : '#fbbf24';
       const icon = isEmergency ? '🔴' : '⚠️';
-      
       return `
         <div style="background: ${bgColor}; border: 1px solid ${borderColor}; padding: 14px; border-radius: 8px; margin-bottom: 12px; border-left: 5px solid ${borderColor};">
           <h4 style="margin: 0 0 6px; color: ${color}; font-weight: 700;">${icon} ${rf.urgency.toUpperCase()}: ${rf.name}</h4>
@@ -245,13 +215,11 @@ function renderRagResults(result, container) {
           </div>
         `).join('')
       : '';
-
     const alternativesHtml = cid.alternatives && cid.alternatives.length > 0
       ? `<p style="margin: 8px 0 0; font-size: 0.85rem; color: var(--text-secondary);">
            <strong>Alternativas mais específicas:</strong> ${cid.alternatives.map(a => `${a.description} (CID: ${a.icd10})`).join(', ')}
          </p>`
       : '';
-
     cidHtml = `
       <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 14px; border-radius: 8px;">
         <h4 style="margin: 0 0 8px; color: var(--primary);">Mapeamento CID Validado</h4>
@@ -264,7 +232,7 @@ function renderRagResults(result, container) {
     `;
   }
 
-  // HTML do RENAME / Medicamentos
+  // HTML de Medicamentos RENAME
   let medsHtml = '';
   if (susContext.medications && susContext.medications.length > 0) {
     medsHtml = susContext.medications.map(m => {
@@ -272,13 +240,11 @@ function renderRagResults(result, container) {
       const badgeBorder = m.isRename ? '#10b981' : '#ef4444';
       const badgeTextColor = m.isRename ? '#34d399' : '#f87171';
       const label = m.isRename ? 'RENAME' : 'Fora da RENAME';
-      
-      const altNote = m.alternative 
+      const altNote = m.alternative
         ? `<div style="font-size: 0.8rem; color: #f59e0b; margin-top: 4px;">
              💡 <strong>Alternativa RENAME:</strong> ${m.alternative} (${m.notes || ''})
            </div>`
         : '';
-
       return `
         <div style="padding: 10px 0; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 4px;">
           <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
@@ -297,7 +263,6 @@ function renderRagResults(result, container) {
   // HTML de Exames por Nível de Atenção
   let examsHtml = '';
   const { basic, laboratory, specialized } = susContext.exams;
-  
   if (basic.length > 0) {
     examsHtml += `
       <div style="margin-bottom: 8px;">
@@ -322,7 +287,6 @@ function renderRagResults(result, container) {
       </div>
     `;
   }
-  
   if (!examsHtml) {
     examsHtml = '<p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">Nenhum exame solicitado no prontuário.</p>';
   }
@@ -341,7 +305,7 @@ function renderRagResults(result, container) {
     programsHtml = '<p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">Nenhum programa de atenção primária SUS aplicável.</p>';
   }
 
-  // Montagem do painel geral
+  // ── Montar HTML do painel ──────────────────────────────────────────────────
   container.innerHTML = `
     <!-- Barra de Confiança Clínica -->
     <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
@@ -352,43 +316,38 @@ function renderRagResults(result, container) {
       <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color);">
         <div style="width: ${quality.overall}%; height: 100%; background: ${qualityColor}; border-radius: 4px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);"></div>
       </div>
-      <span style="font-size: 0.85rem; color: var(--text-secondary); italic: true;">Recomendação: <strong>${quality.overallRecommendation}</strong></span>
+      <span style="font-size: 0.85rem; color: var(--text-secondary);">Recomendação: <strong>${quality.overallRecommendation}</strong></span>
     </div>
 
-    <!-- Layout de Duas Colunas para os Detalhes -->
+    <!-- Layout de Duas Colunas -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-      
-      <!-- Coluna Esquerda: Red Flags e Mapeamento CID -->
+      <!-- Coluna Esquerda -->
       <div style="display: flex; flex-direction: column; gap: 20px;">
         <div>
-          <h4 style="margin: 0 0 10px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Sinais de Alarme & Alertas</h4>
+          <h4 style="margin: 0 0 10px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Sinais de Alarme &amp; Alertas</h4>
           ${redFlagsHtml}
         </div>
-        
         <div>
           <h4 style="margin: 0 0 10px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Mapeamento CID e Regulação</h4>
           ${cidHtml}
         </div>
       </div>
 
-      <!-- Coluna Direita: Contextualização SUS (Medicamentos, Exames, Programas) -->
+      <!-- Coluna Direita -->
       <div style="display: flex; flex-direction: column; gap: 20px;">
         <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 14px; border-radius: 8px;">
           <h4 style="margin: 0 0 10px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Validação RENAME (Medicamentos SUS)</h4>
           ${medsHtml}
         </div>
-        
         <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 14px; border-radius: 8px;">
           <h4 style="margin: 0 0 10px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Disponibilidade de Exames no SUS</h4>
           ${examsHtml}
         </div>
-
         <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 14px; border-radius: 8px;">
           <h4 style="margin: 0 0 10px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Programas e Acompanhamento do Paciente</h4>
           ${programsHtml}
         </div>
       </div>
-
     </div>
 
     <!-- Gaps de Informações Faltantes -->
@@ -408,14 +367,13 @@ function renderRagResults(result, container) {
 
     <!-- Encaminhamento Sugerido -->
     ${referralInfo ? `
-      <div style="margin-top: 20px; background: rgba(99, 102, 241, 0.07); border: 1px solid rgba(99, 102, 241, 0.25); padding: 16px; border-radius: 10px; border-left: 5px solid var(--primary);">
+      <div id="referral-block" style="margin-top: 20px; background: rgba(99, 102, 241, 0.07); border: 1px solid rgba(99, 102, 241, 0.25); padding: 16px; border-radius: 10px; border-left: 5px solid var(--primary);">
         <h4 style="margin: 0 0 10px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--primary);">🏥 Encaminhamento Sugerido</h4>
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
           <span style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">${referralInfo.specialty || 'Clínica Geral'}</span>
           <button
             id="referral-info-btn"
             title="Ver justificativa do encaminhamento"
-            onclick="window.__showReferralModal && window.__showReferralModal()"
             style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: var(--primary); border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-size: 1rem; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s;"
             onmouseover="this.style.background='rgba(99,102,241,0.3)'"
             onmouseout="this.style.background='rgba(99,102,241,0.15)'"
@@ -423,31 +381,6 @@ function renderRagResults(result, container) {
         </div>
         <p style="margin: 6px 0 0; font-size: 0.8rem; color: var(--text-secondary);">Clique no ícone para ver a justificativa clínica desta sugestão.</p>
       </div>
-      <script>
-        (function() {
-          var rationale = ${JSON.stringify(referralInfo.rationale || '')};
-          var specialty = ${JSON.stringify(referralInfo.specialty || 'Clínica Geral')};
-          window.__showReferralModal = function() {
-            var existing = document.getElementById('referral-modal-overlay');
-            if (existing) existing.remove();
-            var overlay = document.createElement('div');
-            overlay.id = 'referral-modal-overlay';
-            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
-            overlay.innerHTML = '<div style="background:var(--bg-primary,#1a1a2e);border:1px solid rgba(99,102,241,0.3);border-radius:14px;padding:28px;max-width:520px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);position:relative;">'
-              + '<button onclick="document.getElementById(\'referral-modal-overlay\').remove()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text-secondary,#aaa);font-size:1.4rem;cursor:pointer;line-height:1;" title="Fechar">✕</button>'
-              + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">'
-              + '<span style="font-size:1.5rem;">🏥</span>'
-              + '<h3 style="margin:0;font-size:1.1rem;color:var(--primary,#6366f1);">Justificativa do Encaminhamento</h3>'
-              + '</div>'
-              + '<p style="margin:0 0 14px;font-size:0.9rem;color:var(--text-secondary,#aaa);">Especialidade sugerida:</p>'
-              + '<p style="margin:0 0 16px;font-size:1.15rem;font-weight:700;color:var(--text-primary,#fff);">' + specialty + '</p>'
-              + '<p style="margin:0;font-size:0.9rem;color:var(--text-primary,#ddd);line-height:1.6;">' + rationale.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') + '</p>'
-              + '</div>';
-            overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
-            document.body.appendChild(overlay);
-          };
-        })();
-      <\/script>
     ` : ''}
 
     <!-- Rodapé: Evidências BVS e Botão Re-analisar -->
@@ -468,4 +401,119 @@ function renderRagResults(result, container) {
       </div>
     </div>
   `;
+
+  // ── Anexar listener do botão ℹ APÓS o innerHTML ─────────────────────────
+  // Browsers NÃO executam <script> injetado via innerHTML — por isso o
+  // listener é adicionado aqui, fora do template string.
+  if (referralInfo) {
+    const btn = container.querySelector('#referral-info-btn');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        _showReferralModal(
+          referralInfo.specialty || 'Clínica Geral',
+          referralInfo.rationale || ''
+        );
+      });
+    }
+  }
+}
+
+/**
+ * Exibe a modal de justificativa do encaminhamento.
+ * Implementada fora do innerHTML para garantir execução pelo browser.
+ */
+function _showReferralModal(specialty, rationale) {
+  // Remove modal anterior se existir
+  var existing = document.getElementById('referral-modal-overlay');
+  if (existing) existing.remove();
+
+  // Injetar animação CSS se ainda não existir
+  if (!document.getElementById('rag-modal-style')) {
+    var styleEl = document.createElement('style');
+    styleEl.id = 'rag-modal-style';
+    styleEl.textContent = [
+      '@keyframes ragModalIn{',
+      'from{opacity:0;transform:translateY(18px)}',
+      'to{opacity:1;transform:translateY(0)}',
+      '}'
+    ].join('');
+    document.head.appendChild(styleEl);
+  }
+
+  // Overlay
+  var overlay = document.createElement('div');
+  overlay.id = 'referral-modal-overlay';
+  overlay.style.cssText = [
+    'position:fixed', 'top:0', 'left:0', 'width:100%', 'height:100%',
+    'background:rgba(0,0,0,0.65)', 'z-index:9999',
+    'display:flex', 'align-items:center', 'justify-content:center',
+    'backdrop-filter:blur(5px)', '-webkit-backdrop-filter:blur(5px)'
+  ].join(';') + ';';
+
+  // Caixa da modal
+  var modal = document.createElement('div');
+  modal.style.cssText = [
+    'background:var(--bg-primary,#1a1a2e)',
+    'border:1px solid rgba(99,102,241,0.35)',
+    'border-radius:16px',
+    'padding:28px',
+    'max-width:540px',
+    'width:92%',
+    'box-shadow:0 24px 64px rgba(0,0,0,0.55)',
+    'position:relative',
+    'animation:ragModalIn 0.22s ease'
+  ].join(';') + ';';
+
+  // Botão fechar
+  var closeBtn = document.createElement('button');
+  closeBtn.textContent = '✕';
+  closeBtn.title = 'Fechar';
+  closeBtn.style.cssText = 'position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text-secondary,#aaa);font-size:1.4rem;cursor:pointer;line-height:1;padding:0;';
+  closeBtn.addEventListener('click', function () { overlay.remove(); });
+
+  // Cabeçalho
+  var header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:18px;';
+  var headerIcon = document.createElement('span');
+  headerIcon.style.fontSize = '1.6rem';
+  headerIcon.textContent = '🏥';
+  var headerTitle = document.createElement('h3');
+  headerTitle.style.cssText = 'margin:0;font-size:1.1rem;color:var(--primary,#6366f1);';
+  headerTitle.textContent = 'Justificativa do Encaminhamento';
+  header.appendChild(headerIcon);
+  header.appendChild(headerTitle);
+
+  // Label
+  var label = document.createElement('p');
+  label.style.cssText = 'margin:0 0 6px;font-size:0.85rem;color:var(--text-secondary,#aaa);';
+  label.textContent = 'Especialidade sugerida:';
+
+  // Nome da especialidade
+  var specEl = document.createElement('p');
+  specEl.style.cssText = 'margin:0 0 18px;font-size:1.15rem;font-weight:700;color:var(--text-primary,#fff);';
+  specEl.textContent = specialty;
+
+  // Divisor
+  var divider = document.createElement('hr');
+  divider.style.cssText = 'border:none;border-top:1px solid rgba(99,102,241,0.2);margin:0 0 16px;';
+
+  // Texto da justificativa (com suporte a **negrito**)
+  var rationaleEl = document.createElement('p');
+  rationaleEl.style.cssText = 'margin:0;font-size:0.9rem;color:var(--text-primary,#ddd);line-height:1.75;';
+  rationaleEl.innerHTML = rationale.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+  modal.appendChild(closeBtn);
+  modal.appendChild(header);
+  modal.appendChild(label);
+  modal.appendChild(specEl);
+  modal.appendChild(divider);
+  modal.appendChild(rationaleEl);
+  overlay.appendChild(modal);
+
+  // Fechar ao clicar fora
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  document.body.appendChild(overlay);
 }
