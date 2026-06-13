@@ -147,7 +147,7 @@ ${transcript}`;
       } catch (err) {
         console.error('Erro no Chain of Thought Processor:', err);
         // Fallback local se a chamada de IA falhar completamente
-        return this.generateLocalFallbackResult(specialty, extractedData);
+        return this.generateLocalFallbackResult(specialty, extractedData, transcript);
       }
     }
 
@@ -155,9 +155,10 @@ ${transcript}`;
      * Fallback de baixo nível se a API falhar, para graceful degradation
      * @param {string} specialty 
      * @param {Object} extractedData 
+     * @param {string} transcript 
      * @returns {Object}
      */
-    generateLocalFallbackResult(specialty, extractedData) {
+    generateLocalFallbackResult(specialty, extractedData, transcript = '') {
       const demographics = extractedData?.demographics || {};
       const patientName = demographics.name?.value || 'Paciente';
       const age = demographics.age?.value || '';
@@ -180,10 +181,21 @@ ${transcript}`;
         icd11 = 'BA00';
         reasoning = 'Suspeita baseada na especialidade Cardiologia. Requer aferição de PA em repouso.';
       } else if (specLower === 'reumatologia') {
-        diagnosis = 'Artrite Reumatoide';
-        icd10 = 'M06';
-        icd11 = 'FA10';
-        reasoning = 'Suspeita baseada na especialidade Reumatologia. Requer exames sorológicos.';
+        // Tenta detectar se há termos associados a Lúpus na transcrição ou dados
+        const textToAnalyze = (JSON.stringify(extractedData || {}) + ' ' + transcript).toLowerCase();
+        const hasLupusKeywords = textToAnalyze.includes('lupus') || textToAnalyze.includes('lúpus') || textToAnalyze.includes('les') || textToAnalyze.includes('malar') || textToAnalyze.includes('borboleta');
+        
+        if (hasLupusKeywords) {
+          diagnosis = 'Lupus Eritematoso Sistemico';
+          icd10 = 'M32.9';
+          icd11 = '4A40';
+          reasoning = 'Suspeita de Lúpus Eritematoso Sistêmico devido a manifestações dermatológicas/sistêmicas descritas. Necessita de FAN e encaminhamento para Reumatologia.';
+        } else {
+          diagnosis = 'Artrite Reumatoide';
+          icd10 = 'M06';
+          icd11 = 'FA10';
+          reasoning = 'Suspeita baseada na especialidade Reumatologia. Requer exames sorológicos.';
+        }
       }
 
       return {

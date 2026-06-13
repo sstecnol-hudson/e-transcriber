@@ -53,6 +53,19 @@
         }
       }
 
+      // Vitals - IMC
+      let imcStr = input.patientIMC || '';
+      if (!imcStr) {
+        imcStr = this.extractIMC(transcript);
+      }
+      let imcVal = undefined;
+      if (imcStr) {
+        const cleanIMC = imcStr.replace(',', '.').replace(/[^\d.]/g, '');
+        if (cleanIMC) {
+          imcVal = parseFloat(cleanIMC);
+        }
+      }
+
       // Vitals - Pressão Arterial
       let bpStr = input.patientBP || '';
       let sysNum = undefined;
@@ -83,7 +96,8 @@
           pa_systolic: sysNum,
           pa_diastolic: diaNum,
           weight: weightVal,
-          height: heightVal
+          height: heightVal,
+          imc: imcVal
         },
         symptoms: symptoms
       };
@@ -180,10 +194,10 @@
     extractWeight: function(text) {
       if (!text) return '';
       const patterns = [
-        /\bpeso(?:[\s:]+(?:de\s+)?)?(\d+(?:[.,]\d+)?)\s*(?:kg|kilos|quilos|quilo)?\b/i,
-        /\bpesando\s+(\d+(?:[.,]\d+)?)\s*(?:kg|kilos|quilos|quilo)?\b/i,
-        /\bpesa\s+(\d+(?:[.,]\d+)?)\s*(?:kg|kilos|quilos|quilo)?\b/i,
-        /\b(\d+(?:[.,]\d+)?)\s*(?:kg|kilos|quilos)\b/i
+        /\bpeso(?:[\s:]+(?:de\s+)?)?(\d+(?:[.,]\d+)?)(?!\s*(?:kg|kilos|quilos|quilo)?\s*(?:\/|por)\s*m)\s*(?:kg|kilos|quilos|quilo)?\b/i,
+        /\bpesando\s+(\d+(?:[.,]\d+)?)(?!\s*(?:kg|kilos|quilos|quilo)?\s*(?:\/|por)\s*m)\s*(?:kg|kilos|quilos|quilo)?\b/i,
+        /\bpesa\s+(\d+(?:[.,]\d+)?)(?!\s*(?:kg|kilos|quilos|quilo)?\s*(?:\/|por)\s*m)\s*(?:kg|kilos|quilos|quilo)?\b/i,
+        /\b(\d+(?:[.,]\d+)?)(?!\s*(?:kg|kilos|quilos|quilo)?\s*(?:\/|por)\s*m)\s*(?:kg|kilos|quilos)\b/i
       ];
       for (const pattern of patterns) {
         const match = text.match(pattern);
@@ -198,13 +212,33 @@
     },
 
     /**
+     * Extrai o IMC do texto e normaliza (ex: 31 kg/m²)
+     */
+    extractIMC: function(text) {
+      if (!text) return '';
+      const patterns = [
+        /(?:^|[\s,;:])(?:imc|índice de massa corporal|indice de massa corporal)(?:\s+[^\s]+){0,6}?\s*(?:de|em|:|est(?:á|a)|=)?\s*(\d+(?:[.,]\d+)?)\s*(?:kg\/m²|kg\/m2)?\b/i
+      ];
+      for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+          let val = parseFloat(match[1].replace(',', '.'));
+          if (!isNaN(val) && val >= 10 && val <= 100) {
+            return val.toString().replace('.', ',') + ' kg/m²';
+          }
+        }
+      }
+      return '';
+    },
+
+    /**
      * Extrai a pressão arterial do texto (ex: 120/80 mmHg)
      */
     extractBP: function(text) {
       if (!text) return null;
       const patterns = [
-        /\b(?:pa|press(?:ã|a)o(?:\s+arterial)?)(?:[\s:]+(?:de\s+)?)?(\d{1,3})\s*(?:\/|por|sobre)\s*(\d{1,3})\b/i,
-        /\b(\d{1,3})\s*\/\s*(\d{1,3})\s*(?:mmhg)?\b/i
+        /\b(?:pa|press(?:ã|a)o(?:\s+arterial)?)(?:[\s:]+(?:de\s+)?)?(\d{1,3})\s*(?:\/|por|sobre|x|×|\*)\s*(\d{1,3})\b/i,
+        /\b(\d{1,3})\s*(?:\/|x|×|\*)\s*(\d{1,3})\s*(?:mmhg)?\b/i
       ];
       for (const pattern of patterns) {
         const match = text.match(pattern);

@@ -25,7 +25,14 @@
     "prednisona",
     "amoxicilina",
     "azitromicina",
-    "cefalexina"
+    "cefalexina",
+    "hidroxicloroquina",
+    "cloroquina",
+    "metotrexato",
+    "azatioprina",
+    "sulfassalazina",
+    "ciclofosfamida",
+    "micofenolato"
   ],
   "alternatives": {
     "valsartana": {

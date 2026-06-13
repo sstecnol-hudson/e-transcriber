@@ -34,7 +34,7 @@
           }
         } else {
           // Se estiver no browser
-          const res = await fetch('modules/diagnostic-rag/data/red-flags.json');
+          const res = await fetch('modules/diagnostic-rag/data/red-flags.json?t=' + Date.now());
           if (res.ok) {
             this.redFlagsConfig = await res.json();
             return;
@@ -72,6 +72,86 @@
             "action": "Encaminhamento para Pronto-Socorro/UPA imediatamente",
             "protocol": "Protocolo SUS: Diabetes Mellitus Complicações Agudas",
             "time_window": "Imediato"
+          }
+        ],
+        "reumatologia": [
+          {
+            "id": "artrite_septica",
+            "name": "Artrite Séptica",
+            "signs": [
+              { "key": "joint_pain_severe", "operator": "==", "value": true },
+              { "key": "joint_fever", "operator": "==", "value": true },
+              { "key": "joint_effusion_or_warmth", "operator": "==", "value": true }
+            ],
+            "urgency": "Urgente",
+            "action": "Encaminhamento para Pronto-Socorro com Ortopedia para artrocentese de urgência",
+            "protocol": "Consenso de Artrite Séptica - Sociedade Brasileira de Reumatologia",
+            "time_window": "24h"
+          },
+          {
+            "id": "les_acometimento_renal",
+            "name": "Crise Lúpica com Acometimento Renal",
+            "signs": [
+              { "key": "lupus_diagnosis", "operator": "==", "value": true },
+              { "key": "proteinuria", "operator": "==", "value": true },
+              { "key": "hematuria", "operator": "==", "value": true }
+            ],
+            "urgency": "Urgente",
+            "action": "Encaminhamento com prioridade para Nefrologia/Reumatologia para biópsia renal",
+            "protocol": "Diretrizes Brasileiras para o Manejo de Nefrite Lúpica - SBR",
+            "time_window": "Até 7 dias"
+          },
+          {
+            "id": "serosite_lupica",
+            "name": "Serosite Lúpica / Derrame Pleural ou Pericárdico",
+            "signs": [
+              { "key": "lupus_diagnosis", "operator": "==", "value": true },
+              { "key": "pleuritic_pain", "operator": "==", "value": true },
+              { "key": "pericarditis", "operator": "==", "value": true }
+            ],
+            "urgency": "Urgente",
+            "action": "Encaminhamento para Pronto-Atendimento para realização de ecocardiograma e RX de tórax",
+            "protocol": "Consenso Latino-Americano de Lúpus Eritematoso Sistêmico",
+            "time_window": "Até 48h"
+          },
+          {
+            "id": "les_neuropsiquiatrico",
+            "name": "Manifestação Neuropsiquiátrica Lúpica",
+            "signs": [
+              { "key": "lupus_diagnosis", "operator": "==", "value": true },
+              { "key": "confusion_or_psychosis", "operator": "==", "value": true }
+            ],
+            "urgency": "Emergência",
+            "action": "Encaminhamento imediato para Pronto-Socorro/Hospital para investigação com RM e LCR",
+            "protocol": "Consenso de Lúpus Neuropsiquiátrico - Sociedade Brasileira de Reumatologia",
+            "time_window": "Imediato"
+          }
+        ],
+        "geral": [
+          {
+            "id": "perda_peso_febre",
+            "name": "Perda de Peso Involuntária com Febre Sem Foco",
+            "signs": [
+              { "key": "weight_loss_10_percent", "operator": "==", "value": true },
+              { "key": "fever_prolonged", "operator": "==", "value": true }
+            ],
+            "urgency": "Investigação",
+            "action": "Solicitar exames laboratoriais amplos e agendar retorno/encaminhamento em até 30 dias",
+            "protocol": "Protocolo de Investigação de Síndrome Consumptiva",
+            "time_window": "30 dias"
+          },
+          {
+            "id": "febre_eritema_malar",
+            "name": "Febre com Eritema Malar (Suspeita de LES)",
+            "signs": [
+              { "key": "malar_rash", "operator": "==", "value": true },
+              { "key": "fever", "operator": "==", "value": true },
+              { "key": "arthralgia", "operator": "==", "value": true }
+            ],
+            "urgency": "Investigação",
+            "action": "Solicitar FAN (ANA), hemograma, VHS, PCR, EAS e referenciar para Reumatologista",
+            "protocol": "Critérios de Classificação do Lúpus (ACR/EULAR 2019)",
+            "time_window": "Até 14 dias"
           }
         ]
       };
@@ -129,7 +209,16 @@
           'joint_fever': ['febre', 'quente', 'temperatura alta'],
           'joint_effusion_or_warmth': ['inchaço', 'inchado', 'articulacao quente', 'articulação quente', 'vermelho'],
           'weight_loss_10_percent': ['perdi peso', 'perda de peso', 'emagreci', 'perdi 10kg', 'perdi 5kg'],
-          'fever_prolonged': ['febre', 'febril', 'calafrio']
+          'fever_prolonged': ['febre', 'febril', 'calafrio'],
+          'lupus_diagnosis': ['lupus', 'lúpus', 'les', 'lupus eritematoso', 'lúpus eritematoso'],
+          'proteinuria': ['proteinuria', 'proteinúria', 'proteína na urina', 'proteina na urina', 'perda de proteina', 'nefrite'],
+          'hematuria': ['hematuria', 'hematúria', 'sangue na urina', 'urina com sangue', 'urina escura', 'urina avermelhada'],
+          'pleuritic_pain': ['dor pleurítica', 'dor pleuritica', 'dor ao respirar', 'dor no peito ao inspirar', 'dor pleura'],
+          'pericarditis': ['pericardite', 'derrame pericárdico', 'derrame pericardico', 'inflamação no coração', 'dor pericárdica'],
+          'confusion_or_psychosis': ['confusão mental', 'confusao mental', 'delírio', 'delirio', 'psicose', 'convulsão', 'convulsao', 'alteração de comportamento'],
+          'malar_rash': ['eritema malar', 'asa de borboleta', 'mancha vermelha no rosto', 'mancha no rosto', 'manchas nas bochechas'],
+          'fever': ['febre', 'febril', 'temperatura elevada', 'calafrio', 'calafrios'],
+          'arthralgia': ['artralgia', 'dor nas articulações', 'dor nas articulacoes', 'dor nas juntas', 'juntas doloridas']
         };
 
         const keywords = keywordsMap[key] || [key.replace('_', ' ')];

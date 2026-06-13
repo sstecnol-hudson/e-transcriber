@@ -75,3 +75,14 @@ Thumbs.db
 *.tmp
 *.temp
 .vercel
+
+# Arquivos de desenvolvimento e teste do projeto
+wp_json.json
+fetch_samples.py
+parse_wp.py
+test-compression.html
+test-stop-meeting-recording.html
+diagnostic-rag.test.js
+start_server.bat
+run_server.ps1
+deploy.bat

@@ -6,6 +6,7 @@ const ProtocolRetriever = require('./protocol-retriever');
 const RedFlagDetector = require('./red-flag-detector');
 const CIDMapper = require('./cid-mapper');
 const QualityValidator = require('./quality-validator');
+const DataExtractor = require('./data-extractor');
 
 // Mock global fetch para os testes de integração
 global.fetch = jest.fn();
@@ -71,6 +72,18 @@ describe('Módulo Diagnostic RAG - Testes', () => {
       expect(scaAlert.urgency).toBe('Emergência');
     });
 
+    test('deve detectar Febre com Eritema Malar (Suspeita de LES) a partir da transcrição', async () => {
+      const clinicalData = {};
+      const transcript = 'Paciente apresenta eritema malar, febre persistente e artralgia nas mãos.';
+      
+      const detected = await detector.detectRedFlags(clinicalData, 'Reumatologia', transcript);
+      
+      expect(detected.length).toBeGreaterThan(0);
+      const lesSuspect = detected.find(d => d.id === 'febre_eritema_malar');
+      expect(lesSuspect).toBeDefined();
+      expect(lesSuspect.urgency).toBe('Investigação');
+    });
+
     test('deve retornar vazio se nenhum sinal de alarme estiver presente', async () => {
       const clinicalData = {
         vitalSigns: { pa_systolic: 120, pa_diastolic: 80 },
@@ -97,6 +110,13 @@ describe('Módulo Diagnostic RAG - Testes', () => {
       expect(result.primary.icd11.code).toBe('5A11');
     });
 
+    test('deve mapear Lúpus via alias para código M32', async () => {
+      const result = await mapper.mapDiagnosis('les suspeito');
+      
+      expect(result.primary.diagnosis).toBe('Lupus Eritematoso Sistemico');
+      expect(result.primary.icd10.code).toBe('M32.1');
+    });
+
     test('deve marcar como INCERTO se houver falta de especificidade ou faixa etária inconsistente', async () => {
       // Idade baixa para Diabetes Tipo 2
       const result = await mapper.mapDiagnosis('Diabetes Mellitus Tipo 2', { age: 10 });
@@ -104,6 +124,19 @@ describe('Módulo Diagnostic RAG - Testes', () => {
       expect(result.status).toBe('INCERTO');
       const hasAgeIssue = result.contextualIssues.some(i => i.issue === 'Inconsistência demográfica');
       expect(hasAgeIssue).toBe(true);
+    });
+
+    test('deve mapear Síndrome de Cushing corretamente', async () => {
+      const result = await mapper.mapDiagnosis('Síndrome de Cushing (CID-10: E24.9 | CID-11: 5A70.0)');
+      expect(result.primary.diagnosis).toBe('Síndrome de Cushing');
+      expect(result.primary.icd10.code).toBe('E24.9');
+      expect(result.primary.icd11.code).toBe('5A70');
+    });
+
+    test('não deve mapear incorretamente Síndrome de Cushing para Síndrome de Sjögren devido a palavra-chave síndrome', async () => {
+      const result = await mapper.mapDiagnosis('Síndrome de Cushing');
+      expect(result.primary.diagnosis).not.toBe('Síndrome de Sjögren');
+      expect(result.primary.diagnosis).toBe('Síndrome de Cushing');
     });
   });
 
@@ -132,6 +165,38 @@ describe('Módulo Diagnostic RAG - Testes', () => {
       expect(report.overall).toBeLessThan(90);
       expect(report.components.dataCompleteness.missing).toContain('pa_diastolic');
       expect(report.gaps.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('DataExtractor', () => {
+    test('deve extrair o peso corretamente sem confundir com IMC', () => {
+      const transcript = 'Sinais Vitais: PA: 145 × 95 mmHg; FC: 88 bpm; IMC: 31 kg/m².';
+      const weight = DataExtractor.extractWeight(transcript);
+      expect(weight).toBe('');
+      
+      const transcriptWithWeight = 'Paciente relata que está pesando 72 kg ultimamente.';
+      const weight2 = DataExtractor.extractWeight(transcriptWithWeight);
+      expect(weight2).toBe('72 kg');
+    });
+
+    test('deve extrair o IMC do texto corretamente', () => {
+      const transcript = 'Sinais Vitais: PA: 145 × 95 mmHg; FC: 88 bpm; IMC: 31 kg/m².';
+      const imc = DataExtractor.extractIMC(transcript);
+      expect(imc).toBe('31 kg/m²');
+
+      const transcriptShort = 'O IMC do paciente está em 28.5 no momento.';
+      const imc2 = DataExtractor.extractIMC(transcriptShort);
+      expect(imc2).toBe('28,5 kg/m²');
+    });
+
+    test('deve estruturar dados de consulta mapeando IMC e sem contaminar peso', () => {
+      const transcript = 'Sinais Vitais: PA: 145 × 95 mmHg; FC: 88 bpm; IMC: 31 kg/m².';
+      const data = DataExtractor.extractConsultationData({ transcript });
+
+      expect(data.vitalSigns.weight).toBeUndefined();
+      expect(data.vitalSigns.imc).toBe(31);
+      expect(data.vitalSigns.pa_systolic).toBe(145);
+      expect(data.vitalSigns.pa_diastolic).toBe(95);
     });
   });
 });

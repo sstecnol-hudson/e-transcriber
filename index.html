@@ -175,6 +175,10 @@
                             <input type="text" id="patientWeight" placeholder="Ex: 72 kg">
                         </div>
                         <div class="form-group">
+                            <label for="patientIMC">IMC</label>
+                            <input type="text" id="patientIMC" readonly placeholder="Calculado automaticamente" style="background: rgba(255, 255, 255, 0.05); cursor: not-allowed;">
+                        </div>
+                        <div class="form-group">
                             <label for="patientBP">Pressão Arterial</label>
                             <input type="text" id="patientBP" placeholder="Ex: 120/80 mmHg">
                         </div>
@@ -1528,6 +1532,8 @@
     <script src="modules/diagnostic-rag/primary-care-contextualizer.js"></script>
     <script src="modules/diagnostic-rag/soap-generator.js"></script>
     <script src="modules/diagnostic-rag/data-extractor.js"></script>
+    <script src="modules/diagnostic-rag/referral-suggester.js"></script>
+    <script src="modules/diagnostic-rag/diagnostic-compare.js"></script>
     <script src="modules/diagnostic-rag/index.js"></script>
     <script src="modules/diagnostic-rag/rag-ui.js"></script>
     <script src="audio-processor.js"></script>

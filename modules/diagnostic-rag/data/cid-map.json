@@ -3,6 +3,7 @@
     "icd10": "E11",
     "icd11": "5A11",
     "description": "Diabetes mellitus tipo 2",
+    "aliases": ["diabetes tipo 2", "dm2", "diabetes", "diabética", "diabetico", "glicemia alta", "açúcar alto"],
     "variants": [
       { "code": "E11.9", "description": "Sem complicações" },
       { "code": "E11.2", "description": "Com complicações renais" },
@@ -18,6 +19,7 @@
     "icd10": "I10",
     "icd11": "BA00",
     "description": "Hipertensão essencial (primária)",
+    "aliases": ["hipertensao", "pressão alta", "pressao alta", "has"],
     "variants": [
       { "code": "I10", "description": "Hipertensão essencial (primária)" },
       { "code": "I15", "description": "Hipertensão secundária" }
@@ -31,6 +33,7 @@
     "icd10": "M06",
     "icd11": "FA10",
     "description": "Artrite reumatoide",
+    "aliases": ["artrite reumatoide", "ar soropositiva", "ar soronegativa", "poliartrite"],
     "variants": [
       { "code": "M05.9", "description": "Artrite reumatoide soropositiva não especificada" },
       { "code": "M06.0", "description": "Artrite reumatoide soronegativa" }
@@ -39,10 +42,24 @@
       "warning": "Solicitar Fator Reumatoide e Anti-CCP para classificar sorologia (M05 vs M06)."
     }
   },
+  "Lupus Eritematoso Sistemico": {
+    "icd10": "M32",
+    "icd11": "4A40",
+    "description": "Lúpus eritematoso sistêmico",
+    "aliases": ["lupus", "lúpus", "les", "lupus eritematoso", "lúpus eritematoso", "lupus eritematoso sistemico", "lúpus eritematoso sistêmico", "doença autoimune", "doença do colágeno"],
+    "variants": [
+      { "code": "M32.1", "description": "Lúpus eritematoso sistêmico com acometimento de órgãos e sistemas" },
+      { "code": "M32.9", "description": "Lúpus eritematoso sistêmico não especificado" }
+    ],
+    "contextualRules": {
+      "warning": "Doença autoimune sistêmica. Solicitar ANA, Anti-dsDNA, Anti-Sm, C3, C4. Requer encaminhamento reumatológico especializado."
+    }
+  },
   "Insuficiência Cardíaca": {
     "icd10": "I50",
     "icd11": "BD40",
     "description": "Insuficiência cardíaca",
+    "aliases": ["insuficiencia cardiaca", "icc", "ic descompensada"],
     "variants": [
       { "code": "I50.0", "description": "Insuficiência cardíaca congestiva" },
       { "code": "I50.1", "description": "Insuficiência ventricular esquerda" },
@@ -53,6 +70,7 @@
     "icd10": "J45",
     "icd11": "CA23",
     "description": "Asma",
+    "aliases": ["asma brônquica", "broncoespasmo", "bronquite asmática"],
     "variants": [
       { "code": "J45.9", "description": "Asma não especificada" }
     ]
@@ -61,6 +79,7 @@
     "icd10": "J44",
     "icd11": "CA22",
     "description": "Doença pulmonar obstrutiva crônica",
+    "aliases": ["dpoc", "enfisema", "bronquite crônica", "doença pulmonar obstrutiva"],
     "variants": [
       { "code": "J44.9", "description": "Doença pulmonar obstrutiva crônica não especificada" }
     ],
@@ -72,6 +91,7 @@
     "icd10": "F32",
     "icd11": "6A70",
     "description": "Episódio depressivo",
+    "aliases": ["depressão", "depressao", "episodio depressivo", "transtorno depressivo maior"],
     "variants": [
       { "code": "F32.9", "description": "Episódio depressivo não especificado" },
       { "code": "F33", "description": "Transtorno depressivo recorrente" }
@@ -81,6 +101,7 @@
     "icd10": "E03",
     "icd11": "5A00",
     "description": "Outros hipotireoidismos",
+    "aliases": ["hipotireoidismo", "tsh alto", "tireoide baixa", "hipofunção tireoidiana"],
     "variants": [
       { "code": "E03.9", "description": "Hipotireoidismo não especificado" }
     ]
@@ -89,6 +110,7 @@
     "icd10": "E78",
     "icd11": "5C80",
     "description": "Distúrbios do metabolismo de lipoproteínas",
+    "aliases": ["dislipidemia", "colesterol alto", "hipercolesterolemia", "hipertrigliceridemia", "ldl alto"],
     "variants": [
       { "code": "E78.0", "description": "Hipercolesterolemia pura" },
       { "code": "E78.2", "description": "Hiperlipidemia mista" }
@@ -98,8 +120,124 @@
     "icd10": "E66",
     "icd11": "5B81",
     "description": "Obesidade",
+    "aliases": ["obesidade", "sobrepeso grave", "imc elevado"],
     "variants": [
       { "code": "E66.9", "description": "Obesidade não especificada" }
     ]
+  },
+  "Fibromialgia": {
+    "icd10": "M79.7",
+    "icd11": "MG30.01",
+    "description": "Fibromialgia",
+    "aliases": ["fibromialgia", "dor cronica difusa", "dor difusa crônica", "pontos dolorosos"],
+    "variants": [
+      { "code": "M79.7", "description": "Fibromialgia" }
+    ]
+  },
+  "Gota": {
+    "icd10": "M10",
+    "icd11": "FA25",
+    "description": "Gota",
+    "aliases": ["gota", "hiperuricemia", "artrite gotosa", "deposito de urato"],
+    "variants": [
+      { "code": "M10.9", "description": "Gota não especificada" }
+    ]
+  },
+  "Espondilite Anquilosante": {
+    "icd10": "M45",
+    "icd11": "FA90",
+    "description": "Espondilite anquilosante",
+    "aliases": ["espondilite", "espondilite anquilosante", "espondiloartrite", "dor lombar inflamatória"],
+    "variants": [
+      { "code": "M45", "description": "Espondilite anquilosante" }
+    ]
+  },
+  "Síndrome de Sjögren": {
+    "icd10": "M35.0",
+    "icd11": "4A44",
+    "description": "Síndrome de Sjögren",
+    "aliases": ["sjogren", "sjögren", "sindrome de sjogren", "boca seca olho seco autoimune", "xerostomia autoimune"],
+    "variants": [
+      { "code": "M35.0", "description": "Síndrome seca (Sjögren)" }
+    ]
+  },
+  "Esclerodermia": {
+    "icd10": "M34",
+    "icd11": "4A42",
+    "description": "Esclerose sistêmica",
+    "aliases": ["esclerodermia", "esclerose sistemica", "esclerose sistêmica", "lesao de pele enrijecimento"],
+    "variants": [
+      { "code": "M34.9", "description": "Esclerose sistêmica não especificada" }
+    ]
+  },
+  "Síndrome Metabólica": {
+    "icd10": "E88.81",
+    "icd11": "5C22",
+    "description": "Síndrome metabólica",
+    "aliases": ["sindrome metabolica", "síndrome metabólica", "resistencia a insulina com outras comorbidades"],
+    "variants": [
+      { "code": "E88.81", "description": "Síndrome metabólica" }
+    ]
+  },
+  "Anemia Ferropriva": {
+    "icd10": "D50",
+    "icd11": "3A00",
+    "description": "Anemia por deficiência de ferro",
+    "aliases": ["anemia ferropriva", "anemia por deficiencia de ferro", "ferritina baixa", "hemoglobina baixa", "anemia"],
+    "variants": [
+      { "code": "D50.9", "description": "Anemia por deficiência de ferro não especificada" }
+    ]
+  },
+  "Infecção do Trato Urinário": {
+    "icd10": "N39.0",
+    "icd11": "GC08",
+    "description": "Infecção do trato urinário de localização não especificada",
+    "aliases": ["itu", "infeccao urinaria", "infecção urinária", "cistite", "pielonefrite", "disuria"],
+    "variants": [
+      { "code": "N39.0", "description": "Infecção do trato urinário" },
+      { "code": "N30.0", "description": "Cistite aguda" }
+    ]
+  },
+  "Hipertireoidismo": {
+    "icd10": "E05",
+    "icd11": "5A00.1",
+    "description": "Hiperfunção tireoidiana",
+    "aliases": ["hipertireoidismo", "tsh baixo", "tireoide alta", "hipertiroidismo", "doença de graves"],
+    "variants": [
+      { "code": "E05.9", "description": "Hiperfunção tireoidiana não especificada" }
+    ]
+  },
+  "Acidente Vascular Cerebral": {
+    "icd10": "I64",
+    "icd11": "8B20",
+    "description": "Acidente vascular cerebral",
+    "aliases": ["avc", "derrame", "acidente vascular", "avc isquemico", "avc hemorrágico", "isquemia cerebral"],
+    "variants": [
+      { "code": "I63", "description": "AVC isquêmico" },
+      { "code": "I61", "description": "AVC hemorrágico" },
+      { "code": "I64", "description": "AVC não especificado" }
+    ]
+  },
+  "Infarto Agudo do Miocárdio": {
+    "icd10": "I21",
+    "icd11": "BA41",
+    "description": "Infarto agudo do miocárdio",
+    "aliases": ["iam", "infarto", "infarto do miocardio", "ataque cardiaco", "sindrome coronaria aguda", "dor no peito aguda"],
+    "variants": [
+      { "code": "I21.9", "description": "Infarto agudo do miocárdio não especificado" }
+    ]
+  },
+  "Síndrome de Cushing": {
+    "icd10": "E24",
+    "icd11": "5A70",
+    "description": "Síndrome de Cushing",
+    "aliases": ["cushing", "síndrome de cushing", "sindrome de cushing", "hipercortisolismo", "doença de cushing"],
+    "variants": [
+      { "code": "E24.9", "description": "Síndrome de Cushing não especificada" },
+      { "code": "E24.0", "description": "Doença de Cushing dependente da hipófise" }
+    ],
+    "contextualRules": {
+      "warning": "Suspeita de hipercortisolismo (Síndrome de Cushing). Solicitar cortisol salivar noturno, cortisol livre urinário de 24h ou teste de supressão com dexametasona. Requer encaminhamento ao endocrinologista."
+    }
   }
 }

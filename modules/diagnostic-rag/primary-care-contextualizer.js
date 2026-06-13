@@ -38,10 +38,10 @@
             this.susProgramsConfig = JSON.parse(fs.readFileSync(susPath, 'utf-8'));
           }
         } else {
-          const resRename = await fetch('modules/diagnostic-rag/data/rename.json');
+          const resRename = await fetch('modules/diagnostic-rag/data/rename.json?t=' + Date.now());
           if (resRename.ok) this.renameConfig = await resRename.json();
           
-          const resSus = await fetch('modules/diagnostic-rag/data/sus-programs.json');
+          const resSus = await fetch('modules/diagnostic-rag/data/sus-programs.json?t=' + Date.now());
           if (resSus.ok) this.susProgramsConfig = await resSus.json();
         }
       } catch (err) {
@@ -170,10 +170,13 @@
      * @param {Object} cotResult 
      * @returns {Object[]}
      */
-    suggestSUSPrograms(cotResult) {
+    suggestSUSPrograms(cotResult, cidResult = null) {
       if (!cotResult || !cotResult.conclusion) return [];
 
-      const cid10 = cotResult.conclusion.icd10 || '';
+      let cid10 = cotResult.conclusion.icd10 || '';
+      if (cidResult && cidResult.primary && cidResult.primary.icd10 && cidResult.primary.icd10.code) {
+        cid10 = cidResult.primary.icd10.code;
+      }
       const suggested = [];
       const programs = this.susProgramsConfig.programs || [];
 
@@ -229,6 +232,11 @@
         if (diagText.includes('diabetes') && confidence > 80) {
           return 'Até 30 dias';
         }
+        
+        // Casos suspeitos ou confirmados de Lúpus/LES necessitam acompanhamento especializado em até 30 dias
+        if ((diagText.includes('lupus') || diagText.includes('lúpus') || diagText.includes('les')) && confidence > 70) {
+          return 'Até 30 dias';
+        }
       }
 
       return 'Eletivo';
@@ -239,9 +247,10 @@
      * @param {Object} cotResult 
      * @param {Object[]} redFlags 
      * @param {Object} extractedData 
+     * @param {Object} cidResult
      * @returns {Promise<Object>} Recomendações e status SUS
      */
-    async contextualize(cotResult, redFlags, extractedData) {
+    async contextualize(cotResult, redFlags, extractedData, cidResult = null) {
       await this.loadConfig();
 
       // Extrair medicações recomendadas pelo CoT (se houver)
@@ -258,7 +267,7 @@
 
       const validatedMeds = this.validateMedications(rawMeds);
       const classifiedExams = this.classifyExams(rawExams);
-      const suggestedPrograms = this.suggestSUSPrograms(cotResult);
+      const suggestedPrograms = this.suggestSUSPrograms(cotResult, cidResult);
       const urgency = this.determineReferralUrgency(redFlags, cotResult);
 
       return {

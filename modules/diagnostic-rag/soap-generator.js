@@ -7,9 +7,10 @@ class SOAPGenerator {
    * @param {Object} qualityScore - Resultado do QualityValidator
    * @param {Object} susContext - Contexto gerado pelo PrimaryCareContextualizer
    * @param {Object[]} protocols - Protocolos consultados
+   * @param {Object} cidResult - Resultado do Mapeamento CID
    * @returns {string} Prontuário médico em formato Markdown
    */
-  generateSOAP(request, cotResult, redFlags, qualityScore, susContext, protocols) {
+  generateSOAP(request, cotResult, redFlags, qualityScore, susContext, protocols, cidResult, referralInfo) {
     const demographics = request.extractedData?.demographics || {};
     const patientName = demographics.name?.value || 'Não Identificado';
     const patientAge = demographics.age?.value || 'Não Informada';
@@ -19,8 +20,20 @@ class SOAPGenerator {
     const subjective = this.generateSubjective(request);
     const objective = this.generateObjective(vitalSigns, request.extractedData?.exams);
     const assessment = this.generateAssessment(cotResult, redFlags);
-    const plan = this.generatePlan(susContext, cotResult);
+    const plan = this.generatePlan(susContext, cotResult, redFlags);
     const basesClinicas = this.generateClinicalBases(protocols, cotResult, qualityScore);
+
+    // Verificação de consistência entre COT e CID
+    const cotDiagnosis = cotResult?.conclusion?.primaryDiagnosis || cotResult?.conclusion?.diagnosis || '';
+    const cidDiagnosis = cidResult?.primary?.diagnosis || '';
+    const consistencyWarning = cotDiagnosis && cidDiagnosis && cotDiagnosis.toLowerCase() !== cidDiagnosis.toLowerCase()
+      ? `\n> **⚠️ Aviso de inconsistência:** Diagnóstico principal do raciocínio clínico ("${cotDiagnosis}") difere do mapeamento CID ("${cidDiagnosis}").`
+      : '';
+
+    // Bloco de encaminhamento sugerido
+    const referralBlock = referralInfo?.specialty
+      ? `\n## 6. ENCAMINHAMENTO SUGERIDO\n- **Especialidade:** ${referralInfo.specialty}\n- **Justificativa:** ${referralInfo.rationale}`
+      : '';
 
     return `# SOAP - RELATÓRIO CLÍNICO RAG-ASSISTIDO
 
@@ -36,16 +49,20 @@ ${subjective}
 ${objective}
 
 ## 3. AVALIAÇÃO (A)
-${assessment}
+${assessment}${consistencyWarning}
 
 ## 4. PLANO (P)
 ${plan}
 
 ## 5. BASES CLÍNICAS & RASTREABILIDADE
-${basesClinicas}
+${basesClinicas}${referralBlock}
 
 ---
-*Prontuário gerado com auxílio de Diagnóstico Assistido por IA (RAG-Assistido)*`;
+*Prontuário gerado com auxílio de Diagnóstico Assistido por IA (RAG-Assistido)*
+
+<!-- COT_RESULT
+${JSON.stringify(cotResult, null, 2)}
+-->`;
   }
 
   /**
@@ -158,7 +175,7 @@ ${c.reasoning || 'O quadro clínico do paciente atende aos critérios do protoco
   /**
    * Gera a seção Plano
    */
-  generatePlan(susContext, cotResult) {
+   generatePlan(susContext, cotResult, redFlags = []) {
     if (!susContext) return '- Planejamento terapêutico e exames a critério médico.';
 
     // Medicações SUS / RENAME
@@ -198,6 +215,20 @@ ${c.reasoning || 'O quadro clínico do paciente atende aos critérios do protoco
       }).join('\n');
     }
 
+    // Encaminhamentos detalhados baseados em Red Flags e programas
+    let referralStr = 'Acompanhamento pela equipe de Saúde da Família e agendamento conforme regulação.';
+    if (redFlags && redFlags.length > 0) {
+      referralStr = redFlags.map(rf => {
+        const docList = susContext.susPrograms && susContext.susPrograms.length > 0 
+          ? susContext.susPrograms[0].documents.join(', ')
+          : 'Cartão SUS, Documento de Identidade, Guia de Encaminhamento';
+        return `Direcionamento: **${rf.action}**\n  - *Prerrequisitos / Documentos e exames necessários para apresentação:* ${docList}`;
+      }).join('\n  ');
+    } else if (susContext.susPrograms && susContext.susPrograms.length > 0) {
+      const program = susContext.susPrograms[0];
+      referralStr = `Direcionamento: Encaminhamento eletivo para a Especialidade de Referência conforme diretriz do programa **${program.name}**\n  - *Prerrequisitos / Documentos e exames necessários para apresentação:* ${program.documents.join(', ')}`;
+    }
+
     return `- **Terapêutica Prescrita:**
 ${medsStr}
 
@@ -206,7 +237,7 @@ ${examsStr}
 
 - **Encaminhamentos & Urgência:**
   - Urgência Recomendada: **${susContext.referralUrgency || 'Eletivo'}**
-  - Conduta: Acompanhamento pela equipe de Saúde da Família e agendamento conforme regulação.
+  - ${referralStr}
 
 - **Programas SUS Aplicáveis:**
 ${progStr}`;

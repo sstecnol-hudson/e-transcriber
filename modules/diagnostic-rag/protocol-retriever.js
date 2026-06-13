@@ -198,31 +198,15 @@
      * @returns {Promise<Object[]>}
      */
     async callTavily(query, apiKey) {
-      const domains = [
-        'saude.gov.br',
-        'sbpt.org.br',
-        'scielo.br',
-        'cardiol.br',
-        'diabetes.org.br',
-        'reumatologia.org.br'
-      ];
-
       const body = {
         api_key: apiKey,
         query: `protocolo diretrizes tratamento SUS ${query}`,
         search_depth: 'basic',
         include_answer: true,
-        max_results: 5,
-        include_domains: domains
+        max_results: 5
       };
 
-      // No browser, usamos corsproxy para evitar problemas de CORS
-      const isBrowser = typeof window !== 'undefined';
       let url = 'https://api.tavily.com/search';
-      
-      if (isBrowser) {
-        url = 'https://corsproxy.io/?url=' + encodeURIComponent(url);
-      }
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
@@ -290,9 +274,12 @@
       // 1. Tentar Cache
       const cached = this.getFromCache(cacheKey);
       if (cached) {
+        const hasTavily = cached.some(p => p.url && !p.url.startsWith('local://'));
         return {
           protocols: cached,
-          disclaimer: 'Protocolos clínicos recuperados do cache local (offline).',
+          disclaimer: hasTavily 
+            ? 'Protocolos clínicos recuperados do cache local (Tavily).' 
+            : 'Protocolos clínicos recuperados do cache local (Offline).',
           fromCache: true
         };
       }

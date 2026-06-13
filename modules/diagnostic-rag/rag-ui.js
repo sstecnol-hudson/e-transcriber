@@ -104,14 +104,17 @@ async function handleRagAnalyze() {
   const transcript = AppState.currentTranscription || prontuarioVal;
   const specialty = DOM.doctorSpecialty?.value || 'Clínica Geral';
   
-  // Extrair dados estruturados locais do prontuário
   let extractedData = {};
   if (typeof DataExtractor !== 'undefined') {
     extractedData = DataExtractor.extractConsultationData({
       transcript: transcript,
       patientName: DOM.patientName?.value || '',
       patientAge: DOM.patientAge?.value || '',
-      patientGender: DOM.pmGender?.value || ''
+      patientGender: DOM.pmGender?.value || '',
+      patientHeight: DOM.patientHeight?.value || '',
+      patientWeight: DOM.patientWeight?.value || '',
+      patientBP: DOM.patientBP?.value || '',
+      patientIMC: DOM.patientIMC?.value || ''
     });
   }
 
@@ -195,7 +198,7 @@ async function handleRagAnalyze() {
 function renderRagResults(result, container) {
   if (!container) return;
 
-  const { quality, redFlags, susContext, cid } = result;
+  const { quality, redFlags, susContext, cid, referralInfo } = result;
 
   // Cor do score de qualidade
   let qualityColor = '#10b981'; // verde
@@ -401,6 +404,50 @@ function renderRagResults(result, container) {
           `).join('')}
         </ul>
       </div>
+    ` : ''}
+
+    <!-- Encaminhamento Sugerido -->
+    ${referralInfo ? `
+      <div style="margin-top: 20px; background: rgba(99, 102, 241, 0.07); border: 1px solid rgba(99, 102, 241, 0.25); padding: 16px; border-radius: 10px; border-left: 5px solid var(--primary);">
+        <h4 style="margin: 0 0 10px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--primary);">🏥 Encaminhamento Sugerido</h4>
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <span style="font-size: 1rem; font-weight: 700; color: var(--text-primary);">${referralInfo.specialty || 'Clínica Geral'}</span>
+          <button
+            id="referral-info-btn"
+            title="Ver justificativa do encaminhamento"
+            onclick="window.__showReferralModal && window.__showReferralModal()"
+            style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: var(--primary); border-radius: 50%; width: 28px; height: 28px; cursor: pointer; font-size: 1rem; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s;"
+            onmouseover="this.style.background='rgba(99,102,241,0.3)'"
+            onmouseout="this.style.background='rgba(99,102,241,0.15)'"
+          >ℹ</button>
+        </div>
+        <p style="margin: 6px 0 0; font-size: 0.8rem; color: var(--text-secondary);">Clique no ícone para ver a justificativa clínica desta sugestão.</p>
+      </div>
+      <script>
+        (function() {
+          var rationale = ${JSON.stringify(referralInfo.rationale || '')};
+          var specialty = ${JSON.stringify(referralInfo.specialty || 'Clínica Geral')};
+          window.__showReferralModal = function() {
+            var existing = document.getElementById('referral-modal-overlay');
+            if (existing) existing.remove();
+            var overlay = document.createElement('div');
+            overlay.id = 'referral-modal-overlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+            overlay.innerHTML = '<div style="background:var(--bg-primary,#1a1a2e);border:1px solid rgba(99,102,241,0.3);border-radius:14px;padding:28px;max-width:520px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5);position:relative;">'
+              + '<button onclick="document.getElementById(\'referral-modal-overlay\').remove()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text-secondary,#aaa);font-size:1.4rem;cursor:pointer;line-height:1;" title="Fechar">✕</button>'
+              + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">'
+              + '<span style="font-size:1.5rem;">🏥</span>'
+              + '<h3 style="margin:0;font-size:1.1rem;color:var(--primary,#6366f1);">Justificativa do Encaminhamento</h3>'
+              + '</div>'
+              + '<p style="margin:0 0 14px;font-size:0.9rem;color:var(--text-secondary,#aaa);">Especialidade sugerida:</p>'
+              + '<p style="margin:0 0 16px;font-size:1.15rem;font-weight:700;color:var(--text-primary,#fff);">' + specialty + '</p>'
+              + '<p style="margin:0;font-size:0.9rem;color:var(--text-primary,#ddd);line-height:1.6;">' + rationale.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') + '</p>'
+              + '</div>';
+            overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+            document.body.appendChild(overlay);
+          };
+        })();
+      <\/script>
     ` : ''}
 
     <!-- Rodapé: Evidências BVS e Botão Re-analisar -->

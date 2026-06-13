@@ -49,6 +49,53 @@ async function fetchWithTimeout(resource, options = {}) {
 }
 window.fetchWithTimeout = fetchWithTimeout;
 
+/** Calcula o IMC com base na altura e peso informados */
+function calculateIMC() {
+    const heightEl = document.getElementById('patientHeight');
+    const weightEl = document.getElementById('patientWeight');
+    const imcEl = document.getElementById('patientIMC');
+    if (!heightEl || !weightEl || !imcEl) return;
+
+    const heightStr = heightEl.value.trim().replace(',', '.');
+    const weightStr = weightEl.value.trim().replace(',', '.');
+
+    if (!heightStr || !weightStr) {
+        imcEl.value = '';
+        return;
+    }
+
+    const heightMatch = heightStr.match(/[\d.]+/);
+    if (!heightMatch) {
+        imcEl.value = '';
+        return;
+    }
+    let height = parseFloat(heightMatch[0]);
+    if (height > 10) {
+        height = height / 100;
+    }
+
+    const weightMatch = weightStr.match(/[\d.]+/);
+    if (!weightMatch) {
+        imcEl.value = '';
+        return;
+    }
+    const weight = parseFloat(weightMatch[0]);
+
+    if (height > 0 && weight > 0) {
+        const imc = (weight / (height * height)).toFixed(1);
+        let classification = '';
+        if (imc < 18.5) classification = ' (Abaixo do peso)';
+        else if (imc < 25) classification = ' (Normal)';
+        else if (imc < 30) classification = ' (Sobrepeso)';
+        else classification = ' (Obesidade)';
+
+        imcEl.value = `${imc}${classification}`;
+    } else {
+        imcEl.value = '';
+    }
+}
+window.calculateIMC = calculateIMC;
+
 /** Fetch com timeout e retry em caso de erros temporários (429, 5xx) */
 async function fetchWithRetry(resource, options = {}, maxRetries = 2) {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -343,6 +390,17 @@ function autoPopulatePatientFieldsFromTranscript(transcription) {
             DOM.patientBP.dispatchEvent(new Event('input'));
         }
     }
+
+    // IMC
+    if (typeof DataExtractor.extractIMC === 'function') {
+        const imcStr = DataExtractor.extractIMC(transcription);
+        if (imcStr && DOM.patientIMC) {
+            if (DOM.patientIMC.value !== imcStr) {
+                DOM.patientIMC.value = imcStr;
+                DOM.patientIMC.dispatchEvent(new Event('change'));
+            }
+        }
+    }
 }
 
 // ---- ELEMENTOS DO DOM ----
@@ -392,6 +450,7 @@ const DOM = {
     pmGender: document.getElementById('pmGender'),
     patientHeight: document.getElementById('patientHeight'),
     patientWeight: document.getElementById('patientWeight'),
+    patientIMC: document.getElementById('patientIMC'),
     patientBP: document.getElementById('patientBP'),
     doctorSpecialty: document.getElementById('doctorSpecialty'),
     transcriptionLang: document.getElementById('transcriptionLang'),
@@ -1926,11 +1985,12 @@ async function generateClinicalDocuments() {
     const pGender = DOM.pmGender?.value           || 'Não Informado';
     const pHeight = DOM.patientHeight?.value.trim() || '';
     const pWeight = DOM.patientWeight?.value.trim() || '';
+    const pIMC    = DOM.patientIMC?.value.trim()    || '';
     const pBP     = DOM.patientBP?.value.trim()     || '';
     const spec    = DOM.doctorSpecialty.value.trim() || 'Clínica Geral';
     const model   = DOM.aiModel.value;
 
-    const vitaisLine = [pHeight && `Altura: ${pHeight}`, pWeight && `Peso: ${pWeight}`, pBP && `PA: ${pBP}`]
+    const vitaisLine = [pHeight && `Altura: ${pHeight}`, pWeight && `Peso: ${pWeight}`, pIMC && `IMC: ${pIMC}`, pBP && `PA: ${pBP}`]
         .filter(Boolean).join('   |   ');
 
     const userContent = `DADOS DO ATENDIMENTO:
@@ -3009,9 +3069,15 @@ function setupEventListeners() {
         if (el) {
             el.addEventListener('input', () => {
                 manualEdits[id] = true;
+                if (id === 'patientHeight' || id === 'patientWeight') {
+                    calculateIMC();
+                }
             });
             el.addEventListener('change', () => {
                 manualEdits[id] = true;
+                if (id === 'patientHeight' || id === 'patientWeight') {
+                    calculateIMC();
+                }
             });
         }
     });

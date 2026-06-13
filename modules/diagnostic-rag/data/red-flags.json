@@ -89,6 +89,44 @@
       "action": "Encaminhamento para Pronto-Socorro com Ortopedia para artrocentese de urgência",
       "protocol": "Consenso de Artrite Séptica - Sociedade Brasileira de Reumatologia",
       "time_window": "24h"
+    },
+    {
+      "id": "les_acometimento_renal",
+      "name": "Crise Lúpica com Acometimento Renal",
+      "signs": [
+        { "key": "lupus_diagnosis", "operator": "==", "value": true },
+        { "key": "proteinuria", "operator": "==", "value": true },
+        { "key": "hematuria", "operator": "==", "value": true }
+      ],
+      "urgency": "Urgente",
+      "action": "Encaminhamento com prioridade para Nefrologia/Reumatologia para biópsia renal",
+      "protocol": "Diretrizes Brasileiras para o Manejo de Nefrite Lúpica - SBR",
+      "time_window": "Até 7 dias"
+    },
+    {
+      "id": "serosite_lupica",
+      "name": "Serosite Lúpica / Derrame Pleural ou Pericárdico",
+      "signs": [
+        { "key": "lupus_diagnosis", "operator": "==", "value": true },
+        { "key": "pleuritic_pain", "operator": "==", "value": true },
+        { "key": "pericarditis", "operator": "==", "value": true }
+      ],
+      "urgency": "Urgente",
+      "action": "Encaminhamento para Pronto-Atendimento para realização de ecocardiograma e RX de tórax",
+      "protocol": "Consenso Latino-Americano de Lúpus Eritematoso Sistêmico",
+      "time_window": "Até 48h"
+    },
+    {
+      "id": "les_neuropsiquiatrico",
+      "name": "Manifestação Neuropsiquiátrica Lúpica",
+      "signs": [
+        { "key": "lupus_diagnosis", "operator": "==", "value": true },
+        { "key": "confusion_or_psychosis", "operator": "==", "value": true }
+      ],
+      "urgency": "Emergência",
+      "action": "Encaminhamento imediato para Pronto-Socorro/Hospital para investigação com RM e LCR",
+      "protocol": "Consenso de Lúpus Neuropsiquiátrico - Sociedade Brasileira de Reumatologia",
+      "time_window": "Imediato"
     }
   ],
   "geral": [
@@ -103,6 +141,19 @@
       "action": "Solicitar exames laboratoriais amplos e agendar retorno/encaminhamento em até 30 dias",
       "protocol": "Protocolo de Investigação de Síndrome Consumptiva",
       "time_window": "30 dias"
+    },
+    {
+      "id": "febre_eritema_malar",
+      "name": "Febre com Eritema Malar (Suspeita de LES)",
+      "signs": [
+        { "key": "malar_rash", "operator": "==", "value": true },
+        { "key": "fever", "operator": "==", "value": true },
+        { "key": "arthralgia", "operator": "==", "value": true }
+      ],
+      "urgency": "Investigação",
+      "action": "Solicitar FAN (ANA), hemograma, VHS, PCR, EAS e referenciar para Reumatologista",
+      "protocol": "Critérios de Classificação do Lúpus (ACR/EULAR 2019)",
+      "time_window": "Até 14 dias"
     }
   ]
 }

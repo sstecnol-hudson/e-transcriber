@@ -1,62 +1,43 @@
 // Importar componentes do módulo
 // Suporta imports tanto no browser (se carregados como scripts globais) quanto no Node.js (via require)
 
-let ProtocolRetrieverClass, ChainOfThoughtProcessorClass, RedFlagDetectorClass, CIDMapperClass, PrimaryCareContextualizerClass, QualityValidatorClass, SOAPGeneratorClass;
-
-if (typeof window !== 'undefined' && window.ProtocolRetriever) {
-  ProtocolRetrieverClass = window.ProtocolRetriever;
-  ChainOfThoughtProcessorClass = window.ChainOfThoughtProcessor;
-  RedFlagDetectorClass = window.RedFlagDetector;
-  CIDMapperClass = window.CIDMapper;
-  PrimaryCareContextualizerClass = window.PrimaryCareContextualizer;
-  QualityValidatorClass = window.QualityValidator;
-  SOAPGeneratorClass = window.SOAPGenerator;
-} else {
-  // Node.js environment fallback to require
-  const req = path => require(path);
-  ProtocolRetrieverClass = req('./protocol-retriever');
-  ChainOfThoughtProcessorClass = req('./chain-of-thought');
-  RedFlagDetectorClass = req('./red-flag-detector');
-  CIDMapperClass = req('./cid-mapper');
-  PrimaryCareContextualizerClass = req('./primary-care-contextualizer');
-  QualityValidatorClass = req('./quality-validator');
-  SOAPGeneratorClass = req('./soap-generator');
-}
-
 class DiagnosticRAG {
   constructor() {
-    // Resolve class constructors with fallback to window globals or require (Node.js)
+    // Resolve class constructors com fallback para window globals ou require (Node.js)
     const resolveClass = (globalName, requirePath) => {
       if (typeof window !== 'undefined' && window[globalName]) {
         return window[globalName];
       }
       if (typeof require !== 'undefined') {
-        // In Node.js environment
         // eslint-disable-next-line global-require
         return require(requirePath);
       }
-      throw new Error(`${globalName} is not available`);
+      throw new Error(`${globalName} não está disponível`);
     };
 
-    const ProtocolRetrieverClass = resolveClass('ProtocolRetriever', './protocol-retriever');
-    const ChainOfThoughtProcessorClass = resolveClass('ChainOfThoughtProcessor', './chain-of-thought');
-    const RedFlagDetectorClass = resolveClass('RedFlagDetector', './red-flag-detector');
-    const CIDMapperClass = resolveClass('CIDMapper', './cid-mapper');
-    const PrimaryCareContextualizerClass = resolveClass('PrimaryCareContextualizer', './primary-care-contextualizer');
-    const QualityValidatorClass = resolveClass('QualityValidator', './quality-validator');
-    const SOAPGeneratorClass = resolveClass('SOAPGenerator', './soap-generator');
+    const ProtocolRetrieverClass        = resolveClass('ProtocolRetriever',           './protocol-retriever');
+    const ChainOfThoughtProcessorClass  = resolveClass('ChainOfThoughtProcessor',     './chain-of-thought');
+    const RedFlagDetectorClass          = resolveClass('RedFlagDetector',             './red-flag-detector');
+    const CIDMapperClass                = resolveClass('CIDMapper',                   './cid-mapper');
+    const PrimaryCareContextualizerClass= resolveClass('PrimaryCareContextualizer',   './primary-care-contextualizer');
+    const QualityValidatorClass         = resolveClass('QualityValidator',            './quality-validator');
+    const SOAPGeneratorClass            = resolveClass('SOAPGenerator',               './soap-generator');
+    const ReferralSuggesterClass        = resolveClass('ReferralSuggester',           './referral-suggester');
+    const DiagnosticCompareClass        = resolveClass('DiagnosticCompare',           './diagnostic-compare');
 
-    this.retriever = new ProtocolRetrieverClass();
-    this.cotProcessor = new ChainOfThoughtProcessorClass();
-    this.redFlagDetector = new RedFlagDetectorClass();
-    this.cidMapper = new CIDMapperClass();
-    this.contextualizer = new PrimaryCareContextualizerClass();
-    this.qualityValidator = new QualityValidatorClass();
-    this.soapGenerator = new SOAPGeneratorClass();
+    this.retriever         = new ProtocolRetrieverClass();
+    this.cotProcessor      = new ChainOfThoughtProcessorClass();
+    this.redFlagDetector   = new RedFlagDetectorClass();
+    this.cidMapper         = new CIDMapperClass();
+    this.contextualizer    = new PrimaryCareContextualizerClass();
+    this.qualityValidator  = new QualityValidatorClass();
+    this.soapGenerator     = new SOAPGeneratorClass();
+    this.referralSuggester = new ReferralSuggesterClass();
+    this.diagnosticCompare = new DiagnosticCompareClass();
   }
 
   /**
-   * Executa o pipeline completo de diagnóstico RAG-Assistido
+   * Executa o pipeline completo de diagnóstico RAG-Assistido.
    * @param {Object} request - { transcript, specialty, extractedData, dataExtractorConfidence }
    * @returns {Promise<Object>} Resultado estruturado completo
    */
@@ -67,13 +48,13 @@ class DiagnosticRAG {
 
     try {
       // 1. Busca inteligente de protocolos (RAG)
-      const rResult = await this.retriever.retrieveProtocols(request);
+      const rResult   = await this.retriever.retrieveProtocols(request);
       const protocols = rResult.protocols || [];
 
       // 2. Detecção de Sinais de Alarme (Red Flags)
       const redFlags = await this.redFlagDetector.detectRedFlags(
-        request.extractedData, 
-        request.specialty, 
+        request.extractedData,
+        request.specialty,
         request.transcript
       );
 
@@ -82,48 +63,58 @@ class DiagnosticRAG {
 
       // 4. Mapeamento de CID-10 e CID-11
       const clinicalContext = {
-        age: request.extractedData?.demographics?.age?.value,
+        age:    request.extractedData?.demographics?.age?.value,
         gender: request.extractedData?.demographics?.gender?.value
       };
-      
       const primaryDiagName = cotResult.conclusion?.primaryDiagnosis || request.specialty;
       const cidResult = await this.cidMapper.mapDiagnosis(primaryDiagName, clinicalContext);
 
-      // 5. Contextualização para Atenção Primária (SUS)
+      // 5. Verificação de Consistência COT vs CID
+      const consistencyInfo = this.diagnosticCompare.compare(cotResult, cidResult);
+
+      // 6. Sugestão de Encaminhamento
+      const referralInfo = this.referralSuggester.suggest(cotResult, cidResult);
+
+      // 7. Contextualização para Atenção Primária (SUS)
       const susContext = await this.contextualizer.contextualize(
-        cotResult, 
-        redFlags, 
-        request.extractedData
+        cotResult,
+        redFlags,
+        request.extractedData,
+        cidResult
       );
 
-      // 6. Validação de Qualidade
+      // 8. Validação de Qualidade
       const qualityScore = this.qualityValidator.validateQuality(
-        cotResult, 
-        request, 
-        protocols, 
+        cotResult,
+        request,
+        protocols,
         redFlags
       );
 
-      // 7. Geração do SOAP enriquecido
+      // 9. Geração do SOAP enriquecido
       const soapMarkdown = this.soapGenerator.generateSOAP(
         request,
         cotResult,
         redFlags,
         qualityScore,
         susContext,
-        protocols
+        protocols,
+        cidResult,
+        referralInfo
       );
 
       return {
-        success: true,
-        soap: soapMarkdown,
-        redFlags: redFlags,
-        cid: cidResult,
-        quality: qualityScore,
-        susContext: susContext,
-        disclaimer: rResult.disclaimer,
-        cotResult: cotResult,
-        protocolsConsulted: protocols.map(p => p.title)
+        success:           true,
+        soap:              soapMarkdown,
+        redFlags:          redFlags,
+        cid:               cidResult,
+        quality:           qualityScore,
+        susContext:        susContext,
+        disclaimer:        rResult.disclaimer,
+        cotResult:         cotResult,
+        protocolsConsulted: protocols.map(p => p.title),
+        consistency:       consistencyInfo,
+        referralInfo:      referralInfo
       };
 
     } catch (error) {

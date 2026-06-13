@@ -1,4 +1,4 @@
-const CACHE_NAME = 'etranscriber-cache-v10';
+const CACHE_NAME = 'etranscriber-cache-v13';
 const ASSETS = [
   './',
   './index.html',

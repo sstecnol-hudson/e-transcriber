@@ -26,6 +26,15 @@
       "frequency": "Consultas quinzenais ou semanais compartilhadas entre a UBS e o ambulatório de especialidades.",
       "covered_medications": ["Metildopa", "Sulfato Ferroso", "Ácido Fólico", "Insulina NPH/Regular"],
       "documents": ["Caderneta da Gestante", "Cartão SUS", "RG", "Laudo médico justificando o alto risco", "Exames de imagem (Ultrassonografia) e laboratoriais"]
+    },
+    {
+      "id": "les_autoimune",
+      "name": "Acompanhamento de Doenças Autoimunes (LES/AR) - Reumatologia",
+      "target_conditions": ["M32", "M32.1", "M32.9", "M06", "M05"],
+      "criteria": "Diagnóstico confirmado de LES ou Artrite Reumatoide com necessidade de acompanhamento especializado.",
+      "frequency": "Acompanhamento a cada 3-6 meses com reumatologista. UBS para controle de comorbidades.",
+      "covered_medications": ["Hidroxicloroquina", "Cloroquina", "Metotrexato", "Azatioprina", "Prednisona", "Sulfassalazina"],
+      "documents": ["Cartão SUS", "RG", "Laudo médico", "Exames ANA/Anti-dsDNA", "Receita médica"]
     }
   ]
 }
