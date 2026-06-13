@@ -2965,3 +2965,175 @@ body[data-theme="light"] .badge-light {
     color: var(--accent-teal);
     flex-shrink: 0;
 }
+
+/* ==========================================================================
+   RESPONSIVIDADE GERAL (LAPTOPS, TABLETS E MOBILE)
+   ========================================================================== */
+
+/* Laptops (ex: 15" - 1366px até 1600px) */
+@media (max-width: 1600px) {
+    .main-content {
+        padding: 24px 32px;
+    }
+    .sidebar {
+        width: 240px;
+        padding: 20px;
+    }
+    .patient-grid-modern {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .patient-grid-modern .span-2 {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 1366px) {
+    .main-content {
+        padding: 16px 24px;
+    }
+    .sidebar {
+        width: 220px;
+        padding: 16px;
+    }
+    .patient-grid-modern {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .card {
+        padding: 16px;
+    }
+}
+
+/* Tablets e dispositivos médios (max-width: 1024px) */
+@media (max-width: 1024px) {
+    .main-content {
+        padding: 16px;
+    }
+    .sidebar {
+        width: 200px;
+        padding: 12px;
+    }
+    .sidebar-logo h2 {
+        font-size: 1.1rem;
+    }
+    .btn-generate-large {
+        padding: 12px 24px;
+        font-size: 1rem;
+    }
+}
+
+/* Mobile e Tablets pequenos (max-width: 768px) */
+@media (max-width: 768px) {
+    .app-container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        flex-wrap: wrap;
+        z-index: 100;
+        position: sticky;
+        top: 0;
+    }
+    
+    .sidebar-logo {
+        margin-bottom: 0;
+        width: 120px;
+    }
+    
+    .sidebar-logo h2 {
+        font-size: 1.2rem;
+    }
+    
+    .mode-selector {
+        margin-bottom: 0;
+        margin-left: auto;
+    }
+    
+    .sidebar-menu {
+        flex-direction: row;
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        gap: 8px;
+        order: 3; /* Coloca embaixo do logo e modo na sidebar mobile */
+        margin-top: 12px;
+        justify-content: space-between;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .menu-item {
+        flex: 1;
+        justify-content: center;
+        padding: 10px;
+    }
+    
+    .menu-item span {
+        display: none; /* Esconde o texto para caber os ícones e funcionar como uma tab bar */
+    }
+    
+    #patients-count-badge {
+        position: absolute;
+        top: 0;
+        right: 0;
+        transform: translate(25%, -25%);
+    }
+    
+    /* Esconde elementos não essenciais na barra mobile */
+    .sidebar-footer,
+    #bvs-dynamic-container {
+        display: none !important;
+    }
+    
+    .main-content {
+        height: auto;
+        overflow-y: visible;
+        padding: 16px;
+    }
+    
+    .top-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    
+    .header-actions {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .console-grid {
+        grid-template-columns: 1fr; /* Força 1 coluna no mobile */
+    }
+    
+    .actions-group, .controls-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .btn-generate-large {
+        width: 100%;
+    }
+    
+    .patient-grid-modern {
+        grid-template-columns: 1fr;
+    }
+    
+    /* Toast centralizado embaixo no mobile */
+    .toast {
+        bottom: 20px;
+        top: auto;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        text-align: center;
+    }
+}
