@@ -7,3 +7,9 @@ test('analisarEncaminhamento returns Cardiologia for hypertension terms', () => 
   expect(resultado.especialidade).toBe('Cardiologia');
   expect(resultado.confiança).toBeGreaterThan(80);
 });
+
+test('analisarEncaminhamento returns Urologia for unaccented hyperlasia prostatica', () => {
+  const texto = 'Paciente com quadro de hiperplasia prostatica sem obstrucao';
+  const resultado = analisarEncaminhamento(texto);
+  expect(resultado.especialidade).toBe('Urologia');
+});

@@ -485,6 +485,14 @@ const REGRAS_ENCAMINHAMENTO = [
   }
 ];
 
+function normalizarTexto(str) {
+    return (str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+}
+
 function analisarEncaminhamento(texto) {
     if (!texto) {
         return {
@@ -497,14 +505,15 @@ function analisarEncaminhamento(texto) {
             termos_encontrados: []
         };
     }
-    const textoMin = texto.toLowerCase();
+    const textoNorm = normalizarTexto(texto);
     let melhorRegra = null;
     let melhorScore = 0;
     for (const regra of REGRAS_ENCAMINHAMENTO) {
         let score = 0;
         let matchedTerms = [];
         for (const criterio of regra.criterios) {
-            if (textoMin.includes(criterio.termo.toLowerCase())) {
+            const termoNorm = normalizarTexto(criterio.termo);
+            if (textoNorm.includes(termoNorm)) {
                 score += criterio.peso;
                 matchedTerms.push(criterio.termo);
             }
@@ -512,7 +521,7 @@ function analisarEncaminhamento(texto) {
         // Check CIDs
         for (const cid of regra.cids) {
             const regex = new RegExp('\\b' + cid + '\\b', 'i');
-            if (regex.test(textoMin)) {
+            if (regex.test(textoNorm)) {
                 score += 15; // weight for CID match
                 matchedTerms.push(cid);
             }
