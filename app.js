@@ -99,9 +99,16 @@ function calculateIMC() {
         else if (imc < 30) classification = ' (Sobrepeso)';
         else classification = ' (Obesidade)';
 
-        imcEl.value = `${imc}${classification}`;
+        const newValue = `${imc}${classification}`;
+        if (imcEl.value !== newValue) {
+            imcEl.value = newValue;
+            window.AuditLog?.log('SISTEMA', 'Cálculo IMC', `Valor gerado automaticamente: ${newValue}`);
+        }
     } else {
-        imcEl.value = '';
+        if (imcEl.value !== '') {
+            imcEl.value = '';
+            window.AuditLog?.log('SISTEMA', 'Cálculo IMC Removido', `Parâmetros incompletos (Altura/Peso).`);
+        }
     }
 }
 window.calculateIMC = calculateIMC;
@@ -361,6 +368,7 @@ function autoPopulatePatientFieldsFromTranscript(transcription) {
         if (DOM.patientAge.value !== newVal) {
             DOM.patientAge.value = newVal;
             DOM.patientAge.dispatchEvent(new Event('input'));
+            window.AuditLog?.log('IA', 'Extração', `Campo Idade preenchido: ${newVal}`);
         }
     }
 
@@ -370,6 +378,7 @@ function autoPopulatePatientFieldsFromTranscript(transcription) {
         if (DOM.pmGender.value !== newVal) {
             DOM.pmGender.value = newVal;
             DOM.pmGender.dispatchEvent(new Event('change'));
+            window.AuditLog?.log('IA', 'Extração', `Campo Sexo preenchido: ${newVal}`);
         }
     }
 
@@ -379,6 +388,7 @@ function autoPopulatePatientFieldsFromTranscript(transcription) {
         if (DOM.patientHeight.value !== heightStr) {
             DOM.patientHeight.value = heightStr;
             DOM.patientHeight.dispatchEvent(new Event('input'));
+            window.AuditLog?.log('IA', 'Extração', `Campo Altura preenchido: ${heightStr}`);
         }
     }
 
@@ -388,6 +398,7 @@ function autoPopulatePatientFieldsFromTranscript(transcription) {
         if (DOM.patientWeight.value !== weightStr) {
             DOM.patientWeight.value = weightStr;
             DOM.patientWeight.dispatchEvent(new Event('input'));
+            window.AuditLog?.log('IA', 'Extração', `Campo Peso preenchido: ${weightStr}`);
         }
     }
 
@@ -398,17 +409,17 @@ function autoPopulatePatientFieldsFromTranscript(transcription) {
         if (DOM.patientBP.value !== newVal) {
             DOM.patientBP.value = newVal;
             DOM.patientBP.dispatchEvent(new Event('input'));
+            window.AuditLog?.log('IA', 'Extração', `Campo P.A. preenchido: ${newVal}`);
         }
     }
 
-    // IMC
+    // IMC - Se vier direto e não tiver calculado
     if (typeof DataExtractor.extractIMC === 'function') {
         const imcStr = DataExtractor.extractIMC(transcription);
-        if (imcStr && DOM.patientIMC) {
-            if (DOM.patientIMC.value !== imcStr) {
-                DOM.patientIMC.value = imcStr;
-                DOM.patientIMC.dispatchEvent(new Event('change'));
-            }
+        if (imcStr && DOM.patientIMC && !DOM.patientIMC.value) {
+            DOM.patientIMC.value = imcStr;
+            DOM.patientIMC.dispatchEvent(new Event('change'));
+            window.AuditLog?.log('IA', 'Extração', `Campo IMC extraído diretamente: ${imcStr}`);
         }
     }
 }
@@ -3077,14 +3088,24 @@ function setupEventListeners() {
     patientFields.forEach(id => {
         const el = DOM[id] || document.getElementById(id);
         if (el) {
-            el.addEventListener('input', () => {
-                manualEdits[id] = true;
+            el.addEventListener('input', (e) => {
+                if (e.isTrusted) {
+                    if (!manualEdits[id]) {
+                        window.AuditLog?.log('MEDICO', 'Override Manual', `Campo ${id} assumiu controle manual.`);
+                    }
+                    manualEdits[id] = true;
+                }
                 if (id === 'patientHeight' || id === 'patientWeight') {
                     calculateIMC();
                 }
             });
-            el.addEventListener('change', () => {
-                manualEdits[id] = true;
+            el.addEventListener('change', (e) => {
+                if (e.isTrusted) {
+                    if (!manualEdits[id]) {
+                        window.AuditLog?.log('MEDICO', 'Override Manual', `Campo ${id} assumiu controle manual.`);
+                    }
+                    manualEdits[id] = true;
+                }
                 if (id === 'patientHeight' || id === 'patientWeight') {
                     calculateIMC();
                 }
