@@ -31,9 +31,16 @@ class SOAPGenerator {
       : '';
 
     // Bloco de encaminhamento sugerido
-    const referralBlock = referralInfo?.specialty
-      ? `\n## 6. ENCAMINHAMENTO SUGERIDO\n- **Especialidade:** ${referralInfo.specialty}\n- **Justificativa:** ${referralInfo.rationale}`
-      : '';
+    let referralBlock = '';
+    if (referralInfo?.specialty) {
+      referralBlock = `\n## 6. ENCAMINHAMENTO SUGERIDO\n- **Especialidade:** ${referralInfo.specialty}\n- **Justificativa:** ${referralInfo.rationale}`;
+      if (referralInfo.exames_obrigatorios && referralInfo.exames_obrigatorios.length > 0) {
+        referralBlock += `\n- **Exames Obrigatórios para Regulação:**\n${referralInfo.exames_obrigatorios.map(e => `  - ${e}`).join('\n')}`;
+      }
+      if (referralInfo.protocolo) {
+        referralBlock += `\n- **Protocolo de Regulação:** ${referralInfo.protocolo}`;
+      }
+    }
 
     return `# SOAP - RELATÓRIO CLÍNICO RAG-ASSISTIDO
 

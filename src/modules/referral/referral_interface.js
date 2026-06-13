@@ -62,6 +62,12 @@ export function abrirAnaliseEncaminhamento() {
       <p><strong>Especialidade:</strong> ${resultado.especialidade}</p>
       <p><strong>Confiança:</strong> ${resultado.confiança.toFixed(1)}%</p>
       <p><strong>Justificativa:</strong> ${resultado.justificativa}</p>
+      ${resultado.exames_obrigatorios && resultado.exames_obrigatorios.length > 0 ? `
+        <p><strong>Exames Obrigatórios para Regulação:</strong></p>
+        <ul style="margin-top:0;padding-left:20px;">
+          ${resultado.exames_obrigatorios.map(e => `<li>${e}</li>`).join('')}
+        </ul>
+      ` : ''}
       <button id="btn-aceitar-encaminhamento" class="btn btn-success referral-btn" style="margin-right:8px;">Aceitar</button>
       <button id="btn-rejeitar-encaminhamento" class="btn btn-secondary referral-btn">Rejeitar</button>
     </div>

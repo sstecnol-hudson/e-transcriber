@@ -89,15 +89,26 @@ class DiagnosticRAG {
           referralInfo = {
             specialty: susResult.especialidade,
             rationale: susResult.justificativa,
-            confidence: susResult.confiança
+            confidence: susResult.confiança,
+            prioridade: susResult.prioridade || null,
+            protocolo: susResult.protocolo || null,
+            exames_obrigatorios: susResult.exames_obrigatorios || []
           };
         } else {
           // Fallback: ReferralSuggester próprio se regras SUS não estiverem carregadas
           referralInfo = this.referralSuggester.suggest(cotResult, cidResult);
+          referralInfo.confidence = 70;
+          referralInfo.prioridade = null;
+          referralInfo.protocolo = null;
+          referralInfo.exames_obrigatorios = [];
         }
       } catch (refErr) {
         console.warn('[RAG] Erro ao chamar regras SUS, usando fallback:', refErr);
         referralInfo = this.referralSuggester.suggest(cotResult, cidResult);
+        referralInfo.confidence = 50;
+        referralInfo.prioridade = null;
+        referralInfo.protocolo = null;
+        referralInfo.exames_obrigatorios = [];
       }
 
       // 7. Contextualização para Atenção Primária (SUS)
