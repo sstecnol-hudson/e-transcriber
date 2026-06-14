@@ -91,11 +91,11 @@ class DiagnosticRAG {
             cidResult?.primary?.diagnosis || '',
             cidResult?.primary?.icd10?.code || ''
           ].join(' ');
-          let susResult = susRules(diagText);
+          let susResult = susRules(diagText, redFlags);
 
           // Segunda tentativa: se retornou Clínica Geral e há transcrição bruta diferente do diagText, tenta só com ela
           if (susResult.especialidade === 'Clínica Geral' && request.transcript && request.transcript !== diagText) {
-            const susResult2 = susRules(request.transcript);
+            const susResult2 = susRules(request.transcript, redFlags);
             if (susResult2.especialidade !== 'Clínica Geral') {
               susResult = susResult2;
             }

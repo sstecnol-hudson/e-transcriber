@@ -227,11 +227,17 @@ const REGRAS_ENCAMINHAMENTO = [
       { termo: 'sangramento digestivo', peso: 20 },
       { termo: 'alteração de hábito intestinal', peso: 12 },
       { termo: 'suspeita de úlcera', peso: 14 },
-      { termo: 'icterícia', peso: 18 }
+      { termo: 'icterícia', peso: 18 },
+      { termo: 'doença celíaca', peso: 25 },
+      { termo: 'celíaca', peso: 20 },
+      { termo: 'intolerância ao glúten', peso: 22 },
+      { termo: 'síndrome de má absorção', peso: 20 },
+      { termo: 'má absorção', peso: 15 }
     ],
-    cids: ['K25', 'K26', 'K59', 'K70', 'R17'],
-    exames_obrigatorios: ['Endoscopia Digestiva Alta', 'Ultrassom Abdominal', 'Fezes - Parasitológico'],
-    protocolo: 'Linha de Cuidado em Doenças Digestivas - MS'
+    cids: ['K25', 'K26', 'K59', 'K70', 'R17', 'K90', 'K90.0'],
+    exames_obrigatorios: ['Endoscopia Digestiva Alta', 'Ultrassom Abdominal', 'Fezes - Parasitológico', 'Anticorpo Antitransglutaminase Tisular (IgA)', 'Dosagem de IgA Total'],
+    protocolo: 'Linha de Cuidado em Doenças Digestivas - MS',
+    justificativa_padrao: 'Paciente apresenta sintomas ou diagnóstico gastrointestinal ([QUADRO]), necessitando de avaliação especializada em Gastroenterologia para confirmação diagnóstica e conduta terapêutica.'
   },
 
   // ==========================
@@ -493,13 +499,33 @@ function normalizarTexto(str) {
         .trim();
 }
 
-function analisarEncaminhamento(texto) {
+function analisarEncaminhamento(texto, alertas = []) {
+    let alertaCritico = null;
+    let prioridadeAlerta = null;
+    let justificativaAlerta = '';
+
+    // Avalia alertas (Red Flags)
+    if (alertas && alertas.length > 0) {
+        // Encontra o alerta mais grave
+        const urgencias = { 'Emergência': 3, 'Urgente': 2, 'Investigação': 1 };
+        alertas.sort((a, b) => (urgencias[b.urgency] || 0) - (urgencias[a.urgency] || 0));
+        
+        alertaCritico = alertas[0];
+        if (alertaCritico.urgency === 'Emergência' || alertaCritico.urgency === 'Urgente') {
+            prioridadeAlerta = 'Urgência/Emergência';
+            justificativaAlerta = `⚠️ ATENÇÃO - SINAL DE ALARME: ${alertaCritico.name}. Conduta recomendada: ${alertaCritico.action}. `;
+        } else if (alertaCritico.urgency === 'Investigação') {
+            prioridadeAlerta = 'Alta';
+            justificativaAlerta = `⚠️ ALERTA DE RISCO: ${alertaCritico.name}. Conduta sugerida: ${alertaCritico.action}. `;
+        }
+    }
+
     if (!texto) {
         return {
             especialidade: 'Clínica Geral',
             confiança: 0,
-            prioridade: null,
-            justificativa: 'Nenhum texto de transcrição fornecido.',
+            prioridade: prioridadeAlerta || null,
+            justificativa: justificativaAlerta + 'Nenhum texto de transcrição fornecido.',
             exames_obrigatorios: [],
             protocolo: null,
             termos_encontrados: []
@@ -520,8 +546,8 @@ function analisarEncaminhamento(texto) {
         }
         // Check CIDs
         for (const cid of regra.cids) {
-            const regex = new RegExp('\\b' + cid + '\\b', 'i');
-            if (regex.test(textoNorm)) {
+            const regex = new RegExp('\\b' + cid.replace('.', '\\.') + '\\b', 'i');
+            if (regex.test(texto)) {
                 score += 15; // weight for CID match
                 matchedTerms.push(cid);
             }
@@ -534,9 +560,9 @@ function analisarEncaminhamento(texto) {
     if (!melhorRegra || melhorScore < 5) {
         return {
             especialidade: 'Clínica Geral',
-            confiança: 50,
-            prioridade: null,
-            justificativa: 'Nenhum critério forte de encaminhamento especializado foi identificado na transcrição da consulta. O manejo pode ser continuado na Atenção Primária.',
+            confiança: alertaCritico ? 80 : 50,
+            prioridade: prioridadeAlerta || null,
+            justificativa: justificativaAlerta + 'O manejo pode ser iniciado ou continuado na Atenção Primária pelo Clínico Geral/Médico de Família.',
             exames_obrigatorios: [],
             protocolo: null,
             termos_encontrados: []
@@ -547,15 +573,25 @@ function analisarEncaminhamento(texto) {
     if (matchedTerms.length > 1) {
         confianca = Math.min(99, confianca + (matchedTerms.length - 1) * 2);
     }
-    let justificativa = regra.justificativa_padrao || '';
+    
+    // Formata os termos de forma única e limpa
+    const uniqueTerms = [...new Set(matchedTerms)].join(', ');
+    
+    let justificativa = regra.justificativa_padrao || `Paciente com quadro compatível com ${uniqueTerms}, necessitando avaliação da especialidade.`;
     justificativa = justificativa
-        .replace('[DIAGNÓSTICO]', matchedTerms.join(', '))
-        .replace('[SINTOMAS]', matchedTerms.join(', '))
-        .replace('[QUADRO]', matchedTerms.join(', '));
+        .replace('[DIAGNÓSTICO]', uniqueTerms)
+        .replace('[SINTOMAS]', uniqueTerms)
+        .replace('[QUADRO]', uniqueTerms);
+        
+    // Adiciona o alerta à justificativa se existir
+    if (justificativaAlerta) {
+        justificativa = justificativaAlerta + "\n\nReferência Especializada: " + justificativa;
+    }
+
     return {
         especialidade:      regra.especialidade,
-        confiança:          confianca,
-        prioridade:         regra.prioridade || null,
+        confiança:          alertaCritico ? Math.max(confianca, 90) : confianca,
+        prioridade:         prioridadeAlerta || regra.prioridade || null,
         justificativa:      justificativa,
         exames_obrigatorios: regra.exames_obrigatorios || [],
         protocolo:          regra.protocolo || null,
