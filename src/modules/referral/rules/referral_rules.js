@@ -138,7 +138,7 @@ const REGRAS_ENCAMINHAMENTO = [
       { termo: 'doença crônica na infância', peso: 15 },
       { termo: 'vacinação atrasada com complicações', peso: 10 }
     ],
-    cids: ['R62', 'Z00', 'P07', 'J20', 'B08'],
+    cids: ['R62', 'Z00.1', 'P07', 'P05', 'Q89'],
     exames_obrigatorios: [
       'Curva de Crescimento',
       'Hemograma',
