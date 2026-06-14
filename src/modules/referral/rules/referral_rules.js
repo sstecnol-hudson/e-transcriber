@@ -539,7 +539,9 @@ function analisarEncaminhamento(texto, alertas = []) {
         let matchedTerms = [];
         for (const criterio of regra.criterios) {
             const termoNorm = normalizarTexto(criterio.termo);
-            if (textoNorm.includes(termoNorm)) {
+            // Use regex boundaries to prevent matching substrings inside larger words
+            const termoRegex = new RegExp('\\b' + termoNorm.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&') + '\\b', 'i');
+            if (termoRegex.test(textoNorm)) {
                 score += criterio.peso;
                 matchedTerms.push(criterio.termo);
             }
