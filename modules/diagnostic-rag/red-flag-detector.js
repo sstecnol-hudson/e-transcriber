@@ -74,6 +74,30 @@
             "time_window": "Imediato"
           }
         ],
+        "vascular": [
+          {
+            "id": "isquemia_digital_aguda",
+            "name": "Isquemia Digital Aguda",
+            "signs": [
+              { "key": "digital_ischemia", "operator": "==", "value": true }
+            ],
+            "urgency": "Emergência",
+            "action": "Encaminhamento IMEDIATO para Pronto-Socorro com Cirurgia Vascular — risco de amputação em horas.",
+            "protocol": "Protocolo de Isquemia de Membro — SBACV",
+            "time_window": "Imediato (< 6h)"
+          },
+          {
+            "id": "isquemia_membro_aguda",
+            "name": "Isquemia Aguda de Membro (6 Ps)",
+            "signs": [
+              { "key": "acute_limb_ischemia", "operator": "==", "value": true }
+            ],
+            "urgency": "Emergência",
+            "action": "SAMU (192) imediato — janela terapêutica para trombólise ou cirurgia é de 4–6h.",
+            "protocol": "Guideline de Isquemia Aguda de Membro — ACC/AHA 2022 / SBACV",
+            "time_window": "Imediato (< 4h)"
+          }
+        ],
         "reumatologia": [
           {
             "id": "artrite_septica",
@@ -218,7 +242,28 @@
           'confusion_or_psychosis': ['confusão mental', 'confusao mental', 'delírio', 'delirio', 'psicose', 'convulsão', 'convulsao', 'alteração de comportamento'],
           'malar_rash': ['eritema malar', 'asa de borboleta', 'mancha vermelha no rosto', 'mancha no rosto', 'manchas nas bochechas'],
           'fever': ['febre', 'febril', 'temperatura elevada', 'calafrio', 'calafrios'],
-          'arthralgia': ['artralgia', 'dor nas articulações', 'dor nas articulacoes', 'dor nas juntas', 'juntas doloridas']
+          'arthralgia': ['artralgia', 'dor nas articulações', 'dor nas articulacoes', 'dor nas juntas', 'juntas doloridas'],
+          // ── Vascular ──────────────────────────────────────────────────────────
+          'digital_ischemia': [
+            'isquemia digital', 'isquemia digital aguda', 'dedo azul', 'dedo azul agudo',
+            'síndrome do dedo azul', 'sindrome do dedo azul', 'blue toe', 'cianose digital',
+            'dedo cianótico', 'dedo cianotico', 'palidez digital', 'necrose digital',
+            'gangrena digital', 'oclusão arterial digital', 'oclusao arterial digital',
+            'isquemia dos dedos', 'dedo isquêmico', 'dedo isquemico'
+          ],
+          'acute_limb_ischemia': [
+            'isquemia aguda de membro', 'isquemia de membro', 'membro isquêmico',
+            'membro isquemico', 'ausência de pulso', 'ausencia de pulso', 'pulso ausente',
+            'extremidade fria', 'perna fria', 'mão fria', 'pé frio', 'dor em repouso vascular',
+            'palidez de membro', 'parestesia de membro', 'paralisia de membro',
+            'oclusão arterial aguda', 'oclusao arterial aguda', 'embolia arterial',
+            'trombose arterial aguda', '6 ps', 'seis ps'
+          ],
+          'aortic_dissection': [
+            'dissecção aórtica', 'disseccao aortica', 'dissecção de aorta', 'dissecção aortica',
+            'dor torácica em rasgo', 'dor em rasgo', 'dor para o dorso',
+            'síndrome aórtica aguda', 'sindrome aortica aguda'
+          ]
         };
 
         const keywords = keywordsMap[key] || [key.replace('_', ' ')];
@@ -266,10 +311,25 @@
       
       const detected = [];
       const specLower = (specialty || '').toLowerCase();
+
+      // Mapa de aliases: normaliza nomes compostos de especialidades para a chave do JSON
+      const SPECIALTY_ALIASES = {
+        'cirurgia vascular / angiologia': 'vascular',
+        'cirurgia vascular':              'vascular',
+        'angiologia':                     'vascular',
+        'cardiologia e cirurgia vascular':'vascular',
+        'endocrinologia e metabolismo':   'endocrinologia',
+        'ginecologia e obstetrícia':      'ginecologia',
+        'ginecologia e obstetricia':      'ginecologia',
+        'ortopedia e traumatologia':      'ortopedia',
+        'clínica geral':                  'geral',
+        'clinica geral':                  'geral'
+      };
+      const resolvedKey = SPECIALTY_ALIASES[specLower] || specLower;
       
-      // Obter definições para a especialidade e também do grupo "geral"
+      // Obter definições para a especialidade resolvida e também do grupo "geral"
       const definitions = [
-        ...(this.redFlagsConfig[specLower] || []),
+        ...(this.redFlagsConfig[resolvedKey] || []),
         ...(this.redFlagsConfig['geral'] || [])
       ];
 

@@ -129,6 +129,41 @@
       "time_window": "Imediato"
     }
   ],
+  "vascular": [
+    {
+      "id": "isquemia_digital_aguda",
+      "name": "Isquemia Digital Aguda",
+      "signs": [
+        { "key": "digital_ischemia", "operator": "==", "value": true }
+      ],
+      "urgency": "Emergência",
+      "action": "Encaminhamento IMEDIATO para Pronto-Socorro com Cirurgia Vascular — risco de amputação em horas. Iniciar anticoagulação e analgesia.",
+      "protocol": "Protocolo de Isquemia de Membro — Sociedade Brasileira de Angiologia e Cirurgia Vascular (SBACV)",
+      "time_window": "Imediato (< 6h)"
+    },
+    {
+      "id": "isquemia_membro_aguda",
+      "name": "Isquemia Aguda de Membro (6 Ps)",
+      "signs": [
+        { "key": "acute_limb_ischemia", "operator": "==", "value": true }
+      ],
+      "urgency": "Emergência",
+      "action": "SAMU (192) imediato — janela terapêutica para trombólise ou cirurgia é de 4–6h. Não elevar o membro.",
+      "protocol": "Guideline de Isquemia Aguda de Membro — ACC/AHA 2022 / SBACV",
+      "time_window": "Imediato (< 4h)"
+    },
+    {
+      "id": "disseccao_aortica",
+      "name": "Dissecção Aórtica Aguda",
+      "signs": [
+        { "key": "aortic_dissection", "operator": "==", "value": true }
+      ],
+      "urgency": "Emergência",
+      "action": "SAMU (192) imediato — controle de PA e FC, analgesia IV, sem anticoagulação empírica.",
+      "protocol": "Protocolo de Síndromes Aórticas Agudas — ESC 2023 / SBC",
+      "time_window": "Imediato"
+    }
+  ],
   "geral": [
     {
       "id": "perda_peso_febre",
