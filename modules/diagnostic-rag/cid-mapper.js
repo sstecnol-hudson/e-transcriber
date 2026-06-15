@@ -167,17 +167,23 @@
       }
 
       // Se a correspondência for muito baixa (< 0.3), tenta encontrar por termos-chave
+      // Escolhe o diagnóstico com MAIS palavras correspondentes (evita parar no primeiro match)
       if (highestScore < 0.3) {
         const stopWords = ['sindrome', 'doenca', 'transtorno', 'infeccao', 'insuficiencia', 'agudo', 'aguda', 'cronico', 'cronica', 'sistemico', 'sistemica', 'tipo', 'corporal', 'massa', 'indice', 'essencial', 'primaria', 'secundaria', 'complicacoes', 'sem'];
+        let bestKeywordKey = null;
+        let bestKeywordCount = 0;
         for (const key of Object.keys(this.cidConfig)) {
           const words = removeAccents(key.toLowerCase()).split(' ');
           const matches = words.filter(w => w.length > 3 && !stopWords.includes(w) && normalizedDiag.includes(w));
           if (debug && matches.length > 0) console.log('[DEBUG_CID] Keyword fallback matches for', key, ':', matches);
-          if (matches.length > 0) {
-            bestKey = key;
-            highestScore = 0.5; // score fixo para correspondência por palavras-chave
-            break;
+          if (matches.length > bestKeywordCount) {
+            bestKeywordCount = matches.length;
+            bestKeywordKey = key;
           }
+        }
+        if (bestKeywordKey) {
+          bestKey = bestKeywordKey;
+          highestScore = 0.5; // score fixo para correspondência por palavras-chave
         }
       }
 

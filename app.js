@@ -305,6 +305,104 @@ async function getAudioHash(blob) {
     return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// ==========================================================================
+// DIARIZAÇÃO: Identifica locutores (Médico / Paciente) via Groq Llama 3.3
+// ==========================================================================
+
+/**
+ * Recebe os segmentos do Whisper (verbose_json) e usa o Llama 3.3 para
+ * atribuir o locutor "Médico" ou "Paciente" a cada fala.
+ * Retorna um texto formatado com marcações de locutor.
+ */
+async function diarizeTranscription(segments, language = 'pt') {
+    if (!segments || segments.length === 0) return '';
+
+    // Monta lista numerada para o modelo classificar
+    const segmentList = segments
+        .map((s, i) => `[${i}] ${s.text.trim()}`)
+        .join('\n');
+
+    const systemPrompt = `Você é um sistema de diarização de áudio médico. Sua tarefa é identificar quem está falando em cada segmento de uma transcrição de consulta médica.
+
+REGRAS:
+- Cada segmento está numerado como [0], [1], [2]...
+- Responda APENAS com um JSON array onde cada elemento tem: {"index": <número>, "speaker": "Médico" ou "Paciente"}
+- Analise o contexto clínico: o médico faz perguntas diagnósticas, prescreve, explica; o paciente relata sintomas, responde perguntas.
+- Se houver dúvida, use "Médico" para falas técnicas e "Paciente" para relatos pessoais.
+- Não adicione texto fora do JSON. Responda somente o array JSON.`;
+
+    const userPrompt = `Classifique cada segmento abaixo como "Médico" ou "Paciente":\n\n${segmentList}`;
+
+    try {
+        const res = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${AppState.apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                temperature: 0.1,
+                max_tokens: 2048,
+                response_format: { type: 'json_object' }
+            }),
+            timeout: 60000
+        });
+
+        if (!res.ok) {
+            console.warn('⚠️ Diarização falhou, usando transcrição sem rótulos.');
+            return segments.map(s => s.text.trim()).join(' ');
+        }
+
+        const data = await res.json();
+        const raw = data.choices?.[0]?.message?.content || '{}';
+
+        // O modelo pode retornar {"segments": [...]} ou diretamente [...]
+        let parsed;
+        try {
+            const obj = JSON.parse(raw);
+            parsed = Array.isArray(obj) ? obj : (obj.segments || obj.data || Object.values(obj)[0]);
+        } catch {
+            console.warn('⚠️ JSON de diarização inválido, usando texto simples.');
+            return segments.map(s => s.text.trim()).join(' ');
+        }
+
+        if (!Array.isArray(parsed)) {
+            return segments.map(s => s.text.trim()).join(' ');
+        }
+
+        // Mapeia índice → locutor
+        const speakerMap = {};
+        parsed.forEach(item => { speakerMap[item.index] = item.speaker || 'Médico'; });
+
+        // Agrupa segmentos consecutivos do mesmo locutor
+        let result = '';
+        let lastSpeaker = null;
+        segments.forEach((seg, i) => {
+            const speaker = speakerMap[i] || (i % 2 === 0 ? 'Médico' : 'Paciente');
+            const text = seg.text.trim();
+            if (!text) return;
+            if (speaker !== lastSpeaker) {
+                result += (result ? '\n\n' : '') + `**${speaker}:** `;
+                lastSpeaker = speaker;
+            } else {
+                result += ' ';
+            }
+            result += text;
+        });
+
+        return result;
+    } catch (err) {
+        console.warn('⚠️ Erro na diarização:', err.message);
+        // Fallback seguro: retorna texto plano concatenado
+        return segments.map(s => s.text.trim()).join(' ');
+    }
+}
+
 // Wrapper de transcrição que verifica cache antes de chamar a API Groq
 async function transcribeWithCache(fileBlob, language = 'pt') {
     const hash = await getAudioHash(fileBlob);
@@ -323,8 +421,8 @@ async function transcribeWithCache(fileBlob, language = 'pt') {
     formData.append('file', fileBlob, filename);
     formData.append('model', GROQ_TRANSCRIBE_MODEL);
     formData.append('language', language);
-    formData.append('response_format', 'json');
-    // Usar timeout de 90s para transcrição (arquivos podem ser grandes)
+    formData.append('response_format', 'verbose_json');
+    // Use timeout of 90s for transcription (files can be large)
     const res = await fetchWithRetry('https://api.groq.com/openai/v1/audio/transcriptions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${AppState.apiKey}` },
@@ -336,8 +434,25 @@ async function transcribeWithCache(fileBlob, language = 'pt') {
         throw new Error(`Transcrição Groq falhou (${res.status}): ${errText}`);
     }
     const data = await res.json();
-    localStorage.setItem(cacheKey, data.text);
-    return data.text;
+
+    // Tenta diarizar se houver segmentos disponíveis
+    let finalText;
+    if (data.segments && data.segments.length > 0 && AppState.apiKey) {
+        try {
+            if (typeof showToast === 'function') showToast('🎙️ Identificando locutores (Médico/Paciente)...');
+            finalText = await diarizeTranscription(data.segments, language);
+            if (typeof showToast === 'function') showToast('✅ Diarização concluída!');
+            console.log('🎙️ Diarização concluída');
+        } catch (e) {
+            console.warn('Diarização ignorada, usando texto bruto:', e.message);
+            finalText = data.text;
+        }
+    } else {
+        finalText = data.text;
+    }
+
+    localStorage.setItem(cacheKey, finalText);
+    return finalText;
 }
 
 // Controle de edição manual do usuário nos campos do paciente
