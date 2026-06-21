@@ -307,23 +307,112 @@ function renderRagResults(result, container) {
     programsHtml = '<p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">Nenhum programa de atenção primária SUS aplicável.</p>';
   }
 
-  // ── Montar HTML do painel ──────────────────────────────────────────────────
   container.innerHTML = `
-    <!-- Barra de Confiança Clínica -->
-    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-weight: 600; font-size: 1rem; color: var(--text-primary);">Pontuação de Qualidade Clínica RAG:</span>
-        <span style="font-weight: 700; color: ${qualityColor}; font-size: 1.1rem;">${quality.overall}/100</span>
-      </div>
-      <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color);">
-        <div style="width: ${quality.overall}%; height: 100%; background: ${qualityColor}; border-radius: 4px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);"></div>
-      </div>
-      <span style="font-size: 0.85rem; color: var(--text-secondary);">Recomendação: <strong>${quality.overallRecommendation}</strong></span>
+    <!-- Navegação das Abas -->
+    <div class="rag-tabs-header">
+      <button class="rag-tab-btn active" data-rag-tab="rag-tab-overview">Visão Geral & Decisão</button>
+      <button class="rag-tab-btn" data-rag-tab="rag-tab-alerts">Diagnóstico & Alertas</button>
+      <button class="rag-tab-btn" data-rag-tab="rag-tab-sus">Conduta & Regulação SUS</button>
     </div>
 
-    <!-- Layout de Duas Colunas -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-      <!-- Coluna Esquerda -->
+    <!-- ABA 1: Visão Geral & Decisão -->
+    <div id="rag-tab-overview" class="rag-tab-content active">
+      <!-- Barra de Confiança Clínica -->
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: 600; font-size: 1rem; color: var(--text-primary);">Pontuação de Qualidade Clínica RAG:</span>
+          <span style="font-weight: 700; color: ${qualityColor}; font-size: 1.1rem;">${quality.overall}/100</span>
+        </div>
+        <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; border: 1px solid var(--border-color);">
+          <div style="width: ${quality.overall}%; height: 100%; background: ${qualityColor}; border-radius: 4px; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+        </div>
+        <span style="font-size: 0.85rem; color: var(--text-secondary);">Recomendação: <strong>${quality.overallRecommendation}</strong></span>
+      </div>
+
+      <!-- Gaps de Informações Faltantes -->
+      ${quality.gaps && quality.gaps.length > 0 ? `
+        <div style="margin-bottom: 20px; background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.15); padding: 14px; border-radius: 8px;">
+          <h4 style="margin: 0 0 10px; font-size: 0.9rem; color: #f59e0b; text-transform: uppercase;">Gaps e Dados Faltantes Recomendados</h4>
+          <ul style="margin: 0; padding-left: 20px; font-size: 0.85rem; color: var(--text-primary);">
+            ${quality.gaps.map(gap => `
+              <li style="margin-bottom: 6px;">
+                <strong>${gap.field}:</strong> ${gap.impact} <br/>
+                <span style="color: var(--text-secondary); font-size: 0.8rem;">👉 <em>${gap.recommendation}</em></span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      ` : ''}
+
+      <!-- ─── Encaminhamento SUS Unificado ─────────────────────────────── -->
+      ${referralInfo ? (() => {
+        const prioColor = {
+          'Alta':     { bg: 'rgba(239,68,68,0.12)',  border: '#ef4444', text: '#f87171' },
+          'Média':    { bg: 'rgba(245,158,11,0.12)', border: '#f59e0b', text: '#fbbf24' },
+          'Variável': { bg: 'rgba(99,102,241,0.12)', border: '#818cf8', text: '#a5b4fc' }
+        }[referralInfo.prioridade] || { bg: 'rgba(99,102,241,0.08)', border: 'rgba(99,102,241,0.3)', text: 'var(--primary)' };
+        const confColor = (referralInfo.confidence || referralInfo.confiança || 0) >= 85 ? '#10b981'
+                        : (referralInfo.confidence || referralInfo.confiança || 0) >= 65 ? '#f59e0b' : '#ef4444';
+        const confVal   = referralInfo.confidence || referralInfo.confiança || 0;
+        const examesHtml = referralInfo.exames_obrigatorios && referralInfo.exames_obrigatorios.length > 0
+          ? referralInfo.exames_obrigatorios.map(e => `<span style="display:inline-block;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);border-radius:4px;padding:2px 8px;font-size:0.75rem;margin:2px;">${e}</span>`).join('')
+          : '<span style="color:var(--text-secondary);font-size:0.85rem;">Nenhum exame obrigatório especificado.</span>';
+        return `
+        <div id="referral-block-unified" style="background:${prioColor.bg};border:1px solid ${prioColor.border};border-left:5px solid ${prioColor.border};padding:18px;border-radius:10px;">
+          <!-- Cabeçalho -->
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:1.3rem;">🏥</span>
+              <h4 style="margin:0;font-size:1rem;text-transform:uppercase;letter-spacing:0.5px;color:${prioColor.text};">Encaminhamento SUS Sugerido</h4>
+            </div>
+            ${referralInfo.prioridade ? `<span style="background:${prioColor.bg};border:1px solid ${prioColor.border};color:${prioColor.text};padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:700;">⚡ Prioridade ${referralInfo.prioridade}</span>` : ''}
+          </div>
+
+          <!-- Especialidade + Confiança -->
+          <div style="margin-bottom:12px;">
+            <p style="margin:0 0 6px;font-size:1.15rem;font-weight:700;color:var(--text-primary);">${referralInfo.specialty}</p>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">
+                <div style="width:${confVal}%;height:100%;background:${confColor};border-radius:3px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1);"></div>
+              </div>
+              <span style="font-size:0.8rem;color:${confColor};font-weight:700;white-space:nowrap;">${confVal}% confiança</span>
+            </div>
+          </div>
+
+          <!-- Justificativa -->
+          <p style="margin:0 0 12px;font-size:0.88rem;color:var(--text-primary);line-height:1.6;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">${referralInfo.rationale || ''}</p>
+
+          <!-- Exames Obrigatórios -->
+          ${referralInfo.exames_obrigatorios && referralInfo.exames_obrigatorios.length > 0 ? `
+          <div style="margin-bottom:12px;">
+            <p style="margin:0 0 6px;font-size:0.8rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;">📋 Exames Obrigatórios para Regulação</p>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">${examesHtml}</div>
+          </div>` : ''}
+
+          <!-- Protocolo -->
+          ${referralInfo.protocolo ? `
+          <p style="margin:0 0 14px;font-size:0.75rem;color:var(--text-secondary);font-style:italic;">
+            📜 Protocolo: ${referralInfo.protocolo}
+          </p>` : ''}
+
+          <!-- Decisão Médica -->
+          <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+            <span style="font-size:0.8rem;color:var(--text-secondary);font-weight:600;margin-right:auto;">Decisão do médico:</span>
+            <button id="referral-btn-aceitar" style="background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#34d399;padding:10px 20px;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);"
+              onmouseover="this.style.background='rgba(16,185,129,0.3)';this.style.transform='translateY(-1px)'" onmouseout="this.style.background='rgba(16,185,129,0.15)';this.style.transform='none'">
+              ✅ Aceitar Encaminhamento
+            </button>
+            <button id="referral-btn-rejeitar" style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#f87171;padding:10px 20px;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;transition:all 0.2s;"
+              onmouseover="this.style.background='rgba(239,68,68,0.25)';this.style.transform='translateY(-1px)'" onmouseout="this.style.background='rgba(239,68,68,0.1)';this.style.transform='none'">
+              ❌ Rejeitar
+            </button>
+          </div>
+        </div>`;
+      })() : ''}
+    </div>
+
+    <!-- ABA 2: Diagnóstico & Alertas -->
+    <div id="rag-tab-alerts" class="rag-tab-content">
       <div style="display: flex; flex-direction: column; gap: 20px;">
         <div>
           <h4 style="margin: 0 0 10px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Sinais de Alarme &amp; Alertas</h4>
@@ -334,9 +423,11 @@ function renderRagResults(result, container) {
           ${cidHtml}
         </div>
       </div>
+    </div>
 
-      <!-- Coluna Direita -->
-      <div style="display: flex; flex-direction: column; gap: 20px;">
+    <!-- ABA 3: Prescrição & Regulação SUS -->
+    <div id="rag-tab-sus" class="rag-tab-content">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
         <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 14px; border-radius: 8px;">
           <h4 style="margin: 0 0 10px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Validação RENAME (Medicamentos SUS)</h4>
           ${medsHtml}
@@ -352,89 +443,8 @@ function renderRagResults(result, container) {
       </div>
     </div>
 
-    <!-- Gaps de Informações Faltantes -->
-    ${quality.gaps && quality.gaps.length > 0 ? `
-      <div style="margin-top: 20px; background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.15); padding: 14px; border-radius: 8px;">
-        <h4 style="margin: 0 0 10px; font-size: 0.9rem; color: #f59e0b; text-transform: uppercase;">Gaps e Dados Faltantes Recomendados</h4>
-        <ul style="margin: 0; padding-left: 20px; font-size: 0.85rem; color: var(--text-primary);">
-          ${quality.gaps.map(gap => `
-            <li style="margin-bottom: 6px;">
-              <strong>${gap.field}:</strong> ${gap.impact} <br/>
-              <span style="color: var(--text-secondary); font-size: 0.8rem;">👉 <em>${gap.recommendation}</em></span>
-            </li>
-          `).join('')}
-        </ul>
-      </div>
-    ` : ''}
-
-    <!-- ─── Encaminhamento SUS Unificado ─────────────────────────────── -->
-    ${referralInfo ? (() => {
-      const prioColor = {
-        'Alta':     { bg: 'rgba(239,68,68,0.12)',  border: '#ef4444', text: '#f87171' },
-        'Média':    { bg: 'rgba(245,158,11,0.12)', border: '#f59e0b', text: '#fbbf24' },
-        'Variável': { bg: 'rgba(99,102,241,0.12)', border: '#818cf8', text: '#a5b4fc' }
-      }[referralInfo.prioridade] || { bg: 'rgba(99,102,241,0.08)', border: 'rgba(99,102,241,0.3)', text: 'var(--primary)' };
-      const confColor = (referralInfo.confidence || referralInfo.confiança || 0) >= 85 ? '#10b981'
-                      : (referralInfo.confidence || referralInfo.confiança || 0) >= 65 ? '#f59e0b' : '#ef4444';
-      const confVal   = referralInfo.confidence || referralInfo.confiança || 0;
-      const examesHtml = referralInfo.exames_obrigatorios && referralInfo.exames_obrigatorios.length > 0
-        ? referralInfo.exames_obrigatorios.map(e => `<span style="display:inline-block;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);border-radius:4px;padding:2px 8px;font-size:0.75rem;margin:2px;">${e}</span>`).join('')
-        : '<span style="color:var(--text-secondary);font-size:0.85rem;">Nenhum exame obrigatório especificado.</span>';
-      return `
-      <div id="referral-block-unified" style="margin-top:20px;background:${prioColor.bg};border:1px solid ${prioColor.border};border-left:5px solid ${prioColor.border};padding:18px;border-radius:10px;">
-        <!-- Cabeçalho -->
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:1.3rem;">🏥</span>
-            <h4 style="margin:0;font-size:1rem;text-transform:uppercase;letter-spacing:0.5px;color:${prioColor.text};">Encaminhamento SUS Sugerido</h4>
-          </div>
-          ${referralInfo.prioridade ? `<span style="background:${prioColor.bg};border:1px solid ${prioColor.border};color:${prioColor.text};padding:2px 10px;border-radius:20px;font-size:0.75rem;font-weight:700;">⚡ Prioridade ${referralInfo.prioridade}</span>` : ''}
-        </div>
-
-        <!-- Especialidade + Confiança -->
-        <div style="margin-bottom:12px;">
-          <p style="margin:0 0 6px;font-size:1.15rem;font-weight:700;color:var(--text-primary);">${referralInfo.specialty}</p>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">
-              <div style="width:${confVal}%;height:100%;background:${confColor};border-radius:3px;transition:width 0.6s cubic-bezier(0.4,0,0.2,1);"></div>
-            </div>
-            <span style="font-size:0.8rem;color:${confColor};font-weight:700;white-space:nowrap;">${confVal}% confiança</span>
-          </div>
-        </div>
-
-        <!-- Justificativa -->
-        <p style="margin:0 0 12px;font-size:0.88rem;color:var(--text-primary);line-height:1.6;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">${referralInfo.rationale || ''}</p>
-
-        <!-- Exames Obrigatórios -->
-        ${referralInfo.exames_obrigatorios && referralInfo.exames_obrigatorios.length > 0 ? `
-        <div style="margin-bottom:12px;">
-          <p style="margin:0 0 6px;font-size:0.8rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;">📋 Exames Obrigatórios para Regulação</p>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;">${examesHtml}</div>
-        </div>` : ''}
-
-        <!-- Protocolo -->
-        ${referralInfo.protocolo ? `
-        <p style="margin:0 0 14px;font-size:0.75rem;color:var(--text-secondary);font-style:italic;">
-          📜 Protocolo: ${referralInfo.protocolo}
-        </p>` : ''}
-
-        <!-- Decisão Médica -->
-        <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <span style="font-size:0.8rem;color:var(--text-secondary);font-weight:600;">Decisão do médico:</span>
-          <button id="referral-btn-aceitar" style="background:rgba(16,185,129,0.15);border:1px solid #10b981;color:#34d399;padding:6px 16px;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:background 0.2s;"
-            onmouseover="this.style.background='rgba(16,185,129,0.3)'" onmouseout="this.style.background='rgba(16,185,129,0.15)'">
-            ✅ Aceitar Encaminhamento
-          </button>
-          <button id="referral-btn-rejeitar" style="background:rgba(239,68,68,0.1);border:1px solid #ef4444;color:#f87171;padding:6px 16px;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:background 0.2s;"
-            onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.1)'">
-            ❌ Rejeitar
-          </button>
-        </div>
-      </div>`;
-    })() : ''}
-
     <!-- Rodapé: Evidências BVS e Botão Re-analisar -->
-    <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 16px;">
+    <div style="margin: 0 20px 20px; padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 16px;">
       ${window.lastBvsContextTitles && window.lastBvsContextTitles.length > 0 ? `
         <div style="background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; padding: 12px; border-radius: 4px;">
           <h4 style="margin: 0 0 8px; font-size: 0.85rem; color: #10b981; text-transform: uppercase;">📚 Diretrizes BVS Consultadas para esta análise:</h4>
@@ -451,6 +461,24 @@ function renderRagResults(result, container) {
       </div>
     </div>
   `;
+
+  // ── Lógica das Abas ───────────────────────────────────────────────────────
+  const tabBtns = container.querySelectorAll('.rag-tab-btn');
+  const tabContents = container.querySelectorAll('.rag-tab-content');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      // Remover active de todos os botões e conteúdos
+      tabBtns.forEach(b => b.classList.remove('active'));
+      tabContents.forEach(c => c.classList.remove('active'));
+
+      // Adicionar active no botão clicado e no respectivo conteúdo
+      const targetId = btn.getAttribute('data-rag-tab');
+      btn.classList.add('active');
+      const targetContent = container.querySelector('#' + targetId);
+      if (targetContent) targetContent.classList.add('active');
+    });
+  });
 
   // ── Anexar listeners dos botões de decisão APÓS o innerHTML ─────────────
   // Browsers NÃO executam <script> injetado via innerHTML.

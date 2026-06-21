@@ -1377,6 +1377,14 @@ function handleAutocompleteInput() {
 // 7. EXPORTAÇÃO DE PDF PROFISSIONAL (jsPDF)
 // ==========================================================================
 function generatePDF() {
+    if (window.AuthService && typeof window.AuthService.isFeatureUnlocked === 'function') {
+        if (!window.AuthService.isFeatureUnlocked()) {
+            if (typeof window.AuthService.showActivationModal === 'function') {
+                window.AuthService.showActivationModal();
+            }
+            return;
+        }
+    }
     const recordText = DOM.outputRecord.value.trim();
     if (!recordText) {
         showToast('Nenhum prontuário gerado para exportar!');
@@ -2073,6 +2081,10 @@ function detectMedicationHallucinations(generatedText, originalTranscript) {
 }
 
 async function generateClinicalDocuments() {
+    // Verificar liberação e incrementos em demonstração
+    if (window.AuthService && typeof window.AuthService.checkAndIncrementDemoUses === 'function') {
+        if (!window.AuthService.checkAndIncrementDemoUses()) return;
+    }
     const rawText = DOM.rawTranscript.value.trim();
     if (!rawText) { showToast('Transcreva ou escreva um texto antes!'); return; }
     if (!AppState.apiKey) { showToast('Configure sua chave Groq nas Configurações!'); return; }
@@ -2564,10 +2576,26 @@ async function importBackup(file) {
 // 15. UTILITÁRIOS (COPIAR, DOWNLOAD, WHATSAPP)
 // ==========================================================================
 function copyToClipboard(text, msg = 'Copiado!') {
+    if (window.AuthService && typeof window.AuthService.isFeatureUnlocked === 'function') {
+        if (!window.AuthService.isFeatureUnlocked()) {
+            if (typeof window.AuthService.showActivationModal === 'function') {
+                window.AuthService.showActivationModal();
+            }
+            return;
+        }
+    }
     navigator.clipboard.writeText(text).then(() => showToast(msg)).catch(() => showToast('Erro ao copiar texto.'));
 }
 
 function shareOnWhatsApp(text) {
+    if (window.AuthService && typeof window.AuthService.isFeatureUnlocked === 'function') {
+        if (!window.AuthService.isFeatureUnlocked()) {
+            if (typeof window.AuthService.showActivationModal === 'function') {
+                window.AuthService.showActivationModal();
+            }
+            return;
+        }
+    }
     if (!text.trim()) { showToast('Nenhum conteúdo para compartilhar.'); return; }
     const win = window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
     if (!win) showToast('Popup bloqueado. Permita popups para este site e tente novamente.');

@@ -108,6 +108,48 @@ body {
     margin-bottom: 16px;
 }
 
+.sstecnol-logo-img {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.sidebar-brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.brand-name {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    background: linear-gradient(135deg, var(--text-primary), var(--text-muted));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.1;
+}
+
+.brand-sub {
+    font-family: var(--font-sans);
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+body[data-theme="light"] .brand-name {
+    background: linear-gradient(to right, #1e293b, #475569);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
 .mode-selector {
     display: flex;
     gap: 4px;
@@ -606,6 +648,73 @@ textarea:focus {
     letter-spacing: 1px;
 }
 
+/* Seletor de Estilo de Visualização */
+.visualization-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    justify-content: center;
+    width: 100%;
+}
+
+.visualization-controls.hidden {
+    display: none !important;
+}
+
+.viz-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.viz-btn svg {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.viz-btn:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.viz-btn.active {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+}
+
+body[data-theme="light"] .viz-btn {
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+body[data-theme="light"] .viz-btn:hover {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+
+body[data-theme="light"] .viz-btn.active {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+}
+
 /* Controles de Gravação */
 .controls-row {
     display: flex;
@@ -876,71 +985,99 @@ textarea:focus {
 /* Unified Recording Control Buttons */
 .btn-record-control {
     flex: 1;
-    min-height: 48px;
+    min-height: 52px;
     padding: 10px 16px;
-    font-size: 0.88rem;
-    font-weight: 700;
-    border-radius: 8px;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border: none;
-    cursor: pointer;
-    font-family: var(--font-sans);
+    transition: all 0.25s ease;
+    white-space: nowrap;
 }
 
 .btn-record-control:disabled {
-    opacity: 0.4;
+    opacity: 0.35;
     cursor: not-allowed;
+    pointer-events: none;
 }
 
-#btn-record-start.btn-record-control {
+/* 1. START / RECORD MICROPHONE BUTTON (RED) */
+#btn-record-start.btn-record-control,
+#btn-meeting-record-start.btn-record-control {
     background-color: var(--danger);
     color: white;
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
-#btn-record-start.btn-record-control:hover:not(:disabled) {
+#btn-record-start.btn-record-control:hover:not(:disabled),
+#btn-meeting-record-start.btn-record-control:hover:not(:disabled) {
     background-color: var(--danger-hover);
     transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.45);
 }
 
-#btn-record-telemed.btn-record-control {
-    background-color: rgba(99, 102, 241, 0.1);
+/* 2. TELEMEDICINE / RECORD ONLINE BUTTON (BLUE) */
+#btn-record-telemed.btn-record-control,
+#btn-meeting-record-online.btn-record-control {
+    background-color: rgba(59, 130, 246, 0.12);
     border: 1px solid var(--primary);
-    color: var(--primary);
+    color: #60a5fa;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 
-#btn-record-telemed.btn-record-control:hover:not(:disabled) {
-    background-color: rgba(99, 102, 241, 0.2);
+#btn-record-telemed.btn-record-control:hover:not(:disabled),
+#btn-meeting-record-online.btn-record-control:hover:not(:disabled) {
+    background-color: rgba(59, 130, 246, 0.22);
+    color: #93c5fd;
     transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
 }
 
-body[data-theme="light"] #btn-record-telemed.btn-record-control {
-    background-color: rgba(99, 102, 241, 0.05);
+body[data-theme="light"] #btn-record-telemed.btn-record-control,
+body[data-theme="light"] #btn-meeting-record-online.btn-record-control {
+    background-color: rgba(59, 130, 246, 0.08);
+    border-color: #3b82f6;
+    color: #1d4ed8;
 }
 
-#btn-record-stop.btn-record-control {
-    background-color: #475569;
-    color: white;
-    box-shadow: 0 4px 12px rgba(71, 85, 105, 0.2);
+body[data-theme="light"] #btn-record-telemed.btn-record-control:hover:not(:disabled),
+body[data-theme="light"] #btn-meeting-record-online.btn-record-control:hover:not(:disabled) {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #1e40af;
 }
 
-#btn-record-stop.btn-record-control:hover:not(:disabled) {
+/* 3. STOP BUTTON (SLATE/GRAY) */
+#btn-record-stop.btn-record-control,
+#btn-meeting-record-stop.btn-record-control {
     background-color: #334155;
+    color: #f1f5f9;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#btn-record-stop.btn-record-control:hover:not(:disabled),
+#btn-meeting-record-stop.btn-record-control:hover:not(:disabled) {
+    background-color: #475569;
     transform: translateY(-1px);
 }
 
-body[data-theme="light"] #btn-record-stop.btn-record-control {
-    background-color: #94a3b8;
+body[data-theme="light"] #btn-record-stop.btn-record-control,
+body[data-theme="light"] #btn-meeting-record-stop.btn-record-control {
+    background-color: #e2e8f0;
+    color: #334155;
+    border: 1px solid #cbd5e1;
 }
 
-body[data-theme="light"] #btn-record-stop.btn-record-control:hover:not(:disabled) {
-    background-color: #64748b;
+body[data-theme="light"] #btn-record-stop.btn-record-control:hover:not(:disabled),
+body[data-theme="light"] #btn-meeting-record-stop.btn-record-control:hover:not(:disabled) {
+    background-color: #cbd5e1;
+    color: #1e293b;
 }
 
 .btn-icon {
@@ -1923,7 +2060,7 @@ body[data-theme="light"] #btn-help:hover {
 }
 
 @media (max-width: 480px) {
-    .sidebar-logo h2 {
+    .sidebar-logo h2, .brand-name {
         font-size: 1.1rem;
     }
     
@@ -2229,7 +2366,7 @@ body[data-theme="light"] .autocomplete-dropdown {
         margin-bottom: 0;
     }
 
-    .sidebar-logo h2 {
+    .sidebar-logo h2, .brand-name {
         font-size: 1.1rem;
     }
 
@@ -3091,7 +3228,7 @@ body[data-theme="light"] .badge-light {
         width: 200px;
         padding: 12px;
     }
-    .sidebar-logo h2 {
+    .sidebar-logo h2, .brand-name {
         font-size: 1.1rem;
     }
     .btn-generate-large {
@@ -3123,11 +3260,21 @@ body[data-theme="light"] .badge-light {
     
     .sidebar-logo {
         margin-bottom: 0;
-        width: 120px;
+        width: auto;
     }
     
-    .sidebar-logo h2 {
-        font-size: 1.2rem;
+    .sidebar-logo h2, .brand-name {
+        font-size: 1.15rem;
+    }
+
+    .sstecnol-logo-img {
+        width: 34px;
+        height: 34px;
+        border-radius: 6px;
+    }
+
+    .brand-sub {
+        font-size: 0.55rem;
     }
     
     .mode-selector {

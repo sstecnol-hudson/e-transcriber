@@ -15,13 +15,13 @@ export function adicionarBotaoEncaminhamento() {
 
   const botao = document.createElement('button');
   botao.id = 'btn-encaminhamento';
-  botao.className = 'btn btn-primary mt-2 mb-2 referral-btn';
+  botao.className = 'btn btn-primary mt-2 mb-2 referral-btn btn-accessible';
   botao.style.cssText = 'background: #2563eb; color: white; padding: 8px 12px; border-radius: 6px; border: none; flex: 1; min-width: 120px;';
   botao.innerHTML = '🧭 SUGERIR ENCAMINHAMENTO SUS';
   botao.onclick = abrirAnaliseEncaminhamento;
 
   const btnStats = document.createElement('button');
-  btnStats.className = 'btn btn-info mt-2 mb-2 referral-btn';
+  btnStats.className = 'btn btn-info mt-2 mb-2 referral-btn btn-accessible';
   btnStats.innerText = '📊';
   btnStats.style.cssText = 'padding: 8px 12px; border-radius: 6px; border: none; flex: 0 0 auto; min-width: 40px;';
   btnStats.onclick = abrirEstatisticas;
@@ -68,8 +68,8 @@ export function abrirAnaliseEncaminhamento() {
           ${resultado.exames_obrigatorios.map(e => `<li>${e}</li>`).join('')}
         </ul>
       ` : ''}
-      <button id="btn-aceitar-encaminhamento" class="btn btn-success referral-btn" style="margin-right:8px;">Aceitar</button>
-      <button id="btn-rejeitar-encaminhamento" class="btn btn-secondary referral-btn">Rejeitar</button>
+      <button id="btn-aceitar-encaminhamento" class="btn btn-success referral-btn btn-accessible" style="margin-right:8px;">Aceitar</button>
+    <button id="btn-rejeitar-encaminhamento" class="btn btn-secondary referral-btn btn-accessible">Rejeitar</button>
     </div>
   `;
   document.body.appendChild(modal);
@@ -108,8 +108,8 @@ export function abrirEstatisticas() {
         <li><strong>Padrões detectados:</strong> ${stats.padroes_detectados}</li>
         <li><strong>Última atualização:</strong> ${stats.ultima_atualizacao}</li>
       </ul>
-      <button id="btn-export-data" class="btn btn-primary referral-btn" style="margin-right:8px;">Exportar Dados (JSON)</button>
-      <button id="btn-close-stats" class="btn btn-secondary referral-btn">Fechar</button>
+      <button id="btn-export-data" class="btn btn-primary referral-btn btn-accessible" style="margin-right:8px;">Exportar Dados (JSON)</button>
+    <button id="btn-close-stats" class="btn btn-secondary referral-btn btn-accessible">Fechar</button>
     </div>
   `;
   document.body.appendChild(modal);

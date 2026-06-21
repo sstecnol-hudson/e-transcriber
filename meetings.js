@@ -697,6 +697,10 @@ async function sendMeetingAudioToWhisper(file) {
 }
 
 async function generateMeetingMinutes() {
+    // Verificar liberação e incrementos em demonstração
+    if (window.AuthService && typeof window.AuthService.checkAndIncrementDemoUses === 'function') {
+        if (!window.AuthService.checkAndIncrementDemoUses()) return;
+    }
     const rawText = MeetingDOM.rawTranscript.value.trim();
     if (!rawText) { showToast('Transcreva ou escreva um texto antes!'); return; }
     if (!AppState.apiKey) { showToast('Configure sua chave Groq nas Configurações!'); return; }
@@ -759,6 +763,14 @@ async function generateMeetingMinutes() {
 // PDF DA REUNIÃO
 // ==========================================================================
 function generateMeetingPDF() {
+    if (window.AuthService && typeof window.AuthService.isFeatureUnlocked === 'function') {
+        if (!window.AuthService.isFeatureUnlocked()) {
+            if (typeof window.AuthService.showActivationModal === 'function') {
+                window.AuthService.showActivationModal();
+            }
+            return;
+        }
+    }
     const recordText = MeetingDOM.outputRecord.value.trim();
     if (!recordText) {
         showToast('Nenhuma ata gerada para exportar!');
@@ -1716,6 +1728,14 @@ function exportAttendanceExcel() {
 // EXPORT: PDF
 // ==========================================================================
 function exportAttendancePDF() {
+    if (window.AuthService && typeof window.AuthService.isFeatureUnlocked === 'function') {
+        if (!window.AuthService.isFeatureUnlocked()) {
+            if (typeof window.AuthService.showActivationModal === 'function') {
+                window.AuthService.showActivationModal();
+            }
+            return;
+        }
+    }
     if (!AttendanceState.participants.length) {
         showToast('Nenhum participante para exportar!');
         return;
@@ -1938,6 +1958,14 @@ function setupMeetingEventListeners() {
     MeetingDOM.btnGenerateDocs?.addEventListener('click', generateMeetingMinutes);
 
     MeetingDOM.btnCopyRecord?.addEventListener('click', () => {
+        if (window.AuthService && typeof window.AuthService.isFeatureUnlocked === 'function') {
+            if (!window.AuthService.isFeatureUnlocked()) {
+                if (typeof window.AuthService.showActivationModal === 'function') {
+                    window.AuthService.showActivationModal();
+                }
+                return;
+            }
+        }
         navigator.clipboard.writeText(MeetingDOM.outputRecord.value).then(() => showToast('Ata copiada!')).catch(() => showToast('Erro ao copiar.'));
     });
     MeetingDOM.btnDownloadPdf?.addEventListener('click', generateMeetingPDF);
