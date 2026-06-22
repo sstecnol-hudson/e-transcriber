@@ -96,16 +96,19 @@ async function loginComGoogle() {
     return;
   }
   try {
+    // redirectTo garante que o OAuth retorne sempre ao domínio atual
+    // (e-trascriber.com.br, Vercel ou localhost), sem fixar localhost
+    const redirectTo = window.location.origin + '/';
     // For Supabase JS SDK v2 use signInWithOAuth
     if (typeof client.auth.signInWithOAuth === 'function') {
-      await client.auth.signInWithOAuth({ provider: 'google' });
+      await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
     } else if (typeof client.auth.signIn === 'function') {
       // Fallback for older SDK versions
-      await client.auth.signIn({ provider: 'google' });
+      await client.auth.signIn({ provider: 'google', options: { redirectTo } });
     } else {
       console.error('[Auth] No supported sign-in method available.');
     }
-    console.log('[Auth] Initiated Google OAuth flow');
+    console.log('[Auth] Initiated Google OAuth flow | redirectTo:', redirectTo);
   } catch (e) {
     console.error('[Auth] Google login error:', e);
   }
